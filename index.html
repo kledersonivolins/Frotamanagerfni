@@ -5991,6 +5991,21 @@ function _eqsDaEmpresa(){
   return _filtrarEqsPorUsuario(base);
 }
 
+// Na OS, listar todos os veículos da empresa, sem aplicar o vínculo individual.
+function _eqsParaOS(){
+  const todos = db.equipamentos || [];
+  if(_empresaAtiva?.id !== undefined && _empresaAtiva?.id !== null){
+    return todos.filter(e => String(e.empresa_id) === String(_empresaAtiva.id));
+  }
+  let empresas = currentUser?.empresas;
+  if(typeof empresas === 'string'){ try{ empresas=JSON.parse(empresas); }catch{ empresas=[]; } }
+  if(Array.isArray(empresas) && empresas.length){
+    const ids=new Set(empresas.map(String));
+    return todos.filter(e=>ids.has(String(e.empresa_id)));
+  }
+  return todos;
+}
+
 // IDs dos equipamentos da empresa ativa (para filtrar OS, combustível, despesas)
 function _eqIdsDaEmpresa(){
   return new Set(_eqsDaEmpresa().map(e=>String(e.id)));
@@ -12389,7 +12404,7 @@ function renderOS(){
 `}
 
 function openModalOS(tipo='OS', preenchido=null){
-  const _eqsOS=()=>{const id=_empresaAtiva?.id||null;const all=db.equipamentos||[];return id?all.filter(e=>String(e.empresa_id)===String(id)):all;};  const optsEq=_eqsOS().sort((a,b)=>(a.placa||'').localeCompare(b.placa||'')).map(e=>`<option value="${e.id}" ${preenchido?.equipamento_id==e.id?'selected':''}>${esc(e.placa||"")} — ${esc(e.modelo||"")}</option>`).join('');
+  const optsEq=_eqsParaOS().slice().sort((a,b)=>(a.placa||'').localeCompare(b.placa||'')).map(e=>`<option value="${e.id}" ${preenchido?.equipamento_id==e.id?'selected':''}>${esc(e.placa||"")} — ${esc(e.modelo||"")}</option>`).join('');
   const n=(db.ordens_servico.length+1).toString().padStart(4,'0');
   const itensIniciais = preenchido?.itens || [];
   const optsCC = db.centros_custo.filter(c=>c.ativo!==false).map(c=>`<option value="${c.id}" ${preenchido?.centro_custo_id==c.id?'selected':''}>${esc(c.nome||"")}${c.codigo?' ('+c.codigo+')':''}</option>`).join('');
