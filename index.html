@@ -13012,9 +13012,20 @@ function carregarHistoricoOS(){
 }
 
 
-function _osValidarVinculoCustoAtivo(eqId, valor=0){
+async function _osBuscarEquipamentoParaCusto(eqId){
+  const local=(Array.isArray(db?.equipamentos)?db.equipamentos:[]).find(e=>String(e.id)===String(eqId));
+  if(local) return local;
+  if(!_sb || !eqId) return null;
+  const {data,error}=await _sb.from('equipamentos').select('*').eq('tenant',_sbTenant).eq('id',eqId).maybeSingle();
+  if(error || !data) return null;
+  const {tenant,...equipamento}=data;
+  db.equipamentos=db.equipamentos||[];
+  if(!db.equipamentos.some(e=>String(e.id)===String(equipamento.id))) db.equipamentos.push(equipamento);
+  return equipamento;
+}
+async function _osValidarVinculoCustoAtivo(eqId, valor=0){
   if(!eqId){ showToast('Selecione o equipamento para vincular o custo ao ativo.','warning'); return false; }
-  const eq=(Array.isArray(db?.equipamentos)?db.equipamentos:[]).find(e=>e.id==eqId);
+  const eq=await _osBuscarEquipamentoParaCusto(eqId);
   if(!eq){ showToast('Equipamento não encontrado. Custo não pode ficar solto.','danger'); return false; }
   return true;
 }
@@ -13022,7 +13033,7 @@ async function salvarOS(){
   const eq=document.getElementById('os_eq').value, desc=document.getElementById('os_desc').value.trim();
   const cc=document.getElementById('os_cc')?.value||'';
   if(!eq||!desc){ showToast('Equipamento e descrição obrigatórios','warning'); return; }
-  if(!_osValidarVinculoCustoAtivo(parseInt(eq), parseFloat(document.getElementById('os_cu')?.value)||0)) return;
+  if(!await _osValidarVinculoCustoAtivo(eq, parseFloat(document.getElementById('os_cu')?.value)||0)) return;
   if(!cc){ showToast('Centro de custo obrigatório','warning'); return; }
   const itens=_coletarItensOS();
   const tipoOS = document.getElementById('os_tp').value;
