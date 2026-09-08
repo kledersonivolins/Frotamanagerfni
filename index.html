@@ -3673,8 +3673,8 @@ if(typeof window!=='undefined'){
 
 // ── DELETAR REGISTRO ──
 async function sbDeletar(tabela, id){
-  if(!id) return;
-  if(_sbMode!=='supabase'||!_sb) return;
+  if(!id) return false;
+  if(_sbMode!=='supabase'||!_sb) return true;
   try {
     // REGRA PCM: nunca fazer delete físico. Empréstimos não possuem os campos PCM;
     // nesse caso o cancelamento lógico usa somente status/ativo.
@@ -3685,13 +3685,16 @@ async function sbDeletar(tabela, id){
     let _q=_sb.from(tabela).update(_payload).eq('id',id);
     if(_ehEmp) _q=_q.eq('tenant',_EMPRESTIMOS_TENANT);
     else _q=_q.eq('tenant',_sbTenant);
-    const resp = await _q;
+    const resp = await _q.select('id');
     if(resp.error) throw resp.error;
+    if(!resp.data || resp.data.length === 0) throw new Error('O Supabase não confirmou a exclusão lógica.');
     _sbSetStatus('ok','Excluído logicamente');
+    return true;
   } catch(err){
     _sbSetStatus('error','Erro ao excluir');
     console.error('sbDeletar erro:', tabela, err);
     showToast('Erro ao excluir ['+tabela+']: rode o SQL de exclusão lógica/campos PCM.', 'danger');
+    return false;
   }
 }
 
@@ -22643,8 +22646,24 @@ function _empBadge(val){
   return `<span style="font-size:11px;padding:3px 10px;border-radius:12px;font-weight:700;background:${s.bg};color:${s.cor}">${s.label}</span>`;
 }
 
+function _empRegistroAtivo(registro){
+  return !!registro && registro.ativo !== false && registro.ativo !== 0 && registro.ativo !== '0' && String(registro.ativo).toLowerCase() !== 'false';
+}
+
+function _empRegistrosAtivos(){
+  return (db.emprestimos_veiculos||[]).filter(_empRegistroAtivo);
+}
+
+function _empRegistrosParaHistorico(){
+  return _empRegistrosAtivos().filter(e=>e.status==='finalizado'||e.status==='cancelado');
+}
+
+function _empRegistrosParaExportacao(){
+  return _empRegistrosAtivos().slice().sort((a,b)=>(b.criado_em||'').localeCompare(a.criado_em||''));
+}
+
 function _empVeiculoEmUso(veiculoId, ignorarId=null){
-  return (db.emprestimos_veiculos||[]).some(e =>
+  return _empRegistrosAtivos().some(e =>
     e.veiculo_id == veiculoId &&
     e.status === 'em_uso' &&
     e.id !== ignorarId
@@ -22674,7 +22693,8 @@ function renderEmprestimosLista(){
   const fDe   = window._empFDe  || '';
   const fAte  = window._empFAte || '';
 
-  let lista = (db.emprestimos_veiculos||[]).slice();
+  const registrosAtivos = _empRegistrosAtivos();
+  let lista = registrosAtivos.slice();
   if(fSt)  lista = lista.filter(e=>e.status===fSt);
   if(fEq)  lista = lista.filter(e=>e.veiculo_id==fEq);
   if(fMot) lista = lista.filter(e=>e.motorista_id==fMot || (e.solicitante||'').toLowerCase().includes(fMot.toLowerCase()));
@@ -22686,10 +22706,10 @@ function renderEmprestimosLista(){
   const optsStatus = _empStatusLista().map(s=>`<option value="${s.val}" ${fSt===s.val?'selected':''}>${s.label}</option>`).join('');
 
   // KPIs
-  const total    = (db.emprestimos_veiculos||[]).length;
-  const emUso    = (db.emprestimos_veiculos||[]).filter(e=>e.status==='em_uso').length;
-  const pendente = (db.emprestimos_veiculos||[]).filter(e=>e.status==='solicitado').length;
-  const atraso   = (db.emprestimos_veiculos||[]).filter(e=>{
+  const total    = registrosAtivos.length;
+  const emUso    = registrosAtivos.filter(e=>e.status==='em_uso').length;
+  const pendente = registrosAtivos.filter(e=>e.status==='solicitado').length;
+  const atraso   = registrosAtivos.filter(e=>{
     if(e.status!=='em_uso' || !e.data_prevista_retorno) return false;
     return new Date(e.data_prevista_retorno) < new Date();
   }).length;
@@ -23463,8 +23483,10 @@ async function _empDeletar(i){
   const e = db.emprestimos_veiculos[i];
   if(!e) return;
   if(!await _confirmar('Excluir este registro de empréstimo?','danger')) return;
-  db.emprestimos_veiculos.splice(i,1);
-  sbDeletar('emprestimos_veiculos', e.id);
+  const excluido = await sbDeletar('emprestimos_veiculos', e.id);
+  if(!excluido) return;
+  const idxAtual = db.emprestimos_veiculos.findIndex(x=>String(x.id)===String(e.id));
+  if(idxAtual>=0) db.emprestimos_veiculos.splice(idxAtual,1);
   loadPage('emprestimos_lista');
   showToast('Registro excluído','info');
 }
@@ -23474,8 +23496,10 @@ async function _empDeletarHistorico(i){
   const e = db.emprestimos_veiculos[i];
   if(!e) return;
   if(!await _confirmar(`Excluir este registro de empréstimo (${e.veiculo_placa||''})?`,'danger')) return;
-  db.emprestimos_veiculos.splice(i,1);
-  sbDeletar('emprestimos_veiculos', e.id);
+  const excluido = await sbDeletar('emprestimos_veiculos', e.id);
+  if(!excluido) return;
+  const idxAtual = db.emprestimos_veiculos.findIndex(x=>String(x.id)===String(e.id));
+  if(idxAtual>=0) db.emprestimos_veiculos.splice(idxAtual,1);
   loadPage('emprestimos_historico');
   showToast('Registro excluído','info');
 }
@@ -23485,7 +23509,8 @@ function renderEmprestimosHistorico(){
   _empGarantirHistoricoCarregado();
   const fEq = window._empHFEq || '';
   // Histórico mostra apenas registros finalizados ou cancelados
-  let lista = (db.emprestimos_veiculos||[]).filter(e=>e.status==='finalizado'||e.status==='cancelado');
+  const registrosAtivos = _empRegistrosAtivos();
+  let lista = _empRegistrosParaHistorico();
   if(fEq) lista = lista.filter(e=>e.veiculo_id==fEq);
   lista.sort((a,b)=>(b.criado_em||'').localeCompare(a.criado_em||''));
 
@@ -23495,7 +23520,7 @@ function renderEmprestimosHistorico(){
 
   // Estatísticas por veículo (somente finalizados)
   const stats = {};
-  (db.emprestimos_veiculos||[]).filter(e=>e.status==='finalizado').forEach(e=>{
+  registrosAtivos.filter(e=>e.status==='finalizado').forEach(e=>{
     if(!stats[e.veiculo_id]) stats[e.veiculo_id]={placa:e.veiculo_placa,total:0,km:0,finalizados:0};
     stats[e.veiculo_id].total++;
     stats[e.veiculo_id].finalizados++;
@@ -23973,8 +23998,7 @@ async function _empSalvarChecklist(){
 
 
 function _empExportarExcel(){
-  const lista = (db.emprestimos_veiculos||[]).slice()
-    .sort((a,b)=>(b.criado_em||'').localeCompare(a.criado_em||''));
+  const lista = _empRegistrosParaExportacao();
   const stLbl = v => (_empStatusLista().find(x=>x.val===v)||{label:v}).label;
   const rows = [
     ['Veículo','Placa','Motorista','Solicitante','Finalidade','Destino',
