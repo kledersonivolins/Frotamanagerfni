@@ -3987,6 +3987,7 @@ function _getModulosLiberados(){
 
 function _moduloLiberado(page){
   if(!currentUser) return false;
+  if(!_empPaginaPermitida(page)) return false;
   const nv = currentUser.nivel || 'visualizador';
 
   // Super: acesso total
@@ -4016,6 +4017,7 @@ function _moduloLiberado(page){
 // Retorna 'editar', 'visualizar' ou null (sem acesso / sem restrição)
 function _moduloPermissao(page){
   if(!currentUser) return null;
+  if(!_empPaginaPermitida(page)) return null;
   if(currentUser.nivel === 'super') return 'editar';
   if(currentUser.nivel === 'portaria'){
     const pgPortaria = ['dashboard','portaria_op','portaria_pessoas','portaria_qrcodes',
@@ -10292,7 +10294,7 @@ function renderUsuarios(){
   <span class="badge bpu" style="margin:0 3px">Visualizador</span> Somente leitura
 </div>
     <table>
-      <thead><tr><th>#</th><th>Nome</th><th>Usuário</th><th>Nível</th><th>Módulos</th><th>Empresas</th><th>Status</th><th>Ações</th></tr></thead>
+      <thead><tr><th>#</th><th>Nome</th><th>Usuário</th><th>Nível</th><th>Função no Empréstimo</th><th>Módulos</th><th>Empresas</th><th>Status</th><th>Ações</th></tr></thead>
       <tbody>
       ${ativos.map((u)=>{ const i = db.usuarios.indexOf(u);
         const _modBadge = (()=>{
@@ -10310,6 +10312,7 @@ function renderUsuarios(){
         <td><strong>${esc(u.nome||"")}</strong><br><small style="color:var(--text2)">${u.email||''}</small></td>
         <td>${u.username}</td>
         <td>${nivelBadge[u.nivel]||u.nivel}</td>
+        <td>${u.funcao_emprestimo?`<span class="badge bi">${({solicitante:'Solicitante',encarregado:'Encarregado',coordenador:'Coordenador',gerente:'Gerente',diretor:'Diretor'})[u.funcao_emprestimo]||u.funcao_emprestimo}</span>`:'<span style="font-size:11px;color:var(--text2)">—</span>'}</td>
         <td style="text-align:center">
           ${u.nivel==='super'?'<span class="badge bs" style="font-size:10px">Todos</span>':_modBadge}
         </td>
@@ -10514,6 +10517,18 @@ function openModalUsuario(idx=null){
         </select>
       </div>
     </div>
+    <div class="fg" style="margin-top:12px">
+      <label>Função no Empréstimo</label>
+      <select class="fs" id="u_funcao_emprestimo">
+        <option value="" ${!u?.funcao_emprestimo?'selected':''}>Sem função no módulo</option>
+        <option value="solicitante" ${u?.funcao_emprestimo==='solicitante'?'selected':''}>Solicitante — somente solicita e acompanha</option>
+        <option value="encarregado" ${u?.funcao_emprestimo==='encarregado'?'selected':''}>Encarregado — aprova e opera</option>
+        <option value="coordenador" ${u?.funcao_emprestimo==='coordenador'?'selected':''}>Coordenador — aprova e opera</option>
+        <option value="gerente" ${u?.funcao_emprestimo==='gerente'?'selected':''}>Gerente — aprova e opera</option>
+        <option value="diretor" ${u?.funcao_emprestimo==='diretor'?'selected':''}>Diretor — aprova e opera</option>
+      </select>
+      <small style="color:var(--text2)">Este subnível vale somente para o módulo de Empréstimos.</small>
+    </div>
   </div>
 
   <div id="utab-modulos" class="tab-c">
@@ -10625,6 +10640,7 @@ async function salvarUsuario(idx){
     db.usuarios[idx].nome=nome; db.usuarios[idx].username=uname;
     db.usuarios[idx].email=document.getElementById('u_email').value || null;
     db.usuarios[idx].nivel=document.getElementById('u_nivel').value;
+    db.usuarios[idx].funcao_emprestimo=document.getElementById('u_funcao_emprestimo')?.value||null;
     db.usuarios[idx].ativo=document.getElementById('u_ativo').value==='1';
     db.usuarios[idx].modulos_liberados = modulosLiberados;
     db.usuarios[idx].empresas = empresasVinc;
@@ -10645,6 +10661,7 @@ async function salvarUsuario(idx){
       email: (document.getElementById('u_email').value || '').trim() || null,
       ...(pass ? { password: pass } : {}),
       nivel: document.getElementById('u_nivel').value,
+      funcao_emprestimo: document.getElementById('u_funcao_emprestimo')?.value||null,
       ativo: true,
       modulos_liberados: modulosLiberados,
       empresas: empresasVinc,
@@ -22650,8 +22667,21 @@ function _empRegistroAtivo(registro){
   return !!registro && registro.ativo !== false && registro.ativo !== 0 && registro.ativo !== '0' && String(registro.ativo).toLowerCase() !== 'false';
 }
 
-function _empRegistrosAtivos(){
+function _empTodosRegistrosAtivos(){
   return (db.emprestimos_veiculos||[]).filter(_empRegistroAtivo);
+}
+
+function _empRegistrosAtivos(){
+  const ativos=_empTodosRegistrosAtivos();
+  if(_empFuncaoUsuario()!=='solicitante') return ativos;
+  const ids=[currentUser?.id,currentUser?.usuario_id].filter(v=>v!==undefined&&v!==null).map(String);
+  const nomes=[currentUser?.username,currentUser?.nome,currentUser?.email].filter(Boolean).map(v=>String(v).trim().toLowerCase());
+  return ativos.filter(e=>{
+    if(e.solicitante_usuario_id!==undefined&&e.solicitante_usuario_id!==null) return ids.includes(String(e.solicitante_usuario_id));
+    const criadoPor=String(e.criado_por||'').trim().toLowerCase();
+    const solicitante=String(e.solicitante||'').trim().toLowerCase();
+    return nomes.includes(criadoPor)||nomes.includes(solicitante);
+  });
 }
 
 function _empRegistrosParaHistorico(){
@@ -22662,8 +22692,36 @@ function _empRegistrosParaExportacao(){
   return _empRegistrosAtivos().slice().sort((a,b)=>(b.criado_em||'').localeCompare(a.criado_em||''));
 }
 
+function _empFuncaoUsuario(usuario=currentUser){
+  if(!usuario) return '';
+  const nivelUsuario=String(usuario.nivel||'').trim().toLowerCase();
+  if(['super','admin'].includes(nivelUsuario)) return 'administrador';
+  const funcao=String(usuario.funcao_emprestimo||'').trim().toLowerCase();
+  return ['solicitante','encarregado','coordenador','gerente','diretor'].includes(funcao)?funcao:'';
+}
+
+function _empPodeAprovar(){
+  return ['administrador','encarregado','coordenador','gerente','diretor'].includes(_empFuncaoUsuario());
+}
+
+function _empPodeOperar(){
+  return _empPodeAprovar();
+}
+
+function _empStatusNovaSolicitacao(statusEscolhido){
+  if(_empFuncaoUsuario()==='solicitante') return 'solicitado';
+  const status=String(statusEscolhido||'solicitado');
+  return ['solicitado','aprovado','em_uso'].includes(status)?status:'solicitado';
+}
+
+function _empPaginaPermitida(page){
+  if(_empFuncaoUsuario()!=='solicitante') return true;
+  if(!String(page||'').startsWith('emprestimos_')) return true;
+  return ['emprestimos_lista','emprestimos_novo','emprestimos_historico'].includes(page);
+}
+
 function _empVeiculoEmUso(veiculoId, ignorarId=null){
-  return _empRegistrosAtivos().some(e =>
+  return _empTodosRegistrosAtivos().some(e =>
     e.veiculo_id == veiculoId &&
     e.status === 'em_uso' &&
     e.id !== ignorarId
@@ -22673,14 +22731,7 @@ function _empVeiculoEmUso(veiculoId, ignorarId=null){
 // ── LISTAGEM ──
 function _empPodeEditar(e){
   if(!e||!currentUser) return false;
-  if(['super','admin'].includes(String(currentUser.nivel||'').toLowerCase())) return true;
-  const ids=[currentUser.id,currentUser.usuario_id].filter(v=>v!==undefined&&v!==null).map(String);
-  const nomes=[currentUser.username,currentUser.nome,currentUser.email].filter(Boolean).map(v=>String(v).trim().toLowerCase());
-  const solicitanteId=e.solicitante_usuario_id!==undefined&&e.solicitante_usuario_id!==null&&ids.includes(String(e.solicitante_usuario_id));
-  const criadoPor=String(e.criado_por||'').trim().toLowerCase();
-  const nomeSolicitante=String(e.solicitante||'').trim().toLowerCase();
-  const souSolicitante=solicitanteId||((criadoPor&&nomes.includes(criadoPor))||(nomeSolicitante&&nomes.includes(nomeSolicitante)));
-  return !souSolicitante;
+  return _empPodeOperar();
 }
 async function _empGarantirHistoricoCarregado(){
   return;
@@ -22739,14 +22790,14 @@ function renderEmprestimosLista(){
             <div style="display:flex;gap:4px;flex-wrap:wrap">
               <button class="btn btn-xs btn-p" onclick="_empVerDetalhes(${idx})" title="Ver detalhes"><i class="fas fa-eye"></i></button>
               ${_empPodeEditar(e)?`<button class="btn btn-xs btn-o" onclick="_empEditar(${idx})" title="Editar"><i class="fas fa-edit"></i></button>`:''}
-              ${e.status==='solicitado'?`
+              ${e.status==='solicitado'&&_empPodeAprovar()?`
                 <button class="btn btn-xs" style="background:#2e7d32;color:#fff;border:none" onclick="_empAprovar(${idx})" title="Aprovar"><i class="fas fa-check"></i></button>
                 <button class="btn btn-xs" style="background:#c62828;color:#fff;border:none" onclick="_empCancelar(${idx})" title="Cancelar"><i class="fas fa-times"></i></button>
               `:''}
-              ${e.status==='aprovado'?`
+              ${e.status==='aprovado'&&_empPodeOperar()?`
                 <button class="btn btn-xs" style="background:#f57c00;color:#fff;border:none" onclick="_empIniciarUso(${idx})" title="Registrar Saída"><i class="fas fa-car"></i> Saída</button>
               `:''}
-              ${e.status==='em_uso'?`
+              ${e.status==='em_uso'&&_empPodeOperar()?`
                 <button class="btn btn-xs" style="background:#3A3F42;color:#fff;border:none" onclick="_empFinalizar(${idx})" title="Registrar Devolução"><i class="fas fa-flag-checkered"></i> Devolver</button>
               `:''}
               ${podeExcluirRegistros()&&(e.status==='cancelado'||e.status==='finalizado')?`
@@ -22817,6 +22868,7 @@ function _empFiltrar(){
 
 // ── NOVA SOLICITAÇÃO ──
 function renderEmprestimosNovo(){
+  const somenteSolicita=_empFuncaoUsuario()==='solicitante';
   const optsEq  = (db.equipamentos||[]).filter(e=>e.status!=='inativo').map(e=>{
     const emUso = _empVeiculoEmUso(e.id);
     return `<option value="${e.id}" ${emUso?'disabled':''}>
@@ -22846,7 +22898,7 @@ function renderEmprestimosNovo(){
 
     <div class="frow" style="margin-bottom:12px">
       <div class="fg"><label>Solicitante *</label>
-        <input class="fi" id="emp_solicitante" placeholder="Nome do solicitante ou funcionário">
+        <input class="fi" id="emp_solicitante" value="${somenteSolicita?esc(currentUser?.nome||currentUser?.username||''):''}" ${somenteSolicita?'readonly':''} placeholder="Nome do solicitante ou funcionário">
       </div>
       <div class="fg"><label>Finalidade *</label>
         <select class="fs" id="emp_finalidade">
@@ -22889,13 +22941,16 @@ function renderEmprestimosNovo(){
       <div class="fg"><label>KM Saída</label>
         <input class="fi" type="number" id="emp_km_saida" placeholder="0">
       </div>
-      <div class="fg"><label>Aprovação imediata?</label>
+      ${somenteSolicita?`<div class="fg"><label>Status da solicitação</label>
+        <input class="fi" value="Solicitado — aguardando aprovação" readonly>
+        <input type="hidden" id="emp_aprovacao" value="solicitado">
+      </div>`:`<div class="fg"><label>Aprovação imediata?</label>
         <select class="fs" id="emp_aprovacao">
           <option value="solicitado">Não — criar como Solicitado</option>
           <option value="aprovado">Sim — criar já Aprovado</option>
           <option value="em_uso">Saída imediata — já Em Uso</option>
         </select>
-      </div>
+      </div>`}
     </div>
 
     <div class="fg" style="margin-bottom:16px">
@@ -22924,7 +22979,7 @@ async function _empSalvarNovo(){
   const dataPrevRet = document.getElementById('emp_data_retorno_prev')?.value;
   const horaRetPrev = document.getElementById('emp_hora_retorno_prev')?.value || null;
   const kmSaida     = parseFloat(document.getElementById('emp_km_saida')?.value)||0;
-  const status      = document.getElementById('emp_aprovacao')?.value||'solicitado';
+  const status      = _empStatusNovaSolicitacao(document.getElementById('emp_aprovacao')?.value||'solicitado');
   const obs         = (document.getElementById('emp_obs')?.value||'').trim();
   const errEl       = document.getElementById('emp_novo_erro');
 
@@ -22955,6 +23010,8 @@ async function _empSalvarNovo(){
     motorista_id: parseInt(motoristaId),
     motorista_nome: mot?.nome||'',
     solicitante,
+    solicitante_usuario_id: currentUser?.id||currentUser?.usuario_id||null,
+    setor_id: currentUser?.setor_id||null,
     finalidade,
     destino,
     data_solicitacao: today(),
@@ -23038,14 +23095,14 @@ function _empVerDetalhes(i){
     </div>
     <div class="mf">
       <button class="btn btn-o" onclick="closeModal()">Fechar</button>
-      <button class="btn btn-o" onclick="closeModal();_empEditar(${i})"><i class="fas fa-edit"></i> Editar</button>
+      ${_empPodeEditar(e)?`<button class="btn btn-o" onclick="closeModal();_empEditar(${i})"><i class="fas fa-edit"></i> Editar</button>`:''}
       <button class="btn btn-o" onclick="_empImprimir(${i})"><i class="fas fa-print"></i> Imprimir</button>
-      ${e.status==='solicitado'?`
+      ${e.status==='solicitado'&&_empPodeAprovar()?`
         <button class="btn" style="background:#2e7d32;color:#fff;border:none" onclick="closeModal();_empAprovar(${i})"><i class="fas fa-check"></i> Aprovar</button>
         <button class="btn" style="background:#c62828;color:#fff;border:none" onclick="closeModal();_empCancelar(${i})"><i class="fas fa-times"></i> Cancelar</button>
       `:''}
-      ${e.status==='aprovado'?`<button class="btn" style="background:#f57c00;color:#fff;border:none" onclick="closeModal();_empIniciarUso(${i})"><i class="fas fa-car"></i> Registrar Saída</button>`:''}
-      ${e.status==='em_uso'?`<button class="btn btn-p" onclick="closeModal();_empFinalizar(${i})"><i class="fas fa-flag-checkered"></i> Registrar Devolução</button>`:''}
+      ${e.status==='aprovado'&&_empPodeOperar()?`<button class="btn" style="background:#f57c00;color:#fff;border:none" onclick="closeModal();_empIniciarUso(${i})"><i class="fas fa-car"></i> Registrar Saída</button>`:''}
+      ${e.status==='em_uso'&&_empPodeOperar()?`<button class="btn btn-p" onclick="closeModal();_empFinalizar(${i})"><i class="fas fa-flag-checkered"></i> Registrar Devolução</button>`:''}
     </div>`,'lg');
 }
 
@@ -23291,6 +23348,7 @@ function _empEditar(i){
 }
 
 async function _empSalvarEdicao(i){
+  if(!_empPodeEditar(db.emprestimos_veiculos[i])){ showToast('O solicitante não pode alterar o empréstimo após o envio.','warning'); return; }
   const e = db.emprestimos_veiculos[i];
   if(!e){ showToast('Registro não encontrado','danger'); return; }
   const veiculoId   = document.getElementById('empe_veiculo')?.value;
@@ -23354,6 +23412,7 @@ async function _empSalvarEdicao(i){
 
 // ── APROVAR ──
 async function _empAprovar(i){
+  if(!_empPodeAprovar()){ showToast('Seu perfil pode somente solicitar e acompanhar empréstimos.','warning'); return; }
   const e = db.emprestimos_veiculos[i];
   if(!e || e.status!=='solicitado') return;
   if(!await _confirmar(`Aprovar empréstimo do veículo ${esc(e.veiculo_placa||"")}?`,'info')) return;
@@ -23365,6 +23424,7 @@ async function _empAprovar(i){
 
 // ── CANCELAR ──
 async function _empCancelar(i){
+  if(!_empPodeAprovar()){ showToast('Seu perfil não possui permissão para cancelar solicitações.','warning'); return; }
   const e = db.emprestimos_veiculos[i];
   if(!e) return;
   if(!await _confirmar('Cancelar esta solicitação?','danger')) return;
@@ -23376,6 +23436,7 @@ async function _empCancelar(i){
 
 // ── REGISTRAR SAÍDA ──
 function _empIniciarUso(i){
+  if(!_empPodeOperar()){ showToast('Seu perfil não possui permissão para registrar a saída.','warning'); return; }
   const e = db.emprestimos_veiculos[i];
   if(!e) return;
   if(_empVeiculoEmUso(e.veiculo_id, e.id)){
@@ -23404,6 +23465,7 @@ function _empIniciarUso(i){
 }
 
 async function _empConfirmarSaida(i){
+  if(!_empPodeOperar()){ showToast('Seu perfil não possui permissão para registrar a saída.','warning'); return; }
   const e = db.emprestimos_veiculos[i];
   const data = document.getElementById('emp_saida_data')?.value;
   const km   = parseFloat(document.getElementById('emp_saida_km')?.value)||0;
@@ -23421,6 +23483,7 @@ async function _empConfirmarSaida(i){
 
 // ── FINALIZAR / DEVOLUÇÃO ──
 function _empFinalizar(i){
+  if(!_empPodeOperar()){ showToast('Seu perfil não possui permissão para registrar a devolução.','warning'); return; }
   const e = db.emprestimos_veiculos[i];
   if(!e) return;
   const eq = (db.equipamentos||[]).find(x=>x.id==e.veiculo_id);
@@ -23459,6 +23522,7 @@ function _empFinalizar(i){
 }
 
 async function _empConfirmarDevolucao(i){
+  if(!_empPodeOperar()){ showToast('Seu perfil não possui permissão para registrar a devolução.','warning'); return; }
   const e = db.emprestimos_veiculos[i];
   const data = document.getElementById('emp_ret_data')?.value;
   const km   = parseFloat(document.getElementById('emp_ret_km')?.value)||0;

@@ -58,7 +58,7 @@ const context = {
 };
 vm.createContext(context);
 
-for (const name of ['_empRegistroAtivo', '_empRegistrosAtivos', '_empRegistrosParaHistorico', '_empRegistrosParaExportacao', '_empDeletar']) {
+for (const name of ['_empFuncaoUsuario', '_empRegistroAtivo', '_empTodosRegistrosAtivos', '_empRegistrosAtivos', '_empRegistrosParaHistorico', '_empRegistrosParaExportacao', '_empDeletar']) {
   const source = functionSource(name);
   vm.runInContext(name === '_empDeletar' ? `async ${source}` : source, context);
 }
