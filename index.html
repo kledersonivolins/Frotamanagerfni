@@ -3134,6 +3134,9 @@ async function sbInit(url, key, tenant){
 //  SUPABASE REALTIME — sincronização instantânea
 // ═══════════════════════════════════════════════
 let _realtimeChannel = null;
+// OS e empréstimos ficam estáveis na tela. Esses módulos só recebem uma nova
+// leitura do banco quando o usuário manda sincronizar/recarregar manualmente.
+const _TABELAS_ATUALIZACAO_MANUAL = new Set(['ordens_servico','emprestimos_veiculos']);
 
 function sbIniciarRealtime(){
   if(!_sb || _sbMode !== 'supabase') return;
@@ -3174,6 +3177,9 @@ function sbIniciarRealtime(){
 
 function _realtimeProcessar(payload){
   const { eventType, table, new: novo, old: antigo } = payload;
+
+  // Não alterar silenciosamente a lista que o usuário está conferindo.
+  if(_TABELAS_ATUALIZACAO_MANUAL.has(table)) return;
 
   // Mapear tabela para chave do db
   // Detectar evento de reset global
@@ -3612,7 +3618,6 @@ async function fmSincronizarPendentes(){
   _fmAtualizarBadgePendentes();
   if(enviados){
     showToast('✅ '+enviados+' registro(s) pendente(s) sincronizado(s) com o banco!','success');
-    try{ await sbCarregarTudo(); if(typeof _paginaAtual!=='undefined' && _paginaAtual) loadPage(_paginaAtual); }catch(e){}
   }
 }
 
@@ -4130,7 +4135,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
 //  AUTO-REFRESH DE CHAMADOS (sem recarregar a página)
 // ═══════════════════════════════════════════════
 // Páginas que fazem auto-refresh a cada 20s
-const _PAGINAS_LIVE = ['os','chamados','portaria_op','portaria_historico','rastreio_painel','rastreio_cadastro','rastreio_relatorio'];
+const _PAGINAS_LIVE = ['chamados','portaria_op','portaria_historico','rastreio_painel','rastreio_cadastro','rastreio_relatorio'];
 
 // Campos JSON que precisam de desserialização (mesma lista do sbCarregarTudo)
 const _CAMPOS_JSON = ['motor','hidraulico','combustiveis','parametros','pecas',
@@ -4147,7 +4152,7 @@ async function _autoRefreshChamados(){
   _autoRefreshRunning = true;
 
   try {
-    const tabelasRefresh = ['chamados','ordens_servico','portaria_movimentacoes','rastreio_veiculos'];
+    const tabelasRefresh = ['chamados','portaria_movimentacoes','rastreio_veiculos'];
     const _tabelasStringId = ['portaria_movimentacoes','portaria_qrcodes','portaria_veiculos','portaria_pessoas'];
 
     for(const tabela of tabelasRefresh){
@@ -4166,8 +4171,6 @@ async function _autoRefreshChamados(){
 
       let { data, error } = resultado;
       if(error || !data) continue;
-      if(tabela === 'ordens_servico') data = data.filter(o=>!(o.excluido===true || o.excluido==='true' || o.excluido===1 || o.excluido==='1'));
-
       const usaStr = _tabelasStringId.includes(tabela);
 
       // FIX PRINCIPAL: MERGE — não substitui o array, atualiza registros existentes
@@ -4307,15 +4310,13 @@ async function _reconectarSupabase(){
     _sbSetStatus('syncing', 'Reconectando...');
   try {
     // Recriar cliente (WebSocket morreu após inatividade) e atualizar cache da instância única
-    _sb = window._sbInstance = supabase.createClient(_SB_URL, _SB_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+    _sb = window._sbInstance = supabase.createClient(_SB_URL, _SB_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
     // Reiniciar Realtime
     if(_realtimeChannel){
       try { _sb.removeChannel(_realtimeChannel); } catch(e){}
       _realtimeChannel = null;
     }
     sbIniciarRealtime();
-    // Recarregar todos os dados (sbCarregarTudo desserializa JSON corretamente)
-    await sbCarregarTudo();
     // Reiniciar auto-refresh
     _iniciarAutoRefresh();
     // Re-renderizar página
