@@ -3527,9 +3527,11 @@ async function sbSalvar(tabela, registro){
           dados[campo] = JSON.stringify(dados[campo]);
         }
       });
-      // Registros existentes devem ser atualizados, não enviados como upsert:
-      // em tabelas protegidas por RLS o upsert exige INSERT mesmo quando o id existe.
-      const _q = registro && registro.id !== undefined
+      // IDs são gerados antes do primeiro salvamento; confirme a existência remota
+      // para não tratar um registro novo como UPDATE silencioso de zero linhas.
+      const _existe = registro && registro.id !== undefined
+        ? await _sbRegistroExiste(tabela, registro.id, dados.tenant) : false;
+      const _q = _existe
         ? _sb.from(tabela).update(dados).eq('id',registro.id).eq('tenant',dados.tenant)
         : _sb.from(tabela).insert(dados);
       const { error } = await _q;
@@ -3642,6 +3644,13 @@ async function sbDeletar(tabela, id){
     console.error('sbDeletar erro:', tabela, err);
     showToast('Erro ao excluir ['+tabela+']: rode o SQL de exclusão lógica/campos PCM.', 'danger');
   }
+}
+
+async function _sbRegistroExiste(tabela,id,tenant){
+  try{
+    const {data,error}=await _sb.from(tabela).select('id').eq('id',id).eq('tenant',tenant).maybeSingle();
+    return !error && !!data;
+  }catch(e){ return false; }
 }
 
 // ── SYNC COMPLETO (salvar tudo) ──
