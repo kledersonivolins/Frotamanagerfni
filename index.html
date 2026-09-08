@@ -2327,6 +2327,19 @@ function esc(v){
 }
 function safeAttr(v){ return esc(v).replaceAll('`','&#096;'); }
 
+function _normalizarEmpresasUsuario(raw){
+  if(raw === null || raw === undefined || raw === '') return [];
+  let valor = raw;
+  if(typeof valor === 'string'){
+    try { valor = JSON.parse(valor); } catch(e){ return []; }
+  }
+  if(!Array.isArray(valor)) return [];
+  return [...new Set(valor
+    .filter(id=>id !== null && id !== undefined && String(id).trim() !== '')
+    .map(id=>Number.isSafeInteger(Number(id)) ? Number(id) : String(id))
+  )];
+}
+
 function fmNormalizarUsuario(u){
   if(!u) return u;
   const out = { ...u };
@@ -2343,6 +2356,7 @@ function fmNormalizarUsuario(u){
       }
     }
   });
+  out.empresas = _normalizarEmpresasUsuario(out.empresas);
   // A senha nunca deve ser usada ou mantida no front-end no modo Supabase.
   if(_sbMode === 'supabase') delete out.password;
   return out;
@@ -2556,18 +2570,41 @@ async function fmAplicarUsuarioLogado(u, restaurado=false){
       console.error('Erro ao restaurar empresa:', e);
     }
   }
+  _garantirEmpresaAtivaPermitida();
   _finalizarLogin(restaurado);
+}
+
+function _idsEmpresasPermitidas(usuario=currentUser){
+  if(!usuario || usuario.nivel === 'super') return null;
+  const ids = _normalizarEmpresasUsuario(usuario.empresas);
+  return new Set(ids.map(String));
+}
+
+function _empresaPermitidaAoUsuario(empId, usuario=currentUser){
+  const permitidas = _idsEmpresasPermitidas(usuario);
+  return !permitidas || permitidas.has(String(empId));
 }
 
 function _getEmpresasDoUsuario(){
   const todas = db.empresas || [];
   if(!currentUser) return todas;
-  // Super usuário vê todas
-  if(currentUser.nivel === 'super') return todas;
-  // Se tem lista de empresas vinculadas
-  const vinc = currentUser.empresas;
-  if(!vinc || !vinc.length) return todas;
-  return todas.filter(e => vinc.includes(Number(e.id)) || vinc.includes(String(e.id)));
+  const permitidas = _idsEmpresasPermitidas(currentUser);
+  if(!permitidas) return todas;
+  return todas.filter(e => permitidas.has(String(e.id)));
+}
+
+function _garantirEmpresaAtivaPermitida(){
+  const permitidas = _idsEmpresasPermitidas(currentUser);
+  if(!permitidas) return _empresaAtiva;
+  const empresas = (db.empresas||[]).filter(e=>permitidas.has(String(e.id)));
+  const ativaValida = _empresaAtiva && permitidas.has(String(_empresaAtiva.id))
+    ? empresas.find(e=>String(e.id)===String(_empresaAtiva.id)) : null;
+  _empresaAtiva = ativaValida || empresas[0] || null;
+  try{
+    if(_empresaAtiva) sessionStorage.setItem('fm_empresa_ativa', JSON.stringify({id:_empresaAtiva.id,codigo:_empresaAtiva.codigo,nome:_empresaAtiva.nome}));
+    else sessionStorage.removeItem('fm_empresa_ativa');
+  }catch(e){}
+  return _empresaAtiva;
 }
 
 function _mostrarSelecaoEmpresa(empresas){
@@ -3180,6 +3217,7 @@ function _realtimeProcessar(payload){
 
   // Não alterar silenciosamente a lista que o usuário está conferindo.
   if(_TABELAS_ATUALIZACAO_MANUAL.has(table)) return;
+  if(!_registroEmpresaPermitida(table, novo || antigo, currentUser)) return;
 
   // Mapear tabela para chave do db
   // Detectar evento de reset global
@@ -3449,6 +3487,7 @@ async function sbCarregarTudo(){
   if(_sbMode!=='supabase'||!_sb) return;
   await Promise.all(SB_TABLES.map(tabela => _sbCarregarUmaTabela(tabela)));
   try{ _baseNormalizarVinculos(); }catch(e){ console.warn('normalização de base:', e); }
+  try{ _aplicarEscopoEmpresasNoDb(); }catch(e){ console.warn('isolamento por empresa:', e); }
 }
 
 // ── SALVAR REGISTRO ──
@@ -3473,6 +3512,11 @@ function _reordenarTabela(tabela){
 
 async function sbSalvar(tabela, registro){
   if(_sbMode!=='supabase'||!_sb) return false;
+  if(!_registroEmpresaPermitida(tabela, registro, currentUser)){
+    _sbSetStatus('error','Empresa não autorizada');
+    try{ showToast('Este usuário não tem acesso à empresa informada.','danger'); }catch(e){}
+    return false;
+  }
   // ✅ Validação de placa/CPF/CNPJ antes de persistir (somente quando o campo está preenchido)
   if(registro){
     if(registro.placa && !validarPlaca(registro.placa)){
@@ -4171,6 +4215,7 @@ async function _autoRefreshChamados(){
 
       let { data, error } = resultado;
       if(error || !data) continue;
+      data = data.filter(registro=>_registroEmpresaPermitida(tabela, registro, currentUser));
       const usaStr = _tabelasStringId.includes(tabela);
 
       // FIX PRINCIPAL: MERGE — não substitui o array, atualiza registros existentes
@@ -5997,7 +6042,10 @@ function _osKmSaida(o){ if(o.km_fechamento>0) return fmt(o.km_fechamento)+' km';
 // Retorna equipamentos filtrados pela empresa ativa
 function _eqsDaEmpresa(){
   const todos = db.equipamentos || [];
-  const base = !_empresaAtiva ? todos : todos.filter(e => String(e.empresa_id) === String(_empresaAtiva.id));
+  const permitidas = _idsEmpresasPermitidas(currentUser);
+  const base = _empresaAtiva
+    ? todos.filter(e => String(e.empresa_id) === String(_empresaAtiva.id))
+    : (permitidas ? todos.filter(e=>permitidas.has(String(e.empresa_id))) : todos);
   return _filtrarEqsPorUsuario(base);
 }
 
@@ -6007,13 +6055,40 @@ function _eqsParaOS(){
   if(_empresaAtiva?.id !== undefined && _empresaAtiva?.id !== null){
     return todos.filter(e => String(e.empresa_id) === String(_empresaAtiva.id));
   }
-  let empresas = currentUser?.empresas;
-  if(typeof empresas === 'string'){ try{ empresas=JSON.parse(empresas); }catch{ empresas=[]; } }
-  if(Array.isArray(empresas) && empresas.length){
-    const ids=new Set(empresas.map(String));
-    return todos.filter(e=>ids.has(String(e.empresa_id)));
+  const permitidas = _idsEmpresasPermitidas(currentUser);
+  return permitidas ? todos.filter(e=>permitidas.has(String(e.empresa_id))) : todos;
+}
+
+function _registroEmpresaPermitida(tabela, registro, usuario=currentUser){
+  const permitidas = _idsEmpresasPermitidas(usuario);
+  if(!permitidas || !registro) return true;
+  if(tabela === 'empresas') return permitidas.has(String(registro.id));
+  if(tabela === 'usuarios'){
+    if(String(registro.id) === String(usuario?.id)) return true;
+    const empresasUsuario = _normalizarEmpresasUsuario(registro.empresas);
+    return empresasUsuario.length > 0 && empresasUsuario.some(id=>permitidas.has(String(id)));
   }
-  return todos;
+  if(registro.empresa_id !== null && registro.empresa_id !== undefined && String(registro.empresa_id) !== ''){
+    return permitidas.has(String(registro.empresa_id));
+  }
+  const tabelasComVeiculoDaFrota = ['agendamentos_externos','checklist_historico','emprestimos_veiculos','patrulha_pontos','patrulha_registros','veiculo_planos'];
+  const eqId = registro.equipamento_id ?? (tabelasComVeiculoDaFrota.includes(tabela) ? registro.veiculo_id : null);
+  if(eqId !== null && eqId !== undefined && String(eqId) !== ''){
+    const eq = (db.equipamentos||[]).find(e=>String(e.id)===String(eqId));
+    return !!eq && permitidas.has(String(eq.empresa_id));
+  }
+  return true;
+}
+
+function _aplicarEscopoEmpresasNoDb(){
+  const permitidas = _idsEmpresasPermitidas(currentUser);
+  if(!permitidas) return;
+  if(Array.isArray(db.empresas)) db.empresas = db.empresas.filter(e=>permitidas.has(String(e.id)));
+  if(Array.isArray(db.equipamentos)) db.equipamentos = db.equipamentos.filter(e=>permitidas.has(String(e.empresa_id)));
+  Object.keys(db).forEach(tabela=>{
+    if(tabela === 'empresas' || tabela === 'equipamentos' || !Array.isArray(db[tabela])) return;
+    db[tabela] = db[tabela].filter(registro=>_registroEmpresaPermitida(tabela, registro, currentUser));
+  });
 }
 
 // IDs dos equipamentos da empresa ativa (para filtrar OS, combustível, despesas)
@@ -6135,7 +6210,7 @@ function _getEmpresaIdDoLancamento(){
 // Gera o HTML do select de empresa para usar nos modais de lançamento.
 // Retorna string vazia se só houver uma empresa (ou nenhuma).
 function _htmlSelectEmpresaLancamento(empresaIdSelecionada){
-  const empresas = db.empresas || [];
+  const empresas = _getEmpresasDoUsuario();
   if(empresas.length <= 1) return '';
   const opts = empresas.map(emp=>`<option value="${emp.id}" ${String(emp.id)===String(empresaIdSelecionada||_empresaAtiva?.id||'')?'selected':''}>${esc(emp.nome||'')} (${emp.codigo||''})</option>`).join('');
   return `<div class="fg"><label>Empresa *</label><select class="fs" id="lancamento_empresa_id" onchange="_osOnChangeEmpresa(this)"><option value="">Selecione a empresa...</option>${opts}</select></div>`;
@@ -8913,7 +8988,7 @@ function openModalEq(idx=null){
       ${(db.empresas||[]).length>1?`<div class="fg"><label>Empresa *</label>
         <select class="fs" id="eq_empresa_id">
           <option value="">— Selecione —</option>
-          ${(db.empresas||[]).map(emp=>`<option value="${emp.id}" ${String(eq?.empresa_id||_empresaAtiva?.id||'')==String(emp.id)?'selected':''}>${esc(emp.nome||"")} (${emp.codigo||''})</option>`).join('')}
+          ${_getEmpresasDoUsuario().map(emp=>`<option value="${emp.id}" ${String(eq?.empresa_id||_empresaAtiva?.id||'')==String(emp.id)?'selected':''}>${esc(emp.nome||"")} (${emp.codigo||''})</option>`).join('')}
         </select>
       </div>`:'<input type="hidden" id="eq_empresa_id" value="'+((_empresaAtiva?.id)||'')+'">'}
     </div>
@@ -10051,7 +10126,7 @@ function renderEmpresas(){
     <tbody>
     ${db.empresas.length===0
       ?`<tr><td colspan="8"><div class="empty"><i class="fas fa-building"></i><p>Nenhuma empresa cadastrada</p></div></td></tr>`
-      :db.empresas.map((emp,i)=>{
+      :_getEmpresasDoUsuario().map((emp,i)=>{
         const usersVinc = db.usuarios.filter(u=>(u.empresas||[]).includes(emp.id)).length;
         return `<tr>
           <td><code>${emp.codigo||'—'}</code></td>
@@ -10396,7 +10471,7 @@ function openModalUsuario(idx=null){
   // Empresas disponíveis
   const empresasGrid = db.empresas.length === 0
     ? '<div style="font-size:12px;color:var(--text2)">Nenhuma empresa cadastrada ainda</div>'
-    : db.empresas.map(emp=>`
+    : _getEmpresasDoUsuario().map(emp=>`
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:4px 6px;border-radius:4px">
         <input type="checkbox" class="u_emp_check" value="${emp.id}" ${empresasUser.includes(emp.id)?'checked':''}>
         <span><strong>${emp.codigo}</strong> — ${esc(emp.nome||"")}</span>
@@ -12252,7 +12327,7 @@ function renderOS(){
         <label style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase">Empresa</label>
         <select class="fs" id="osfiltEmp" onchange="window._osFiltEmp=this.value;loadPage('os')" style="font-size:13px">
           <option value="">Todas</option>
-          ${(db.empresas||[]).map(e=>'<option value="'+e.id+'" '+(window._osFiltEmp===e.id?'selected':'')+'>'+esc(e.nome||'Sem nome')+'</option>').join('')}
+          ${_getEmpresasDoUsuario().map(e=>'<option value="'+e.id+'" '+(window._osFiltEmp===e.id?'selected':'')+'>'+esc(e.nome||'Sem nome')+'</option>').join('')}
         </select>
       </div>
       <div class="fg" style="margin:0;flex:2;min-width:180px">
