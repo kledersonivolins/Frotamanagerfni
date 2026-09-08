@@ -3060,8 +3060,8 @@ async function sbInit(url, key, tenant){
     } else {
       _sb = window._sbInstance = supabase.createClient(url, key, {
         auth: {
-          persistSession: false,
-          autoRefreshToken: false,
+          persistSession: true,
+          autoRefreshToken: true,
           detectSessionInUrl: false
         }
       });
