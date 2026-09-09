@@ -3949,6 +3949,7 @@ const MENU = [
   { section:'Cadastros', items:[
     { page:'mecanicos', icon:'fa-hard-hat', label:'Mecânicos', min:'operador' },
     { page:'motoristas', icon:'fa-id-card', label:'Motoristas', min:'operador' },
+    { page:'setores_cad', icon:'fa-users-cog', label:'Setores', min:'operador' },
     { page:'fornecedores', icon:'fa-truck', label:'Fornecedores', min:'operador' },
     { page:'custos_equipe', icon:'fa-hand-holding-usd', label:'Custos e Salários', min:'admin' },
     { page:'centros_custo_cad', icon:'fa-sitemap', label:'Centros de Custo', min:'operador' },
@@ -5766,6 +5767,7 @@ const PAGE_FNS = {
   modelos: renderModelos,
   centro_custo: renderCentroCusto,
   centros_custo_cad: renderCentrosCustoCad,
+  setores_cad: renderSetoresCad,
   obras_cad: renderObrasCad,
   importacao: renderImportacao,
   licencas: renderLicencas,
@@ -15126,6 +15128,23 @@ async function deletarCategoria(i){
   sbDeletar('categorias_media', cat.id);
   loadPage('centros_custo_cad'); showToast('Categoria excluída','info');
 }
+
+function renderSetoresCad(){
+  const lista=(db.setores||[]).filter(s=>s.ativo!==false&&!s.excluido);
+  return `<div class="card"><div class="card-title"><i class="fas fa-users-cog" style="color:var(--primary)"></i> Setores</div>
+    <div class="flex-b" style="margin-bottom:14px"><span style="color:var(--text2);font-size:13px">Cadastre os setores para vincular usuários e motoristas.</span><button class="btn btn-p" onclick="_abrirSetor()"><i class="fas fa-plus"></i> Novo Setor</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Nome</th><th>Descrição</th><th>Ações</th></tr></thead><tbody>${lista.length?lista.map((s,i)=>`<tr><td><strong>${esc(s.nome||'')}</strong></td><td>${esc(s.descricao||'—')}</td><td><button class="ic-btn" onclick="_abrirSetor(${s.id})"><i class="fas fa-edit"></i></button><button class="ic-btn rd" onclick="_excluirSetor(${s.id})"><i class="fas fa-trash"></i></button></td></tr>`).join(''):`<tr><td colspan="3"><div class="empty"><i class="fas fa-users-cog"></i><p>Nenhum setor cadastrado</p></div></td></tr>`}</tbody></table></div></div>`;
+}
+function _abrirSetor(id=null){
+  const s=(db.setores||[]).find(x=>String(x.id)===String(id))||{};
+  openModal(`<i class="fas fa-users-cog"></i> ${id?'Editar':'Novo'} Setor`, `<div class="fg"><label>Nome do setor *</label><input class="fi" id="setor_nome" value="${esc(s.nome||'')}" placeholder="Ex.: Logística"></div><div class="fg"><label>Descrição</label><input class="fi" id="setor_desc" value="${esc(s.descricao||'')}"></div><div class="mf"><button class="btn btn-o" onclick="closeModal()">Cancelar</button><button class="btn btn-p" onclick="_salvarSetor(${id||'null'})">Salvar</button></div>`);
+}
+function _salvarSetor(id){
+  const nome=document.getElementById('setor_nome')?.value.trim(); if(!nome){showToast('Informe o nome do setor','warning');return;}
+  const obj={id:id||uid(),tenant:_sbTenant,nome,descricao:document.getElementById('setor_desc')?.value.trim()||'',ativo:true};
+  const i=(db.setores||[]).findIndex(s=>String(s.id)===String(id)); if(i>=0) db.setores[i]=obj; else db.setores.push(obj); sbSalvar('setores',obj); closeModal(); loadPage('setores_cad'); showToast('Setor salvo!','success');
+}
+function _excluirSetor(id){ if(!confirm('Excluir este setor?'))return; const s=(db.setores||[]).find(x=>String(x.id)===String(id)); if(!s)return; s.ativo=false;s.excluido=true;sbSalvar('setores',s);loadPage('setores_cad');showToast('Setor excluído','info'); }
 
 function renderCentrosCustoCad(){
   // Aba compartimentos
