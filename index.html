@@ -3058,7 +3058,7 @@ function sbCarregarConfig(){
   return {
     url:    localStorage.getItem('sb_url')||'',
     key:    localStorage.getItem('sb_key')||'',
-    tenant: localStorage.getItem('sb_tenant')||'default',
+    tenant: localStorage.getItem('sb_tenant')||'oficinafni',
     mode:   localStorage.getItem('sb_mode')||''
   };
 }
@@ -3066,7 +3066,7 @@ function sbCarregarConfig(){
 function sbSalvarConfig(){
   const url    = document.getElementById('sb_url').value.trim();
   const key    = document.getElementById('sb_key').value.trim();
-  const tenant = document.getElementById('sb_tenant').value.trim()||'default';
+  const tenant = document.getElementById('sb_tenant').value.trim()||'oficinafni';
   if(!url||!key){ showToast('URL e Anon Key são obrigatórios','danger'); return; }
   localStorage.setItem('sb_url', url);
   localStorage.setItem('sb_key', key);
