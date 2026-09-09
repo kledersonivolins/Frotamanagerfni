@@ -74,6 +74,8 @@ const context = {
   _fmEnfileirarPendente: () => {},
   _reordenarTabela: () => {},
   _sbRegistroExiste: async () => false,
+  _isOSExcluida: () => false,
+  _filtrarPorEqsDoUsuario: lista => lista,
   navigator: { onLine: true },
   setTimeout,
   Promise
@@ -83,7 +85,7 @@ vm.createContext(context);
 for (const name of [
   '_normalizarEmpresasUsuario', '_idsEmpresasPermitidas', '_empresaPermitidaAoUsuario',
   '_garantirEmpresaAtivaPermitida', '_getEmpresasDoUsuario', '_getEqsVinculados',
-  '_filtrarEqsPorUsuario', '_eqsDaEmpresa', '_registroEmpresaPermitida',
+  '_filtrarEqsPorUsuario', '_eqsDaEmpresa', '_osDaEmpresa', '_registroEmpresaPermitida',
   '_aplicarEscopoEmpresasNoDb', 'sbSalvar'
 ]) {
   const source = functionSource(name);
@@ -98,6 +100,16 @@ assert.equal(JSON.parse(session.get('fm_empresa_ativa')).id, 10, 'sessão deve g
 const semEmpresa = context._idsEmpresasPermitidas({ nivel: 'operador', empresas: [] });
 assert.equal(semEmpresa.size, 0, 'usuário comum sem empresa marcada não pode herdar acesso a todas');
 assert.equal(context._empresaPermitidaAoUsuario(10, { nivel: 'operador', empresas: [] }), false);
+
+context.currentUser={ id:5,nome:'Klederson',nivel:'super',empresas:[10] };
+context._empresaAtiva={ id:10,nome:'Ferro Norte Industrial' };
+context._garantirEmpresaAtivaPermitida();
+assert.equal(context._empresaAtiva,null,'Super Usuário não pode ficar preso à empresa salva na sessão');
+assert.equal(session.has('fm_empresa_ativa'),false,'empresa ativa antiga deve ser removida da sessão do Super Usuário');
+assert.deepEqual(Array.from(context._osDaEmpresa(),o=>o.id),[101,102],'Super Usuário deve visualizar OS de todas as empresas');
+
+context.currentUser={ id:7,nome:'Rose',nivel:'admin',empresas:'[10]' };
+context._empresaAtiva={ id:10,nome:'Empresa permitida' };
 
 context._aplicarEscopoEmpresasNoDb();
 assert.deepEqual(Array.from(context.db.empresas, e => e.id), [10], 'cadastro de empresas também respeita o vínculo');

@@ -2597,6 +2597,14 @@ function _getEmpresasDoUsuario(){
 }
 
 function _garantirEmpresaAtivaPermitida(){
+  if(currentUser?.nivel === 'super'){
+    _empresaAtiva = null;
+    try{
+      sessionStorage.removeItem('fm_empresa_ativa');
+      sessionStorage.removeItem('fm_empresa_ativa_json');
+    }catch(e){}
+    return null;
+  }
   const permitidas = _idsEmpresasPermitidas(currentUser);
   if(!permitidas) return _empresaAtiva;
   const empresas = (db.empresas||[]).filter(e=>permitidas.has(String(e.id)));
@@ -4330,23 +4338,10 @@ async function _autoRefreshChamados(){
 }
 
 function _iniciarAutoRefresh(){
-  // Pausar auto-refresh quando aba está inativa (reduz requests desnecessários)
-  document.addEventListener('visibilitychange', ()=>{
-    if(document.hidden){
-      if(_autoRefreshTimer){ clearInterval(_autoRefreshTimer); _autoRefreshTimer=null; }
-    } else {
-      if(!_autoRefreshTimer) _iniciarAutoRefresh();
-    }
-  }, {once:false});
-  if(_autoRefreshTimer) clearInterval(_autoRefreshTimer);
-  // Auto-refresh a cada 20 segundos
-  // Debounce: pausa refresh se usuário estiver em input
-  document.addEventListener('focusin',  e=>{ if(e.target.matches('input,textarea,select')) window._autoRefreshPausado=true;  });
-  document.addEventListener('focusout', e=>{ if(e.target.matches('input,textarea,select')) window._autoRefreshPausado=false; });
-  const _origAutoRefresh = _autoRefreshChamados;
-  window._autoRefreshChamados = async function(){ if(!window._autoRefreshPausado) await _origAutoRefresh(); };
-  _autoRefreshTimer = setInterval(window._autoRefreshChamados, 20000);
-  }
+  // Atualização automática desativada: os dados só mudam quando o usuário usa Sync.
+  _pararAutoRefresh();
+  window._autoRefreshPausado = true;
+}
 
 function _pararAutoRefresh(){
   if(_autoRefreshTimer){
@@ -4372,11 +4367,6 @@ async function _reconectarSupabase(){
     sbIniciarRealtime();
     // Reiniciar auto-refresh
     _iniciarAutoRefresh();
-    // Re-renderizar página
-    if(currentUser && PAGE_FNS[_paginaAtual]){
-      const body = document.getElementById('pageBody');
-      if(body) body.innerHTML = PAGE_FNS[_paginaAtual]();
-    }
     _sbSetStatus('ok', 'Reconectado — ' + _sbTenant);
       } catch(err){
     console.error('[FrotaManager] Erro na reconexão:', err.message);

@@ -1,7 +1,37 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 
 const html = fs.readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+
+function functionSource(name) {
+  const start=html.indexOf(`function ${name}(`);
+  assert.notEqual(start,-1,`função ${name} deve existir`);
+  const brace=html.indexOf('{',start);
+  let depth=0,quote=null,escaped=false;
+  for(let i=brace;i<html.length;i++){
+    const ch=html[i];
+    if(quote){ if(escaped) escaped=false; else if(ch==='\\') escaped=true; else if(ch===quote) quote=null; continue; }
+    if(ch==='"'||ch==="'"||ch==='`'){quote=ch;continue;}
+    if(ch==='{') depth++;
+    if(ch==='}'&&--depth===0) return html.slice(start,i+1);
+  }
+  throw new Error(`função incompleta: ${name}`);
+}
+
+let intervalos=0;
+const contexto=vm.createContext({
+  _autoRefreshTimer:123,
+  clearInterval:()=>{},
+  setInterval:()=>{intervalos++;return 456;},
+  document:{addEventListener:()=>{}},
+  window:{},
+  _autoRefreshChamados:async()=>{}
+  ,_pararAutoRefresh:()=>{}
+});
+vm.runInContext(functionSource('_iniciarAutoRefresh'),contexto);
+contexto._iniciarAutoRefresh();
+assert.equal(intervalos,0,'o sistema não pode iniciar nenhum temporizador de atualização automática');
 
 assert.match(
   html,
