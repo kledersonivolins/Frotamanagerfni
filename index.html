@@ -1364,6 +1364,8 @@ body{background:var(--pm-bg)!important;color:var(--pm-text)!important}
 .user-avatar{width:34px;height:34px;border-radius:12px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;color:#c9a84c}
 .premium-user strong{display:block;font-size:12px;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .premium-user span{display:block;font-size:10px;color:#94a3b8;margin-top:2px}
+.premium-password{margin-top:9px;width:100%;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#dbeafe;border-radius:8px;padding:7px 9px;font-size:11px;font-weight:700;cursor:pointer;text-align:left}
+.premium-password:hover{background:rgba(255,255,255,.11);color:#fff}
 .topbar{
   background:rgba(255,255,255,.86)!important;backdrop-filter:blur(18px)!important;
   border-bottom:1px solid var(--pm-border)!important;box-shadow:0 12px 36px rgba(15,23,42,.05)!important;
@@ -2187,6 +2189,7 @@ tbody tr:nth-child(10){animation-delay:198ms}
           <span id="premiumUserRole">Sessão ativa</span>
         </div>
       </div>
+      <button class="premium-password" onclick="_abrirAlterarMinhaSenha()"><i class="fas fa-key"></i> Alterar minha senha</button>
     </div>
   </aside>
   <main class="main">
@@ -5451,6 +5454,73 @@ async function enviarLinkSenha(){var email=(document.getElementById('esq_email')
 (function(){if(new URLSearchParams(window.location.search).get('reset')==='1'){window.addEventListener('load',function(){setTimeout(function(){if(_sb)_sb.auth.onAuthStateChange(function(ev){if(ev==='PASSWORD_RECOVERY')_abrirModalNovaSenha();});},800);});}})();
 function _abrirModalNovaSenha(){var ex=document.getElementById('ovNovaSenha');if(ex)ex.remove();var div=document.createElement('div');div.id='ovNovaSenha';div.style.cssText='display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center';div.innerHTML='<div class="modal-box" style="max-width:380px"><div class="modal-header"><span><i class="fas fa-key"></i> Nova Senha</span></div><div class="modal-body"><div class="fg"><label style="font-weight:700;font-size:13px">Nova Senha *</label><input class="fi" type="password" id="nova_senha1"></div><div class="fg"><label style="font-weight:700;font-size:13px">Confirmar *</label><input class="fi" type="password" id="nova_senha2"></div><div id="nova_senha_erro" style="display:none;color:#c62828;font-size:12px;margin-top:8px;padding:8px;background:#fef2f2;border-radius:6px"></div></div><div class="modal-footer"><button class="btn btn-p" onclick="_salvarNovaSenha()" style="width:100%;justify-content:center">Salvar</button></div></div>';document.body.appendChild(div);}
 async function _salvarNovaSenha(){var s1=document.getElementById('nova_senha1').value;var s2=document.getElementById('nova_senha2').value;var er=document.getElementById('nova_senha_erro');er.style.display='none';if(!s1||s1.length<6){er.textContent='\u26a0\ufe0f M\u00ednimo 6.';er.style.display='block';return;}if(s1!==s2){er.textContent='\u26a0\ufe0f Senhas n\u00e3o coincidem.';er.style.display='block';return;}var r=await _sb.auth.updateUser({password:s1});if(r.error){er.textContent='\u26a0\ufe0f '+r.error.message;er.style.display='block';return;}var ad=await _sb.auth.getUser();if(ad.data&&ad.data.user&&ad.data.user.email)await _sb.from('usuarios').update({password:s1}).eq('email',ad.data.user.email).eq('tenant',_sbTenant);document.getElementById('ovNovaSenha').remove();showToastLogin('\u2705 Senha atualizada!','success');window.history.replaceState({},'',window.location.pathname);}
+
+function _validarTrocaSenha(senhaAtual,novaSenha,confirmacao){
+  if(!senhaAtual) return 'Informe sua senha atual.';
+  if(!novaSenha||novaSenha.length<6) return 'A nova senha deve ter no mínimo 6 caracteres.';
+  if(novaSenha!==confirmacao) return 'A confirmação da nova senha não confere.';
+  if(novaSenha===senhaAtual) return 'A nova senha deve ser diferente da senha atual.';
+  return '';
+}
+
+async function _trocarSenhaLogado(senhaAtual,novaSenha){
+  if(!_sb||_sbMode!=='supabase'||!currentUser) return {ok:false,mensagem:'Supabase não conectado.'};
+  const params={
+    p_tenant:_sbTenant,
+    p_login:currentUser.username||currentUser.email||'',
+    p_senha_atual:senhaAtual,
+    p_nova_senha:novaSenha
+  };
+  const possuiAuth=!!(currentUser.auth_user_id&&currentUser.email);
+
+  if(possuiAuth){
+    const login=await _sb.auth.signInWithPassword({email:currentUser.email,password:senhaAtual});
+    if(login.error) return {ok:false,mensagem:'Senha atual incorreta.'};
+  }
+
+  const legado=await _sb.rpc('fm_alterar_minha_senha',params);
+  if(legado.error) return {ok:false,mensagem:legado.error.message||'Não foi possível atualizar a senha.'};
+  if(legado.data!==true) return {ok:false,mensagem:'Senha atual incorreta.'};
+
+  if(possuiAuth){
+    const auth=await _sb.auth.updateUser({password:novaSenha});
+    if(auth.error){
+      await _sb.rpc('fm_alterar_minha_senha',{...params,p_senha_atual:novaSenha,p_nova_senha:senhaAtual});
+      return {ok:false,mensagem:auth.error.message||'Não foi possível atualizar a senha.'};
+    }
+  }
+  return {ok:true,mensagem:'Senha alterada com sucesso.'};
+}
+
+function _abrirAlterarMinhaSenha(){
+  if(!currentUser||currentUser.__emergencyLocal){ showToast('Este acesso não permite alteração de senha.','warning'); return; }
+  openModal('<i class="fas fa-key" style="color:var(--primary)"></i> Alterar minha senha',`
+    <div class="al-i alert" style="margin-bottom:14px;font-size:12px"><i class="fas fa-shield-alt"></i> A alteração será aplicada somente ao seu usuário.</div>
+    <div class="fg"><label>Senha atual *</label><input class="fi" type="password" id="minha_senha_atual" autocomplete="current-password"></div>
+    <div class="fg"><label>Nova senha *</label><input class="fi" type="password" id="minha_senha_nova" autocomplete="new-password" placeholder="Mínimo de 6 caracteres"></div>
+    <div class="fg"><label>Confirmar nova senha *</label><input class="fi" type="password" id="minha_senha_confirma" autocomplete="new-password"></div>
+    <div id="minha_senha_erro" style="display:none;color:#c62828;font-size:12px;margin-top:8px;padding:8px;background:#fef2f2;border-radius:6px"></div>
+    <div class="mf"><button class="btn btn-o" onclick="closeModal()">Cancelar</button><button class="btn btn-p" id="btnMinhaSenha" onclick="_salvarMinhaSenha()"><i class="fas fa-save"></i> Alterar senha</button></div>
+  `,'sm');
+}
+
+async function _salvarMinhaSenha(){
+  const atual=document.getElementById('minha_senha_atual')?.value||'';
+  const nova=document.getElementById('minha_senha_nova')?.value||'';
+  const confirma=document.getElementById('minha_senha_confirma')?.value||'';
+  const erroEl=document.getElementById('minha_senha_erro');
+  const erro=_validarTrocaSenha(atual,nova,confirma);
+  if(erro){ if(erroEl){erroEl.textContent=erro;erroEl.style.display='block';} return; }
+  if(erroEl) erroEl.style.display='none';
+  const btn=document.getElementById('btnMinhaSenha');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Alterando...';}
+  const resultado=await _trocarSenhaLogado(atual,nova);
+  if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-save"></i> Alterar senha';}
+  if(!resultado.ok){if(erroEl){erroEl.textContent=resultado.mensagem;erroEl.style.display='block';}return;}
+  closeModal();
+  logAudit('editar','usuarios','O usuário alterou a própria senha');
+  showToast('Senha alterada com sucesso!','success');
+}
 
 // ---- CUSTO POR PLACA
 function _filtrarOSPorPlaca(placa){window._osFiltQ=placa;loadPage('os');}
