@@ -3030,6 +3030,7 @@ Object.defineProperty(window, '_sbSyncing', {
 
 const SB_TABLES = [
   'usuarios',
+  'setores',
   'equipamentos','motoristas','planos_manutencao','planos_manutencao_historico','movimentos_combustivel',
   'manutencoes','operacoes','ordens_servico','custos_extras','receitas','agendamentos_externos',
   'pneus','documentos_veiculos','modelos_equipamentos','mecanicos','chamados',
@@ -3772,6 +3773,7 @@ const db = {
   // Usuarios removidos do HTML para evitar recriacao automatica no Supabase.
   // A lista deve vir exclusivamente da tabela public.usuarios.
   usuarios: [],
+  setores: [],
   equipamentos: [],
   apontamentos: [],
   mapas_chassi: [],
@@ -22778,8 +22780,26 @@ function _empTodosRegistrosAtivos(){
   return (db.emprestimos_veiculos||[]).filter(_empRegistroAtivo);
 }
 
+function _empSetorRestrito(){
+  const f=_empFuncaoUsuario();
+  if(!currentUser || f==='administrador') return null;
+  const id=currentUser.setor_id;
+  return id===undefined||id===null||id==='' ? '__SEM_SETOR__' : String(id);
+}
+
+function _empMotoristasDisponiveis(){
+  const ativos=(db.motoristas||[]).filter(m=>String(m.status||'').toLowerCase()!=='inativo');
+  const setor=_empSetorRestrito();
+  if(setor===null) return ativos;
+  if(setor==='__SEM_SETOR__') return [];
+  return ativos.filter(m=>String(m.setor_id||'')===setor);
+}
+
 function _empRegistrosAtivos(){
-  const ativos=_empTodosRegistrosAtivos();
+  let ativos=_empTodosRegistrosAtivos();
+  const setor=typeof _empSetorRestrito==='function' ? _empSetorRestrito() : null;
+  if(setor==='__SEM_SETOR__') return [];
+  if(setor!==null) ativos=ativos.filter(e=>String(e.setor_id||'')===setor || String((db.motoristas||[]).find(m=>String(m.id)===String(e.motorista_id))?.setor_id||'')===setor);
   if(_empFuncaoUsuario()!=='solicitante') return ativos;
   const ids=[currentUser?.id,currentUser?.usuario_id].filter(v=>v!==undefined&&v!==null).map(String);
   const nomes=[currentUser?.username,currentUser?.nome,currentUser?.email].filter(Boolean).map(v=>String(v).trim().toLowerCase());
@@ -22982,7 +23002,7 @@ function renderEmprestimosNovo(){
       ${esc(e.placa||"")} — ${e.modelo||''} ${emUso?'(EM USO)':''}
     </option>`;
   }).join('');
-  const optsMot = (db.motoristas||[]).filter(m=>m.status!=='inativo').map(m=>
+  const optsMot = _empMotoristasDisponiveis().map(m=>
     `<option value="${m.id}">${esc(m.nome||"")}</option>`
   ).join('');
 
@@ -23806,7 +23826,7 @@ async function _ckUploadFotoInline(el, prefix, n){
 
 function renderEmprestimosChecklist(){
   const optsEq = _empVeiculosDisponiveis().map(e=>`<option value="${e.id}">${esc(e.placa||"")} — ${e.modelo||''}</option>`).join('');
-  const optsMot = (db.motoristas||[]).filter(m=>m.status!=='inativo').map(m=>`<option value="${m.id}">${esc(m.nome||"")}</option>`).join('');
+  const optsMot = _empMotoristasDisponiveis().map(m=>`<option value="${m.id}">${esc(m.nome||"")}</option>`).join('');
   const now = new Date();
   const horaAtual = now.toTimeString().slice(0,5);
   const dataAtual = now.toISOString().split('T')[0];
@@ -32237,6 +32257,12 @@ function openModalMotorista(idx=null){
       <div class="fg"><label>Empresa / Filial</label><input class="fi" id="mt_emp" value="${m?.empresa||''}"></div>
       <div class="fg"><label>Supervisor Responsável</label><input class="fi" id="mt_sup" value="${m?.supervisor||''}"></div>
     </div>
+    <div class="frow">
+      <div class="fg"><label>Setor</label><select class="fs" id="mt_setor">
+        <option value="">— Sem setor —</option>
+        ${(db.setores||[]).map(s=>`<option value="${s.id}" ${String(m?.setor_id||'')===String(s.id)?'selected':''}>${esc(s.nome||s.descricao||'')}</option>`).join('')}
+      </select><small style="color:var(--text2);font-size:11px">Usado para limitar motoristas por setor no Empréstimos.</small></div>
+    </div>
     <div class="fg"><label>Observações Internas</label><textarea class="fta" id="mt_obs">${m?.obs||''}</textarea></div>
   </div>
 
@@ -32436,6 +32462,7 @@ function salvarMotorista(idx){
     situacao:document.getElementById('mt_sit').value,
     empresa:document.getElementById('mt_emp').value,
     supervisor:document.getElementById('mt_sup').value,
+    setor_id:parseInt(document.getElementById('mt_setor')?.value)||null,
     obs:document.getElementById('mt_obs').value,
     cnh_numero:document.getElementById('mt_cnhn').value,
     cnh_categoria:document.getElementById('mt_cnhc').value,
