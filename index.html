@@ -10668,12 +10668,39 @@ function openModalUsuario(idx=null){
   </div>`,'lg');
 }
 
+async function _provisionarUsuarioAuth(usuario, senha){
+  if(!usuario) return { ok:false, error:'Perfil de usuário não encontrado.' };
+  const email=String(usuario.email||'').trim().toLowerCase();
+  if(!email || !email.includes('@')) return { ok:false, error:'Informe um e-mail válido para criar o acesso.' };
+  if(!usuario.auth_user_id && (!senha || senha.length<6)){
+    return { ok:false, error:'Informe uma senha com no mínimo 6 caracteres para ativar o acesso.' };
+  }
+  if(usuario.auth_user_id && !senha) return { ok:true, authUserId:usuario.auth_user_id };
+  if(!_sb?.functions?.invoke) return { ok:false, error:'Serviço de autenticação indisponível.' };
+
+  const {data,error}=await _sb.functions.invoke('fm-user-admin',{
+    body:{ action:'provision', profile_id:usuario.id, email, password:senha }
+  });
+  if(error) return { ok:false, error:error.message||'Não foi possível criar a conta de acesso.' };
+  if(data?.error) return { ok:false, error:data.error };
+  const authUserId=data?.auth_user_id;
+  if(!authUserId) return { ok:false, error:'A conta foi criada sem retornar o vínculo de autenticação.' };
+
+  const {error:vinculoErro}=await _sb.from('usuarios').update({auth_user_id:authUserId}).eq('id',usuario.id);
+  if(vinculoErro) return { ok:false, error:'Conta criada, mas o vínculo com o perfil falhou: '+vinculoErro.message };
+  usuario.auth_user_id=authUserId;
+  return { ok:true, authUserId };
+}
+
 async function salvarUsuario(idx){
   const nome=document.getElementById('u_nome').value.trim();
   const uname=document.getElementById('u_user').value.trim();
+  const email=(document.getElementById('u_email').value||'').trim().toLowerCase();
   const pass=document.getElementById('u_pass').value;
   if(!nome||!uname){ showToast('Nome e usuário obrigatórios','warning'); return; }
   if(idx===null&&!pass){ showToast('Senha obrigatória para novo usuário','warning'); return; }
+  if(idx===null&&!email){ showToast('E-mail obrigatório para criar o acesso do usuário','warning'); return; }
+  if(idx!==null&&!db.usuarios[idx]?.auth_user_id&&!pass){ showToast('Este perfil ainda não tem conta de acesso. Informe uma senha para ativá-la.','warning'); return; }
   const dup = db.usuarios.find((x,i)=>x.username===uname&&i!==idx);
   if(dup){ showToast('Username já existe','danger'); return; }
 
@@ -10708,14 +10735,13 @@ async function salvarUsuario(idx){
 
   if(idx!==null){
     db.usuarios[idx].nome=nome; db.usuarios[idx].username=uname;
-    db.usuarios[idx].email=document.getElementById('u_email').value || null;
+    db.usuarios[idx].email=email || null;
     db.usuarios[idx].nivel=document.getElementById('u_nivel').value;
     db.usuarios[idx].funcao_emprestimo=document.getElementById('u_funcao_emprestimo')?.value||null;
     db.usuarios[idx].ativo=document.getElementById('u_ativo').value==='1';
     db.usuarios[idx].modulos_liberados = modulosLiberados;
     db.usuarios[idx].empresas = empresasVinc;
     db.usuarios[idx].equipamentos_vinculados = eqsVinc;
-    if(pass) db.usuarios[idx].password=pass;
   } else {
     // Gerar próximo ID baseado no maior existente (tabela não tem auto-increment)
     let proximoId = Math.max(0, ...db.usuarios.map(u => Number(u.id) || 0)) + 1;
@@ -10728,8 +10754,7 @@ async function salvarUsuario(idx){
       tenant: _sbTenant,
       nome,
       username: uname,
-      email: (document.getElementById('u_email').value || '').trim() || null,
-      ...(pass ? { password: pass } : {}),
+      email: email || null,
       nivel: document.getElementById('u_nivel').value,
       funcao_emprestimo: document.getElementById('u_funcao_emprestimo')?.value||null,
       ativo: true,
@@ -10744,10 +10769,25 @@ async function salvarUsuario(idx){
     const { error: errSave } = await (_sb && _sbMode==='supabase'
       ? _sb.from('usuarios').insert([novoUser])
       : Promise.resolve({}));
-    if(errSave){ showToast('Erro ao salvar: '+errSave.message,'danger'); return; }
+    if(errSave){ db.usuarios.pop(); showToast('Erro ao salvar: '+errSave.message,'danger'); return; }
   }
   // Também persistir edições
-  if(idx!==null) sbSalvar('usuarios', db.usuarios[idx]);
+  const usuarioSalvo=idx!==null?db.usuarios[idx]:db.usuarios[db.usuarios.length-1];
+  if(idx!==null){
+    const salvou=await sbSalvar('usuarios',usuarioSalvo);
+    if(!salvou) return;
+  }
+  if(!usuarioSalvo.auth_user_id || pass){
+    const provisionado=await _provisionarUsuarioAuth(usuarioSalvo,pass);
+    if(!provisionado.ok){
+      if(idx===null){
+        db.usuarios=db.usuarios.filter(x=>String(x.id)!==String(usuarioSalvo.id));
+        try{ await _sb.from('usuarios').delete().eq('id',usuarioSalvo.id); }catch(e){}
+      }
+      showToast('Usuário não ativado: '+provisionado.error,'danger');
+      return;
+    }
+  }
   closeModal(); loadPage('usuarios'); showToast('Usuário salvo!','success');
 }
 function verModulosUsuario(i){
@@ -22733,6 +22773,13 @@ function _empBadge(val){
   return `<span style="font-size:11px;padding:3px 10px;border-radius:12px;font-weight:700;background:${s.bg};color:${s.cor}">${s.label}</span>`;
 }
 
+function _empVeiculosDisponiveis(){
+  return _eqsDaEmpresa().filter(e=>{
+    const status=String(e?.status||'').trim().toLowerCase();
+    return e?.excluido!==true && e?.excluido!==1 && e?.excluido!=='1' && status!=='inativo';
+  });
+}
+
 function _empRegistroAtivo(registro){
   return !!registro && registro.ativo !== false && registro.ativo !== 0 && registro.ativo !== '0' && String(registro.ativo).toLowerCase() !== 'false';
 }
@@ -22823,7 +22870,7 @@ function renderEmprestimosLista(){
   if(fAte) lista = lista.filter(e=>(e.data_saida||e.data_solicitacao||'')<=fAte);
   lista = _sortLista(lista, '_sortEmp');
 
-  const optsEq  = (db.equipamentos||[]).map(e=>`<option value="${e.id}" ${fEq==e.id?'selected':''}>${esc(e.placa||"")} — ${e.modelo||''}</option>`).join('');
+  const optsEq  = _empVeiculosDisponiveis().map(e=>`<option value="${e.id}" ${fEq==e.id?'selected':''}>${esc(e.placa||"")} — ${e.modelo||''}</option>`).join('');
   const optsStatus = _empStatusLista().map(s=>`<option value="${s.val}" ${fSt===s.val?'selected':''}>${s.label}</option>`).join('');
 
   // KPIs
@@ -22939,7 +22986,7 @@ function _empFiltrar(){
 // ── NOVA SOLICITAÇÃO ──
 function renderEmprestimosNovo(){
   const somenteSolicita=_empFuncaoUsuario()==='solicitante';
-  const optsEq  = (db.equipamentos||[]).filter(e=>e.status!=='inativo').map(e=>{
+  const optsEq  = _empVeiculosDisponiveis().map(e=>{
     const emUso = _empVeiculoEmUso(e.id);
     return `<option value="${e.id}" ${emUso?'disabled':''}>
       ${esc(e.placa||"")} — ${e.modelo||''} ${emUso?'(EM USO)':''}
@@ -23768,7 +23815,7 @@ async function _ckUploadFotoInline(el, prefix, n){
 }
 
 function renderEmprestimosChecklist(){
-  const optsEq = (db.equipamentos||[]).filter(e=>e.status!=='inativo').map(e=>`<option value="${e.id}">${esc(e.placa||"")} — ${e.modelo||''}</option>`).join('');
+  const optsEq = _empVeiculosDisponiveis().map(e=>`<option value="${e.id}">${esc(e.placa||"")} — ${e.modelo||''}</option>`).join('');
   const optsMot = (db.motoristas||[]).filter(m=>m.status!=='inativo').map(m=>`<option value="${m.id}">${esc(m.nome||"")}</option>`).join('');
   const now = new Date();
   const horaAtual = now.toTimeString().slice(0,5);
@@ -23804,7 +23851,7 @@ function renderEmprestimosChecklist(){
       <div class="fg" style="min-width:160px"><label>Veículo</label>
         <select class="fs" id="ck_link_veiculo" onchange="_ckGerarLink()">
           <option value="">— Selecione —</option>
-          ${(db.equipamentos||[]).filter(e=>e.status!=='inativo').map(e=>`<option value="${e.id}" data-placa="${esc(e.placa||"")}">${esc(e.placa||"")} — ${e.modelo||''}</option>`).join('')}
+          ${_empVeiculosDisponiveis().map(e=>`<option value="${e.id}" data-placa="${esc(e.placa||"")}">${esc(e.placa||"")} — ${e.modelo||''}</option>`).join('')}
         </select>
       </div>
       <div class="fg" style="min-width:160px"><label>Motorista (opcional)</label>
