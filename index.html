@@ -10593,6 +10593,14 @@ function openModalUsuario(idx=null){
       </select>
       <small style="color:var(--text2)">Este subnível vale somente para o módulo de Empréstimos.</small>
     </div>
+    <div class="fg" style="margin-top:12px">
+      <label>Setor</label>
+      <select class="fs" id="u_setor">
+        <option value="">— Selecione o setor —</option>
+        ${(db.setores||[]).filter(s=>s.ativo!==false&&!s.excluido).map(s=>`<option value="${s.id}" ${String(u?.setor_id||'')===String(s.id)?'selected':''}>${esc(s.nome||'')}</option>`).join('')}
+      </select>
+      <small style="color:var(--text2)">Define quais motoristas e solicitações este usuário pode acessar no Empréstimos.</small>
+    </div>
   </div>
 
   <div id="utab-modulos" class="tab-c">
@@ -10732,6 +10740,7 @@ async function salvarUsuario(idx){
     db.usuarios[idx].email=email || null;
     db.usuarios[idx].nivel=document.getElementById('u_nivel').value;
     db.usuarios[idx].funcao_emprestimo=document.getElementById('u_funcao_emprestimo')?.value||null;
+    db.usuarios[idx].setor_id=parseInt(document.getElementById('u_setor')?.value)||null;
     db.usuarios[idx].ativo=document.getElementById('u_ativo').value==='1';
     db.usuarios[idx].modulos_liberados = modulosLiberados;
     db.usuarios[idx].empresas = empresasVinc;
@@ -10751,6 +10760,7 @@ async function salvarUsuario(idx){
       email: email || null,
       nivel: document.getElementById('u_nivel').value,
       funcao_emprestimo: document.getElementById('u_funcao_emprestimo')?.value||null,
+      setor_id: parseInt(document.getElementById('u_setor')?.value)||null,
       ativo: true,
       modulos_liberados: modulosLiberados,
       empresas: empresasVinc,
