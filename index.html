@@ -3867,6 +3867,7 @@ const MENU = [
   { section:'Empréstimos', items:[
     { page:'emprestimos_lista',      icon:'fa-car-side',       label:'Solicitações',       min:'operador' },
     { page:'emprestimos_novo',       icon:'fa-plus-circle',    label:'Nova Solicitação',   min:'operador' },
+    { page:'emprestimos_agenda',     icon:'fa-calendar-alt',   label:'Agenda de Veículos', min:'operador' },
     { page:'emprestimos_historico',  icon:'fa-history',        label:'Histórico',          min:'visualizador' },
   ]},
 
@@ -4856,6 +4857,7 @@ const PAGE_TITLES = {
   rastreio_cadastro:'📍 Acompanhamento de Veículos',
   emprestimos_lista:'🚗 Empréstimo de Veículos',
   emprestimos_novo:'🚗 Nova Solicitação de Empréstimo',
+  emprestimos_agenda:'📅 Agenda de Veículos',
   emprestimos_historico:'📋 Histórico de Empréstimos',
   emprestimos_checklist:'✅ Checklist de Veículo',
   relatorios_combustivel:'⛽ Relatórios de Abastecimento',
@@ -5120,6 +5122,7 @@ var _TODOS_MODULOS = [
   // ── EMPRÉSTIMOS ──
   ["emprestimos_lista",       "Empréstimos — Solicitações"],
   ["emprestimos_novo",        "Empréstimos — Nova Solicitação"],
+  ["emprestimos_agenda",      "Empréstimos — Agenda de Veículos"],
   ["emprestimos_checklist",   "Empréstimos — Checklist do Veículo"],
   // ── CADASTROS ──
   ["mecanicos",               "Mecânicos"],
@@ -5808,6 +5811,7 @@ const PAGE_FNS = {
   wialon_config: renderWialonConfig,
   emprestimos_lista: renderEmprestimosLista,
   emprestimos_novo: renderEmprestimosNovo,
+  emprestimos_agenda: renderEmprestimosAgenda,
   emprestimos_historico: renderEmprestimosHistorico,
   emprestimos_checklist: renderEmprestimosChecklist,
   rastreio_cadastro: renderRastreioCadastro,
@@ -10498,7 +10502,7 @@ function openModalUsuario(idx=null){
     { titulo: 'Financeiro / Despesas', paginas: ['solicitacoes_pagamento','relatorios_financeiro','despesas_lista','despesas_novo','despesas_importar','despesas_dashboard','relatorios_despesas'] },
     { titulo: 'Portaria', paginas: ['portaria_op','portaria_pessoas','portaria_qrcodes','portaria_veiculos','portaria_historico','portaria_relatorios'] },
     { titulo: 'Rastreio', paginas: ['rastreio_painel','rastreio_dashboard','rastreio_disponibilidade_relatorio','rastreio_cadastro','rastreio_relatorio'] },
-    { titulo: 'Empréstimos', paginas: ['emprestimos_lista','emprestimos_novo','emprestimos_checklist'] },
+    { titulo: 'Empréstimos', paginas: ['emprestimos_lista','emprestimos_novo','emprestimos_agenda','emprestimos_checklist'] },
     { titulo: 'Cadastros', paginas: ['mecanicos','motoristas','fornecedores','centros_custo_cad','obras_cad','custos_equipe','fichas_diarias','centro_custo'] },
     { titulo: 'Relatórios Gerenciais', paginas: ['relatorios','localizacao'] },
     { titulo: 'Ferramentas', paginas: ['importacao','formulario','tokens_acesso','gestao_master'] },
@@ -22873,7 +22877,7 @@ function _empStatusNovaSolicitacao(statusEscolhido){
 function _empPaginaPermitida(page){
   if(_empFuncaoUsuario()!=='solicitante') return true;
   if(!String(page||'').startsWith('emprestimos_')) return true;
-  return ['emprestimos_lista','emprestimos_novo','emprestimos_historico'].includes(page);
+  return ['emprestimos_lista','emprestimos_novo','emprestimos_agenda','emprestimos_historico'].includes(page);
 }
 
 function _empVeiculoEmUso(veiculoId, ignorarId=null){
@@ -22903,6 +22907,34 @@ function _empConflitoDisponibilidade(veiculoId,dataInicio,horaInicio,dataFim,hor
 async function _empGarantirHistoricoCarregado(){
   return;
 }
+
+function _empAgendaRegistrosDia(data){
+  return _empRegistrosAtivos().filter(e=>e.data_saida&&e.data_prevista_retorno&&e.data_saida<=data&&e.data_prevista_retorno>=data&&['solicitado','aprovado','em_uso'].includes(String(e.status||'')));
+}
+function _empAgendaMudarMes(delta){
+  const base=window._empAgendaMes?new Date(window._empAgendaMes+'-01T12:00:00'):new Date();
+  base.setMonth(base.getMonth()+delta);
+  window._empAgendaMes=`${base.getFullYear()}-${String(base.getMonth()+1).padStart(2,'0')}`;
+  loadPage('emprestimos_agenda');
+}
+function _empAgendaAbrirDia(data){
+  const itens=_empAgendaRegistrosDia(data);
+  const titulo=new Date(data+'T12:00:00').toLocaleDateString('pt-BR');
+  openModal(`<i class="fas fa-calendar-day"></i> Agenda — ${titulo}`, itens.length?itens.map(e=>`<div class="list-row" style="cursor:pointer" onclick="closeModal();_empVerDetalhes(${(db.emprestimos_veiculos||[]).findIndex(x=>String(x.id)===String(e.id))})"><span><strong>${esc(e.veiculo_placa||'Veículo')}</strong> — ${esc(e.motorista_nome||'Sem motorista')}<br><small>${e.hora_saida||'00:00'} até ${e.hora_prevista_retorno||'23:59'} · ${esc(e.solicitante||'')}</small></span>${_empBadge(e.status)}</div>`).join(''):'<div class="empty"><i class="fas fa-calendar-check"></i><p>Nenhum agendamento neste dia</p></div>');
+}
+function renderEmprestimosAgenda(){
+  const agora=new Date();
+  const mes=window._empAgendaMes||`${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}`;
+  const [ano,numMes]=mes.split('-').map(Number), primeiro=new Date(ano,numMes-1,1), total=new Date(ano,numMes,0).getDate();
+  const nomeMes=primeiro.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const vazios=Array(primeiro.getDay()).fill('<div style="min-height:110px;background:var(--bg);border:1px solid var(--border);opacity:.45"></div>').join('');
+  const dias=Array.from({length:total},(_,i)=>{
+    const dia=i+1,data=`${ano}-${String(numMes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`,itens=_empAgendaRegistrosDia(data),hoje=data===today();
+    return `<div onclick="_empAgendaAbrirDia('${data}')" style="min-height:110px;padding:7px;border:1px solid ${hoje?'var(--primary)':'var(--border)'};background:var(--card);cursor:pointer;overflow:hidden"><div style="font-weight:800;font-size:12px;color:${hoje?'var(--primary)':'var(--text)'};margin-bottom:5px">${dia}${hoje?' · hoje':''}</div>${itens.slice(0,3).map(e=>{const cor=e.status==='aprovado'?'#2e7d32':e.status==='em_uso'?'#f57c00':'#3b67e8';return `<div style="background:${cor};color:#fff;border-radius:4px;padding:3px 5px;margin-bottom:3px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.hora_saida||''} ${esc(e.veiculo_placa||'Veículo')}</div>`}).join('')}${itens.length>3?`<small>+${itens.length-3} agendamento(s)</small>`:''}</div>`;
+  }).join('');
+  return `<div class="card"><div class="flex-b" style="margin-bottom:16px"><div class="row10"><button class="btn btn-o btn-sm" onclick="_empAgendaMudarMes(-1)"><i class="fas fa-chevron-left"></i></button><button class="btn btn-o btn-sm" onclick="window._empAgendaMes='';loadPage('emprestimos_agenda')">Hoje</button><button class="btn btn-o btn-sm" onclick="_empAgendaMudarMes(1)"><i class="fas fa-chevron-right"></i></button><strong style="text-transform:capitalize;font-size:18px;margin-left:8px">${nomeMes}</strong></div><button class="btn btn-p" onclick="loadPage('emprestimos_novo')"><i class="fas fa-plus"></i> Nova Solicitação</button></div><div style="display:grid;grid-template-columns:repeat(7,minmax(95px,1fr));text-align:center;font-size:11px;font-weight:800;color:var(--text2)">${['DOM','SEG','TER','QUA','QUI','SEX','SÁB'].map(d=>`<div style="padding:7px">${d}</div>`).join('')}</div><div style="display:grid;grid-template-columns:repeat(7,minmax(95px,1fr))">${vazios}${dias}</div><div class="row10" style="margin-top:12px;font-size:11px"><span class="badge bp">Solicitado</span><span class="badge bs">Aprovado</span><span class="badge bw">Em uso</span></div></div>`;
+}
+
 function renderEmprestimosLista(){
   _empGarantirHistoricoCarregado();
   const fSt   = window._empFSt  || '';
