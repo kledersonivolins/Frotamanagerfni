@@ -22904,7 +22904,7 @@ function _empIntervalo(dataInicio,horaInicio,dataFim,horaFim){
 function _empConflitoDisponibilidade(veiculoId,dataInicio,horaInicio,dataFim,horaFim,ignorarId=null){
   const novo=_empIntervalo(dataInicio,horaInicio,dataFim,horaFim);
   if(!Number.isFinite(novo.ini)||!Number.isFinite(novo.fim)||novo.fim<novo.ini) return null;
-  return _empTodosRegistrosAtivos().find(e=>String(e.veiculo_id)===String(veiculoId)&&e.id!==ignorarId&&['solicitado','aprovado','em_uso'].includes(String(e.status||''))&&(()=>{const x=_empIntervalo(e.data_saida,e.hora_saida,e.data_prevista_retorno,e.hora_prevista_retorno);return x.ini<=novo.fim&&novo.ini<=x.fim;})())||null;
+  return _empTodosRegistrosAtivos().find(e=>String(e.veiculo_id)===String(veiculoId)&&e.id!==ignorarId&&['solicitado','aprovado','em_uso'].includes(String(e.status||''))&&(()=>{const x=_empIntervalo(e.data_saida,e.hora_saida,e.data_prevista_retorno,e.hora_prevista_retorno);return x.ini<novo.fim&&novo.ini<x.fim;})())||null;
 }
 async function _empGarantirHistoricoCarregado(){
   return;
@@ -23072,8 +23072,8 @@ function renderEmprestimosNovo(){
   const somenteSolicita=_empFuncaoUsuario()==='solicitante';
   const optsEq  = _empVeiculosDisponiveis().map(e=>{
     const emUso = _empVeiculoEmUso(e.id);
-    return `<option value="${e.id}" ${emUso?'disabled':''}>
-      ${esc(e.placa||"")} — ${e.modelo||''} ${emUso?'(EM USO)':''}
+    return `<option value="${e.id}">
+      ${esc(e.placa||"")} — ${e.modelo||''} ${emUso?'(EM USO AGORA — consulte o período)':''}
     </option>`;
   }).join('');
   const optsMot = _empMotoristasDisponiveis().map(m=>
