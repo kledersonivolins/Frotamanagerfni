@@ -4017,10 +4017,11 @@ function _moduloLiberado(page){
   // Outros níveis: checar modulos_liberados primeiro
   const mods = _getModulosLiberados();
   if(mods !== null){
+    const chave = page==='emprestimos_agenda' ? 'emprestimos_lista' : page;
     // Formato novo: objeto { page: 'editar'|'visualizar' }
-    if(!Array.isArray(mods) && typeof mods === 'object') return page in mods;
+    if(!Array.isArray(mods) && typeof mods === 'object') return page in mods || chave in mods;
     // Formato antigo: array de strings
-    if(Array.isArray(mods)) return mods.includes(page);
+    if(Array.isArray(mods)) return mods.includes(page) || mods.includes(chave);
     // Fallback para string (não deveria chegar aqui)
     return false;
   }
@@ -4041,11 +4042,12 @@ function _moduloPermissao(page){
   }
   const mods = _getModulosLiberados();
   if(mods === null) return 'editar'; // sem restrição = acesso total pelo nível
+  const chave = page==='emprestimos_agenda' ? 'emprestimos_lista' : page;
   if(Array.isArray(mods)){
     // formato antigo: array = acesso total nos módulos listados
-    return mods.includes(page) ? 'editar' : null;
+    return (mods.includes(page)||mods.includes(chave)) ? 'editar' : null;
   }
-  if(typeof mods === 'object') return mods[page] || null;
+  if(typeof mods === 'object') return mods[page] || mods[chave] || null;
   return null;
 }
 
@@ -23627,8 +23629,17 @@ async function _empAprovar(i){
   const e = db.emprestimos_veiculos[i];
   if(!e || e.status!=='solicitado') return;
   if(!await _confirmar(`Aprovar empréstimo do veículo ${esc(e.veiculo_placa||"")}?`,'info')) return;
+  const statusAnterior=e.status;
+  const autorizacaoAnterior={tipo:e.autorizacao_tipo,usuario:e.autorizador_usuario_id,nome:e.autorizador_nome,cargo:e.autorizador_cargo,registradaPor:e.autorizacao_registrada_por_id,em:e.autorizacao_em};
   e.status = 'aprovado';
-  await sbSalvar('emprestimos_veiculos', e);
+  e.autorizacao_tipo='sistema';
+  e.autorizador_usuario_id=currentUser?.id||currentUser?.usuario_id||null;
+  e.autorizador_nome=currentUser?.nome||currentUser?.username||'';
+  e.autorizador_cargo=_empFuncaoUsuario();
+  e.autorizacao_registrada_por_id=e.autorizador_usuario_id;
+  e.autorizacao_em=new Date().toISOString();
+  const salvou=await sbSalvar('emprestimos_veiculos', e);
+  if(!salvou){ e.status=statusAnterior; e.autorizacao_tipo=autorizacaoAnterior.tipo; e.autorizador_usuario_id=autorizacaoAnterior.usuario; e.autorizador_nome=autorizacaoAnterior.nome; e.autorizador_cargo=autorizacaoAnterior.cargo; e.autorizacao_registrada_por_id=autorizacaoAnterior.registradaPor; e.autorizacao_em=autorizacaoAnterior.em; loadPage('emprestimos_lista'); return; }
   loadPage('emprestimos_lista');
   showToast('Empréstimo aprovado!','success');
 }

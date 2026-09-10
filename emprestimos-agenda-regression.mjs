@@ -22,3 +22,11 @@ assert.deepEqual(ctx._empAgendaRegistrosDia('2026-09-11').map(x=>x.id),[1],'rese
 assert.deepEqual(ctx._empAgendaRegistrosDia('2026-09-14').map(x=>x.id),[],'dia livre não deve mostrar reserva');
 
 console.log('PASS: agenda de empréstimos existe e distribui reservas pelos dias corretos.');
+
+const ctxPerm=vm.createContext({currentUser:{nivel:'operador',funcao_emprestimo:'coordenador',modulos_liberados:{emprestimos_lista:'editar',emprestimos_novo:'editar'}}});
+vm.runInContext([
+  fonteFuncao('_empFuncaoUsuario'),fonteFuncao('_empPaginaPermitida'),fonteFuncao('_getModulosLiberados'),
+  fonteFuncao('_moduloLiberado'),fonteFuncao('_moduloPermissao')
+].join('\n'),ctxPerm);
+assert.equal(ctxPerm._moduloLiberado('emprestimos_agenda'),true,'usuários antigos com acesso às solicitações devem enxergar a agenda');
+assert.equal(ctxPerm._moduloPermissao('emprestimos_agenda'),'editar','agenda deve herdar a permissão das solicitações');
