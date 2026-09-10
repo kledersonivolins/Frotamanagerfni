@@ -2744,7 +2744,7 @@ async function fmLoginSupabase(login, senha){
     await fmAplicarUsuarioLogado(fmNormalizarUsuario(u),false);
   } catch(err) {
     console.error('Login error:', err);
-    mostrarErro(err.message || 'Erro ao fazer login. Tente novamente.');
+    showToast(err.message || 'Erro ao fazer login. Tente novamente.','danger');
     throw err;
   }
 }
