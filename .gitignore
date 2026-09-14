@@ -1,0 +1,7 @@
+apps/mobile/node_modules/
+apps/mobile/dist/
+apps/mobile/test-results/
+apps/mobile/playwright-report/
+apps/mobile/.env
+apps/mobile/.env.*
+!apps/mobile/.env.example

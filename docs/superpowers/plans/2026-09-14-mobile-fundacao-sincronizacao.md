@@ -91,7 +91,7 @@ export function App() {
 }
 ```
 
-Pin the versions listed in the plan header. Also pin `@capacitor/android@8.5.2`, `@capacitor/app@8.1.1`, `@capacitor/camera@8.2.4`, `@capacitor/network@8.0.1`, `@capacitor/preferences@8.0.1`, `@capacitor/filesystem@8.1.3`, `@capacitor/barcode-scanner@3.1.2`, `@aparajita/capacitor-secure-storage@8.0.0`, `@testing-library/react@16.3.3`, `@vitejs/plugin-react@6.1.1`, and `@playwright/test@1.63.0`. Configure Vitest with `jsdom`, Testing Library setup, and Playwright with `testDir: './e2e'`.
+Pin the versions listed in the plan header. Also pin `@capacitor/cli@8.4.3`, `@capacitor/android@8.5.2`, `@capacitor/app@8.1.1`, `@capacitor/camera@8.2.4`, `@capacitor/network@8.0.1`, `@capacitor/preferences@8.0.1`, `@capacitor/filesystem@8.1.3`, `@capacitor/barcode-scanner@3.1.2`, `@aparajita/capacitor-secure-storage@8.0.0`, `@testing-library/react@16.3.3`, `@vitejs/plugin-react@6.1.1`, and `@playwright/test@1.63.0`. Configure Vitest with `jsdom`, Testing Library setup, and Playwright with `testDir: './e2e'`.
 
 - [ ] **Step 4: Verify test and production build**
 
