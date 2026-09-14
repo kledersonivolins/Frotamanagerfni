@@ -1,0 +1,8 @@
+import fs from 'node:fs'
+const manifest=fs.readFileSync('android/app/src/main/AndroidManifest.xml','utf8')
+if(!manifest.includes('android.permission.CAMERA'))throw new Error('CAMERA permission missing')
+if(!manifest.includes('android.permission.INTERNET'))throw new Error('INTERNET permission missing')
+if(manifest.includes('ACCESS_FINE_LOCATION'))throw new Error('unexpected location permission')
+const gradle=fs.readFileSync('android/app/build.gradle','utf8')
+if(!gradle.includes('applicationId "br.com.ferronorte.frotamanager"'))throw new Error('wrong application id')
+console.log('PASS: configuração Android mínima e segura')

@@ -8,6 +8,9 @@
     "build": "tsc -b && vite build",
     "test": "vitest",
     "test:e2e": "playwright test"
+    ,"android:sync": "npm run build && cap sync android"
+    ,"android:debug": "npm run android:sync && cd android && gradlew.bat assembleDebug"
+    ,"android:release": "npm run android:sync && cd android && gradlew.bat assembleRelease bundleRelease"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.0",
