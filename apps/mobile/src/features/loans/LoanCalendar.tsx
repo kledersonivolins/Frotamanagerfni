@@ -1,0 +1,2 @@
+import type { Loan } from './domain'
+export function LoanCalendar({loans,online}:{loans:Loan[];online:boolean}){return <section><h2>Agenda de veículos</h2>{!online&&<div className="notice warning">Agenda em cache. Novas reservas serão confirmadas quando houver internet.</div>}<div className="cards">{loans.map(x=><article className="item" key={x.id}><strong>{x.vehicleId}</strong><span>{new Date(x.period.start).toLocaleString('pt-BR')} – {new Date(x.period.end).toLocaleString('pt-BR')}</span><em>{x.status}</em></article>)}</div></section>}
