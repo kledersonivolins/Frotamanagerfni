@@ -1,0 +1,81 @@
+import { describe, expect, it } from 'vitest'
+import type { SyncOperation } from '../domain/contracts'
+import type { EntityTable, MobileDatabase, MobileTransaction } from './database'
+import { listPendingOperations, saveWithOperation } from './repositories'
+
+const operation: SyncOperation = {
+  operationId: 'op-1',
+  entityType: 'work_order',
+  entityId: 'os-1',
+  kind: 'create',
+  baseVersion: null,
+  payload: { status: 'open' },
+  deviceCreatedAt: '2026-09-14T12:00:00.000Z',
+}
+
+class MemoryDatabase implements MobileDatabase {
+  readonly entities = new Map<string, Record<string, unknown>>()
+  readonly outbox = new Map<string, SyncOperation>()
+  failOutboxInsert = false
+
+  async transaction<T>(work: (transaction: MobileTransaction) => Promise<T>): Promise<T> {
+    const entitySnapshot = new Map(this.entities)
+    const outboxSnapshot = new Map(this.outbox)
+    try {
+      return await work({
+        upsert: async (table, entityId, json) => {
+          this.entities.set(`${table}:${entityId}`, structuredClone(json))
+        },
+        insertOutbox: async item => {
+          if (this.failOutboxInsert) throw new Error('forced outbox failure')
+          this.outbox.set(item.operationId, structuredClone(item))
+        },
+      })
+    } catch (error) {
+      this.entities.clear()
+      this.outbox.clear()
+      entitySnapshot.forEach((value, key) => this.entities.set(key, value))
+      outboxSnapshot.forEach((value, key) => this.outbox.set(key, value))
+      throw error
+    }
+  }
+
+  async listPendingOperations(limit: number): Promise<SyncOperation[]> {
+    return [...this.outbox.values()].slice(0, limit)
+  }
+
+  entity(table: EntityTable, id: string) {
+    return this.entities.get(`${table}:${id}`)
+  }
+}
+
+describe('local repositories', () => {
+  it('stores the entity and outbox operation in one transaction', async () => {
+    const database = new MemoryDatabase()
+
+    await saveWithOperation(database, {
+      table: 'work_orders',
+      entityId: 'os-1',
+      json: { status: 'open' },
+      operation,
+    })
+
+    expect(database.entity('work_orders', 'os-1')).toEqual({ status: 'open' })
+    expect(await listPendingOperations(database, 10)).toEqual([operation])
+  })
+
+  it('rolls the entity back when the outbox insert fails', async () => {
+    const database = new MemoryDatabase()
+    database.failOutboxInsert = true
+
+    await expect(saveWithOperation(database, {
+      table: 'work_orders',
+      entityId: 'os-1',
+      json: { status: 'open' },
+      operation,
+    })).rejects.toThrow('forced outbox failure')
+
+    expect(database.entity('work_orders', 'os-1')).toBeUndefined()
+    expect(await listPendingOperations(database, 10)).toEqual([])
+  })
+})
