@@ -5,4 +5,6 @@ if(!manifest.includes('android.permission.INTERNET'))throw new Error('INTERNET p
 if(manifest.includes('ACCESS_FINE_LOCATION'))throw new Error('unexpected location permission')
 const gradle=fs.readFileSync('android/app/build.gradle','utf8')
 if(!gradle.includes('applicationId "br.com.ferronorte.frotamanager"'))throw new Error('wrong application id')
+const variables=fs.readFileSync('android/variables.gradle','utf8')
+if(!variables.includes('minSdkVersion = 26'))throw new Error('minSdk must support the barcode scanner')
 console.log('PASS: configuração Android mínima e segura')
