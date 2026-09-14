@@ -41,12 +41,15 @@ export function createMobileRuntime(client:SupabaseClient, storage:Pick<Storage,
     return data as EffectiveScope
   }
   async function load(granted:EffectiveScope):Promise<MobileSnapshot>{
-    const vehicleIds=resolveScopedIds(granted.vehicleIds),driverIds=resolveScopedIds(granted.driverIds)
+    const vehicleIds=resolveScopedIds(granted.vehicleIds)
+    // Para usuários vinculados a setor, nenhum motorista encontrado significa nenhum acesso,
+    // nunca acesso irrestrito. Sem setor, lista vazia mantém o padrão global do cadastro.
+    const driverIds=granted.sectorIds.length ? (resolveScopedIds(granted.driverIds)??[]) : resolveScopedIds(granted.driverIds)
     // Registros legados podem ter excluido nulo; o site considera nulo como ativo.
     let vehicleQuery=client.from('equipamentos').select('id,placa,modelo').eq('tenant',granted.tenant)
     if(vehicleIds) vehicleQuery=vehicleQuery.in('id',vehicleIds)
     let driverQuery=client.from('motoristas').select('id,nome').eq('tenant',granted.tenant)
-    if(driverIds) driverQuery=driverQuery.in('id',driverIds)
+    if(driverIds!==null) driverQuery=driverQuery.in('id',driverIds)
     const loanQuery=client.from('emprestimos_veiculos').select('id,veiculo_id,motorista_id,setor_id,status,data_saida,hora_saida,data_prevista_retorno,hora_prevista_retorno,destino,finalidade,solicitante').eq('tenant',granted.tenant).eq('ativo',true)
     let orderQuery=client.from('ordens_servico').select('id,numero,equipamento_id,status,descricao,motivo,itens').eq('tenant',granted.tenant)
     if(vehicleIds) orderQuery=orderQuery.in('equipamento_id',vehicleIds)
