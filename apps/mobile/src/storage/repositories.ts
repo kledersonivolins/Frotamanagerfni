@@ -28,3 +28,15 @@ export function listPendingOperations(
 ): Promise<SyncOperation[]> {
   return database.listPendingOperations(limit)
 }
+
+export function readMetadata(database: MobileDatabase, key: string): Promise<string | null> {
+  return database.readMetadata(key)
+}
+
+export function writeMetadata(database: MobileDatabase, key: string, value: string): Promise<void> {
+  return database.writeMetadata(key, value)
+}
+
+export function deleteMetadata(database: MobileDatabase, key: string): Promise<void> {
+  return database.deleteMetadata(key)
+}

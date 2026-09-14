@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { SyncOperation } from '../domain/contracts'
 import type { EntityTable, MobileDatabase, MobileTransaction } from './database'
-import { listPendingOperations, saveWithOperation } from './repositories'
+import {
+  deleteMetadata,
+  listPendingOperations,
+  readMetadata,
+  saveWithOperation,
+  writeMetadata,
+} from './repositories'
 
 const operation: SyncOperation = {
   operationId: 'op-1',
@@ -16,6 +22,7 @@ const operation: SyncOperation = {
 class MemoryDatabase implements MobileDatabase {
   readonly entities = new Map<string, Record<string, unknown>>()
   readonly outbox = new Map<string, SyncOperation>()
+  readonly metadata = new Map<string, string>()
   failOutboxInsert = false
 
   async transaction<T>(work: (transaction: MobileTransaction) => Promise<T>): Promise<T> {
@@ -43,6 +50,10 @@ class MemoryDatabase implements MobileDatabase {
   async listPendingOperations(limit: number): Promise<SyncOperation[]> {
     return [...this.outbox.values()].slice(0, limit)
   }
+
+  async readMetadata(key: string) { return this.metadata.get(key) ?? null }
+  async writeMetadata(key: string, value: string) { this.metadata.set(key, value) }
+  async deleteMetadata(key: string) { this.metadata.delete(key) }
 
   entity(table: EntityTable, id: string) {
     return this.entities.get(`${table}:${id}`)
@@ -77,5 +88,15 @@ describe('local repositories', () => {
 
     expect(database.entity('work_orders', 'os-1')).toBeUndefined()
     expect(await listPendingOperations(database, 10)).toEqual([])
+  })
+
+  it('stores and removes metadata used by the offline session', async () => {
+    const database = new MemoryDatabase()
+
+    await writeMetadata(database, 'effective_scope', '{"tenant":"oficinafni"}')
+    expect(await readMetadata(database, 'effective_scope')).toBe('{"tenant":"oficinafni"}')
+
+    await deleteMetadata(database, 'effective_scope')
+    expect(await readMetadata(database, 'effective_scope')).toBeNull()
   })
 })

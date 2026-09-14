@@ -22,6 +22,9 @@ export interface MobileTransaction {
 export interface MobileDatabase {
   transaction<T>(work: (transaction: MobileTransaction) => Promise<T>): Promise<T>
   listPendingOperations(limit: number): Promise<SyncOperation[]>
+  readMetadata(key: string): Promise<string | null>
+  writeMetadata(key: string, value: string): Promise<void>
+  deleteMetadata(key: string): Promise<void>
 }
 
 const DATABASE_NAME = 'frotamanager_mobile'
@@ -170,6 +173,27 @@ class SqliteMobileDatabase implements MobileDatabase {
       payload: JSON.parse(String(row.payload)),
       deviceCreatedAt: String(row.device_created_at),
     }) as SyncOperation)
+  }
+
+  async readMetadata(key: string): Promise<string | null> {
+    const result = await this.connection.query(
+      'SELECT value FROM metadata WHERE key = ? LIMIT 1',
+      [key],
+    )
+    return result.values?.length ? String(result.values[0].value) : null
+  }
+
+  async writeMetadata(key: string, value: string): Promise<void> {
+    await this.connection.run(
+      `INSERT INTO metadata (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [key, value],
+      true,
+    )
+  }
+
+  async deleteMetadata(key: string): Promise<void> {
+    await this.connection.run('DELETE FROM metadata WHERE key = ?', [key], true)
   }
 }
 
