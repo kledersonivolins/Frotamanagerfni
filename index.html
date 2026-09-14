@@ -10476,8 +10476,34 @@ function renderUsuarios(){
   </div>`;
 }
 
+function _normalizarPermissoesMobile(raw){
+  if(!raw) return {};
+  if(typeof raw==='string'){ try{ raw=JSON.parse(raw); }catch{ return {}; } }
+  if(!raw || typeof raw!=='object' || Array.isArray(raw)) return {};
+  return Object.fromEntries(Object.entries(raw).map(([chave,valor])=>[chave,valor===true]));
+}
+function _renderGrupoPermissoesMobile(titulo, icone, itens, selecionadas){
+  return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px">
+    <div style="font-weight:800;margin-bottom:8px"><i class="${icone}" style="color:var(--primary)"></i> ${titulo}</div>
+    ${itens.map(([chave,label])=>`<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;cursor:pointer"><input type="checkbox" class="u_mobile_perm" value="${chave}" ${selecionadas[chave]?'checked':''}> ${label}</label>`).join('')}
+  </div>`;
+}
+function _atualizarPermissoesMobileUI(){
+  const ativo=!!document.getElementById('u_mobile_access')?.checked;
+  const box=document.getElementById('u_mobile_actions');
+  if(box){ box.style.opacity=ativo?'1':'.45'; box.style.pointerEvents=ativo?'auto':'none'; }
+  if(!ativo) document.querySelectorAll('.u_mobile_perm').forEach(c=>c.checked=false);
+}
+function _coletarPermissoesMobile(){
+  const permitido=!!document.getElementById('u_mobile_access')?.checked;
+  const saida={'mobile.access':permitido};
+  document.querySelectorAll('.u_mobile_perm').forEach(c=>saida[c.value]=permitido&&c.checked);
+  return saida;
+}
+
 function openModalUsuario(idx=null){
   const u = idx!==null ? db.usuarios[idx] : null;
+  const mobilePerms = _normalizarPermissoesMobile(u?.mobile_permissions);
   // Normalizar modulos_liberados: pode vir como string JSON do Supabase
   let modulosUser = null;
   if(u?.modulos_liberados){
@@ -10559,6 +10585,7 @@ function openModalUsuario(idx=null){
     <button class="tab" onclick="switchTab(event,'utab-modulos')"><i class="fas fa-puzzle-piece"></i> Módulos</button>
     <button class="tab" onclick="switchTab(event,'utab-empresas')"><i class="fas fa-building"></i> Empresas</button>
     <button class="tab" onclick="switchTab(event,'utab-veiculos')"><i class="fas fa-truck"></i> Veículos</button>
+    <button class="tab" onclick="switchTab(event,'utab-mobile')"><i class="fas fa-mobile-alt"></i> Aplicativo</button>
   </div>
 
   <div id="utab-dados" class="tab-c active">
@@ -10670,6 +10697,25 @@ function openModalUsuario(idx=null){
     })()}
   </div>
 
+  <div id="utab-mobile" class="tab-c">
+    <div class="al-i alert" style="margin-bottom:12px;font-size:12px"><i class="fas fa-info-circle"></i> O aplicativo respeita as mesmas empresas, setor, veículos e motoristas vinculados neste cadastro.</div>
+    <label style="display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:8px;font-weight:700;cursor:pointer">
+      <input type="checkbox" id="u_mobile_access" ${mobilePerms['mobile.access']?'checked':''} onchange="_atualizarPermissoesMobileUI()">
+      <span><i class="fas fa-mobile-alt" style="color:var(--primary)"></i> Liberar acesso ao aplicativo FrotaManager</span>
+    </label>
+    <div id="u_mobile_actions" style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px;${mobilePerms['mobile.access']?'':'opacity:.45;pointer-events:none'}">
+      ${_renderGrupoPermissoesMobile('Empréstimos', 'fas fa-car', [
+        ['loan.view','Visualizar solicitações'], ['loan.request','Solicitar veículo'], ['loan.approve','Aprovar do setor'],
+        ['loan.release','Liberar veículo'], ['loan.checklist','Preencher checklist']
+      ], mobilePerms)}
+      ${_renderGrupoPermissoesMobile('Ordens de Serviço', 'fas fa-clipboard-list', [
+        ['work_order.view','Visualizar OS'], ['work_order.create','Criar OS'],
+        ['work_order.execute','Executar atividades'], ['work_order.complete','Concluir OS']
+      ], mobilePerms)}
+    </div>
+    <small style="display:block;margin-top:12px;color:var(--text2)">Solicitante não aprova. A aprovação só é liberada pela permissão “Aprovar do setor”.</small>
+  </div>
+
   <div class="mf">
     <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
     <button class="btn btn-p" onclick="salvarUsuario(${idx!==null?idx:'null'})"><i class="fas fa-save"></i> Salvar</button>
@@ -10740,6 +10786,7 @@ async function salvarUsuario(idx){
     // null se todos marcados; array se parcial
     eqsVinc = (marcados.length === eqChecks.length) ? null : marcados;
   }
+  const mobilePermissions = _coletarPermissoesMobile();
 
   if(idx!==null){
     db.usuarios[idx].nome=nome; db.usuarios[idx].username=uname;
@@ -10751,6 +10798,7 @@ async function salvarUsuario(idx){
     db.usuarios[idx].modulos_liberados = modulosLiberados;
     db.usuarios[idx].empresas = empresasVinc;
     db.usuarios[idx].equipamentos_vinculados = eqsVinc;
+    db.usuarios[idx].mobile_permissions = mobilePermissions;
   } else {
     // Gerar próximo ID baseado no maior existente (tabela não tem auto-increment)
     let proximoId = Math.max(0, ...db.usuarios.map(u => Number(u.id) || 0)) + 1;
@@ -10770,7 +10818,8 @@ async function salvarUsuario(idx){
       ativo: true,
       modulos_liberados: modulosLiberados,
       empresas: empresasVinc,
-      equipamentos_vinculados: eqsVinc
+      equipamentos_vinculados: eqsVinc,
+      mobile_permissions: mobilePermissions
     };
     // Garantir que email nunca chegue como string vazia
     if(novoUser.email === '') novoUser.email = null;
