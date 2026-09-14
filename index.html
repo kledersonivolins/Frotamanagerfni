@@ -22986,7 +22986,14 @@ function renderEmprestimosAgenda(){
   return `<div class="card"><div class="flex-b" style="margin-bottom:16px"><div class="row10"><button class="btn btn-o btn-sm" onclick="_empAgendaMudarMes(-1)"><i class="fas fa-chevron-left"></i></button><button class="btn btn-o btn-sm" onclick="window._empAgendaMes='';loadPage('emprestimos_agenda')">Hoje</button><button class="btn btn-o btn-sm" onclick="_empAgendaMudarMes(1)"><i class="fas fa-chevron-right"></i></button><strong style="text-transform:capitalize;font-size:18px;margin-left:8px">${nomeMes}</strong></div><button class="btn btn-p" onclick="loadPage('emprestimos_novo')"><i class="fas fa-plus"></i> Nova Solicitação</button></div><div style="display:grid;grid-template-columns:repeat(7,minmax(95px,1fr));text-align:center;font-size:11px;font-weight:800;color:var(--text2)">${['DOM','SEG','TER','QUA','QUI','SEX','SÁB'].map(d=>`<div style="padding:7px">${d}</div>`).join('')}</div><div style="display:grid;grid-template-columns:repeat(7,minmax(95px,1fr))">${vazios}${dias}</div><div class="row10" style="margin-top:12px;font-size:11px"><span class="badge bp">Solicitado</span><span class="badge bs">Aprovado</span><span class="badge bw">Em uso</span></div></div>`;
 }
 
-function renderEmprestimosLista(){
+async function renderEmprestimosLista(){
+  // A lista pode receber solicitações criadas pelo APK. Atualiza somente esta
+  // tabela ao abrir a página, sem reativar o refresh periódico das OS.
+  if(_sbMode==='supabase' && _sb) await _sbCarregarUmaTabela('emprestimos_veiculos');
+  return _renderEmprestimosListaConteudo();
+}
+
+function _renderEmprestimosListaConteudo(){
   _empGarantirHistoricoCarregado();
   const fSt   = window._empFSt  || '';
   const fEq   = window._empFEq  || '';
