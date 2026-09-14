@@ -20,7 +20,8 @@ describe('privacidade de empréstimos',()=>{
   expect(data?.loans[0].requesterId).toBe('123')
   expect(data?.loans[0].status).toBe('completed')
   expect(Object.keys(data!.reservations![0]).sort()).toEqual(['end','start','vehicleId'])
-  expect(storage.removeItem).toHaveBeenCalledWith('frotamanager.mobile.snapshot.v1')
+  expect(storage.getItem).toHaveBeenCalledWith('frotamanager.mobile.snapshot.v2')
+  expect(storage.removeItem).not.toHaveBeenCalled()
  })
  it('não reapresenta cache antigo quando o servidor recusa a consulta',async()=>{
   const {runtime,rpc}=fixture()

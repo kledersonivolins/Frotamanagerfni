@@ -69,7 +69,7 @@ export function createMobileRuntime(client:SupabaseClient, storage:Pick<Storage,
   return {
     async restore(){
       // Never reuse the previous release's unscoped cache.
-      storage.removeItem('frotamanager.mobile.snapshot.v1')
+      // Leave legacy storage untouched for recovery of any unsent offline records.
       const local=cached()
       const {data}=await client.auth.getSession();if(!data.session)return null
       if(typeof navigator!=='undefined'&&!navigator.onLine){
