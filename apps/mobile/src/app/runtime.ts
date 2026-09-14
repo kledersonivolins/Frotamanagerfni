@@ -19,7 +19,7 @@ const KEY='sb_publishable_i6Gue0-k2TnW4PsHe-QnPg__EECrNbS'
 const CACHE='frotamanager.mobile.snapshot.v1'
 
 const text=(value:unknown)=>value==null?'':String(value)
-const ids=(values:string[])=>values.map(Number).filter(Number.isFinite)
+export const resolveScopedIds=(values:string[])=>{const parsed=values.map(Number).filter(Number.isFinite);return parsed.length?parsed:null}
 const loanStatus=(value:unknown):LoanStatus=>{
   const normalized=text(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replaceAll(' ','_')
   const map:Record<string,LoanStatus>={solicitado:'requested',aprovado:'approved',rejeitado:'rejected',liberado:'released',em_uso:'in_use',devolucao_pendente:'return_pending',concluido:'completed',cancelado:'cancelled'}
@@ -41,17 +41,20 @@ export function createMobileRuntime(client:SupabaseClient, storage:Pick<Storage,
     return data as EffectiveScope
   }
   async function load(granted:EffectiveScope):Promise<MobileSnapshot>{
-    const vehicleIds=ids(granted.vehicleIds),driverIds=ids(granted.driverIds)
-    const vehicleQuery=vehicleIds.length?client.from('equipamentos').select('id,placa,modelo').eq('tenant',granted.tenant).in('id',vehicleIds):Promise.resolve({data:[],error:null})
-    const driverQuery=driverIds.length?client.from('motoristas').select('id,nome').eq('tenant',granted.tenant).in('id',driverIds):Promise.resolve({data:[],error:null})
+    const vehicleIds=resolveScopedIds(granted.vehicleIds),driverIds=resolveScopedIds(granted.driverIds)
+    let vehicleQuery=client.from('equipamentos').select('id,placa,modelo').eq('tenant',granted.tenant).eq('excluido',false)
+    if(vehicleIds) vehicleQuery=vehicleQuery.in('id',vehicleIds)
+    let driverQuery=client.from('motoristas').select('id,nome').eq('tenant',granted.tenant).eq('excluido',false)
+    if(driverIds) driverQuery=driverQuery.in('id',driverIds)
     const loanQuery=client.from('emprestimos_veiculos').select('id,veiculo_id,motorista_id,setor_id,status,data_saida,hora_saida,data_prevista_retorno,hora_prevista_retorno,destino,finalidade,solicitante').eq('tenant',granted.tenant).eq('ativo',true)
-    const orderQuery=vehicleIds.length?client.from('ordens_servico').select('id,numero,equipamento_id,status,descricao,motivo,itens').eq('tenant',granted.tenant).eq('excluido',false).in('equipamento_id',vehicleIds):Promise.resolve({data:[],error:null})
+    let orderQuery=client.from('ordens_servico').select('id,numero,equipamento_id,status,descricao,motivo,itens').eq('tenant',granted.tenant).eq('excluido',false)
+    if(vehicleIds) orderQuery=orderQuery.in('equipamento_id',vehicleIds)
     const [vehicles,drivers,loans,orders]=await Promise.all([vehicleQuery,driverQuery,loanQuery,orderQuery])
     for(const result of [vehicles,drivers,loans,orders])if(result.error)throw new Error(result.error.message)
     return cache({scope:granted,
       vehicles:(vehicles.data??[]).map((x:any)=>({id:text(x.id),label:`${text(x.placa)||'Sem placa'}${x.modelo?` — ${x.modelo}`:''}`})),
       drivers:(drivers.data??[]).map((x:any)=>({id:text(x.id),label:text(x.nome)})),
-      loans:(loans.data??[]).filter((x:any)=>!vehicleIds.length||vehicleIds.includes(Number(x.veiculo_id))).map((x:any)=>({id:text(x.id),vehicleId:text(x.veiculo_id),driverId:text(x.motorista_id),requesterId:text(x.solicitante),sectorId:x.setor_id==null?null:text(x.setor_id),status:loanStatus(x.status),period:{start:dateTime(x.data_saida,x.hora_saida),end:dateTime(x.data_prevista_retorno,x.hora_prevista_retorno)},destination:text(x.destino),purpose:text(x.finalidade)})),
+      loans:(loans.data??[]).filter((x:any)=>!vehicleIds||vehicleIds.includes(Number(x.veiculo_id))).map((x:any)=>({id:text(x.id),vehicleId:text(x.veiculo_id),driverId:text(x.motorista_id),requesterId:text(x.solicitante),sectorId:x.setor_id==null?null:text(x.setor_id),status:loanStatus(x.status),period:{start:dateTime(x.data_saida,x.hora_saida),end:dateTime(x.data_prevista_retorno,x.hora_prevista_retorno)},destination:text(x.destino),purpose:text(x.finalidade)})),
       orders:(orders.data??[]).map((x:any)=>({id:text(x.numero||x.id),equipmentId:x.equipamento_id==null?null:text(x.equipamento_id),status:orderStatus(x.status),description:text(x.descricao||x.motivo||'Sem descrição'),steps:[]})),
     })
   }
