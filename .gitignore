@@ -1,5 +1,6 @@
 apps/mobile/node_modules/
 apps/mobile/dist/
+apps/mobile/*.tsbuildinfo
 apps/mobile/test-results/
 apps/mobile/playwright-report/
 apps/mobile/.env
