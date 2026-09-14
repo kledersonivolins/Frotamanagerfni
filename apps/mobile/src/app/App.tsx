@@ -1,4 +1,4 @@
-import {useState} from 'react'
+import {useEffect,useState,type FormEvent} from 'react'
 import {LoanCalendar} from '../features/loans/LoanCalendar'
 import {LoanRequestForm} from '../features/loans/LoanRequestForm'
 import {LoansHome} from '../features/loans/LoansHome'
@@ -6,12 +6,21 @@ import type {Loan} from '../features/loans/domain'
 import {WorkOrdersHome} from '../features/work-orders/WorkOrdersHome'
 import type {WorkOrder} from '../features/work-orders/domain'
 import './app.css'
+import {liveRuntime,type MobileRuntime,type MobileSnapshot} from './runtime'
 type Page='home'|'loans'|'loan-new'|'calendar'|'orders'
-export function App(){const[page,setPage]=useState<Page>('home');const[loans]=useState<Loan[]>([]);const[orders]=useState<WorkOrder[]>([]);const online=typeof navigator==='undefined'||navigator.onLine
- let content=<section><h2>Olá</h2><p>Escolha um módulo para trabalhar. Os dados pendentes permanecem no aparelho até a sincronização.</p><div className="cards"><button className="item button-item" onClick={()=>setPage('loans')}><strong>Empréstimos</strong><span>Solicitar, aprovar, checklist e acompanhar reservas</span></button><button className="item button-item" onClick={()=>setPage('orders')}><strong>Ordens de Serviço</strong><span>Executar tarefas, registrar horários e evidências</span></button></div></section>
+export function App({runtime=liveRuntime}:{runtime?:MobileRuntime}){const[page,setPage]=useState<Page>('home');const[snapshot,setSnapshot]=useState<MobileSnapshot|null>(null);const[booting,setBooting]=useState(true);const[error,setError]=useState('');const online=typeof navigator==='undefined'||navigator.onLine
+ useEffect(()=>{runtime.restore().then(setSnapshot).catch(e=>setError(e instanceof Error?e.message:'Falha ao abrir')).finally(()=>setBooting(false))},[runtime])
+ useEffect(()=>{if(!snapshot)return;const reconnect=()=>runtime.refresh().then(setSnapshot).catch(()=>undefined);window.addEventListener('online',reconnect);return()=>window.removeEventListener('online',reconnect)},[runtime,snapshot])
+ if(booting)return <div className="login-page"><div className="login-card"><h1>FrotaManager</h1><p>Carregando dados do aparelho…</p></div></div>
+ if(!snapshot)return <Login error={error} onLogin={async(email,password)=>{setError('');setBooting(true);try{setSnapshot(await runtime.login(email,password))}catch(e){setError(e instanceof Error?e.message:'Falha no login')}finally{setBooting(false)}}}/>
+ const loans:Loan[]=snapshot.loans;const orders:WorkOrder[]=snapshot.orders
+ const canLoans=snapshot.scope.permissions.includes('loan.view');const canOrders=snapshot.scope.permissions.includes('work_order.view')
+ let content=<section><h2>Olá</h2><p>Escolha um módulo para trabalhar. Os dados disponíveis respeitam os acessos definidos no site.</p><div className="cards">{canLoans&&<button className="item button-item" onClick={()=>setPage('loans')}><strong>Empréstimos</strong><span>Solicitar, aprovar, checklist e acompanhar reservas</span></button>}{canOrders&&<button className="item button-item" onClick={()=>setPage('orders')}><strong>Ordens de Serviço</strong><span>Executar tarefas, registrar horários e evidências</span></button>}{!canLoans&&!canOrders&&<div className="empty">Nenhum módulo móvel foi liberado para este usuário.</div>}</div></section>
  if(page==='loans')content=<LoansHome loans={loans} onNew={()=>setPage('loan-new')} onCalendar={()=>setPage('calendar')}/>
- if(page==='loan-new')content=<LoanRequestForm online={online} vehicles={[]} drivers={[]} onSubmit={async()=>undefined}/>
+ if(page==='loan-new')content=<LoanRequestForm online={online} vehicles={snapshot.vehicles} drivers={snapshot.drivers} onSubmit={async values=>{await runtime.requestLoan(values as any);setSnapshot(await runtime.restore()??snapshot);setPage('loans')}}/>
  if(page==='calendar')content=<LoanCalendar loans={loans} online={online}/>
  if(page==='orders')content=<WorkOrdersHome orders={orders} onOpen={()=>undefined}/>
- return <div className="app"><header className="top"><div><h1>FrotaManager</h1><span>Operação móvel</span></div><span className={online?'online':'offline'}>{online?'● Online':'● Offline'}</span></header><main>{content}</main><nav className="bottom" aria-label="Navegação principal"><button className={page==='home'?'active':''} onClick={()=>setPage('home')}>Início</button><button className={page.startsWith('loan')||page==='calendar'?'active':''} onClick={()=>setPage('loans')}>Empréstimos</button><button className={page==='orders'?'active':''} onClick={()=>setPage('orders')}>Ordens de Serviço</button></nav></div>
+ return <div className="app"><header className="top"><div><h1>FrotaManager</h1><span>Operação móvel</span></div><div className="top-actions"><button aria-label="Sincronizar" onClick={async()=>setSnapshot(await runtime.refresh())}>↻</button><span className={online?'online':'offline'}>{online?'● Online':'● Offline'}</span></div></header><main>{content}</main><nav className="bottom" aria-label="Navegação principal"><button className={page==='home'?'active':''} onClick={()=>setPage('home')}>Início</button>{canLoans&&<button className={page.startsWith('loan')||page==='calendar'?'active':''} onClick={()=>setPage('loans')}>Empréstimos</button>}{canOrders&&<button className={page==='orders'?'active':''} onClick={()=>setPage('orders')}>Ordens de Serviço</button>}</nav></div>
 }
+
+function Login({error,onLogin}:{error:string;onLogin:(email:string,password:string)=>Promise<void>}){const[email,setEmail]=useState('');const[password,setPassword]=useState('');async function submit(e:FormEvent){e.preventDefault();await onLogin(email,password)}return <div className="login-page"><form className="login-card" onSubmit={submit}><div className="brand-mark">FM</div><h1>Entrar no FrotaManager</h1><p>Use o mesmo usuário e senha cadastrados no sistema.</p><label>E-mail<input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoCapitalize="none" required/></label><label>Senha<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>{error&&<div className="notice error">{error}</div>}<button className="primary" type="submit">Entrar</button><small>O primeiro acesso precisa de internet.</small></form></div>}

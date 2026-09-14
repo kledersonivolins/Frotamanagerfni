@@ -1,15 +1,32 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
-import { App } from './App'
+import {fireEvent, render, screen, waitFor} from '@testing-library/react'
+import {describe, expect, it} from 'vitest'
+import {App} from './App'
+import type {MobileRuntime, MobileSnapshot} from './runtime'
+
+const snapshot: MobileSnapshot = {
+  scope: {tenant:'oficinafni',userId:'u1',companyIds:['1'],sectorIds:['2'],vehicleIds:['10'],driverIds:['20'],permissions:['mobile.access','loan.view','loan.request','work_order.view'],validatedAt:'2026-09-14T10:00:00Z',expiresAt:'2026-09-21T10:00:00Z'},
+  vehicles:[{id:'10',label:'ABC1D23 — Strada'}], drivers:[{id:'20',label:'Maria'}],
+  loans:[], orders:[{id:'30',equipmentId:'10',status:'open',description:'Trocar óleo',steps:[]}],
+}
+
+function runtime(): MobileRuntime {
+  return {restore:async()=>null,login:async()=>snapshot,logout:async()=>undefined,refresh:async()=>snapshot,requestLoan:async()=>undefined}
+}
 
 describe('App', () => {
-  it('renders the FrotaManager mobile shell', () => {
-    render(<App />)
-    expect(screen.getByRole('heading', { name: 'FrotaManager' })).toBeInTheDocument()
+  it('exige login antes de abrir os módulos', async () => {
+    render(<App runtime={runtime()} />)
+    expect(await screen.findByRole('heading',{name:'Entrar no FrotaManager'})).toBeVisible()
+    expect(screen.queryByRole('button',{name:'Empréstimos'})).not.toBeInTheDocument()
   })
-  it('oferece navegação para empréstimos e ordens de serviço', () => {
-    render(<App />)
-    expect(screen.getByRole('button', { name: 'Empréstimos' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Ordens de Serviço' })).toBeVisible()
+
+  it('carrega o escopo e os dados reais depois do login', async () => {
+    render(<App runtime={runtime()} />)
+    fireEvent.change(await screen.findByLabelText('E-mail'),{target:{value:'usuario@empresa.com.br'}})
+    fireEvent.change(screen.getByLabelText('Senha'),{target:{value:'segredo'}})
+    fireEvent.click(screen.getByRole('button',{name:'Entrar'}))
+    await waitFor(()=>expect(screen.getByRole('button',{name:'Ordens de Serviço'})).toBeVisible())
+    fireEvent.click(screen.getByRole('button',{name:'Ordens de Serviço'}))
+    expect(await screen.findByText('Trocar óleo')).toBeVisible()
   })
 })

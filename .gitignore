@@ -6,3 +6,4 @@ apps/mobile/playwright-report/
 apps/mobile/.env
 apps/mobile/.env.*
 !apps/mobile/.env.example
+outputs/
