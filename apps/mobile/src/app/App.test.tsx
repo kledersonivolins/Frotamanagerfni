@@ -14,6 +14,14 @@ function runtime(): MobileRuntime {
 }
 
 describe('App', () => {
+  it('mostra calendário na navegação para quem só pode solicitar',async()=>{
+    const r=runtime()
+    r.restore=async()=>({...snapshot,scope:{...snapshot.scope,permissions:['mobile.access','loan.request']}})
+    render(<App runtime={r}/>)
+    fireEvent.click(await screen.findByRole('button',{name:'Calendário'}))
+    expect(screen.getByRole('heading',{name:'Calendário de disponibilidade'})).toBeVisible()
+    expect(screen.getByRole('button',{name:'Próximo mês'})).toBeVisible()
+  })
   it('exige login antes de abrir os módulos', async () => {
     render(<App runtime={runtime()} />)
     expect(await screen.findByRole('heading',{name:'Entrar no FrotaManager'})).toBeVisible()

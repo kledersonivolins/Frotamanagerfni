@@ -5,7 +5,8 @@ import type {WorkOrder, WorkOrderStatus} from '../features/work-orders/domain'
 
 export interface Option {id:string;label:string}
 export interface LoanInput {vehicleId:string;driverId:string;start:string;end:string;destination:string;purpose:string}
-export interface MobileSnapshot {scope:EffectiveScope;vehicles:Option[];drivers:Option[];loans:Loan[];orders:WorkOrder[]}
+export interface Reservation {vehicleId:string;start:string;end:string}
+export interface MobileSnapshot {scope:EffectiveScope;vehicles:Option[];drivers:Option[];loans:Loan[];orders:WorkOrder[];reservations?:Reservation[]}
 export interface MobileRuntime {
   restore():Promise<MobileSnapshot|null>
   login(email:string,password:string):Promise<MobileSnapshot>
@@ -16,13 +17,13 @@ export interface MobileRuntime {
 
 const URL='https://gocdyfhzqezpqyebixid.supabase.co'
 const KEY='sb_publishable_i6Gue0-k2TnW4PsHe-QnPg__EECrNbS'
-const CACHE='frotamanager.mobile.snapshot.v1'
+const CACHE='frotamanager.mobile.snapshot.v2'
 
 const text=(value:unknown)=>value==null?'':String(value)
 export const resolveScopedIds=(values:string[])=>{const parsed=values.map(Number).filter(Number.isFinite);return parsed.length?parsed:null}
 const loanStatus=(value:unknown):LoanStatus=>{
   const normalized=text(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replaceAll(' ','_')
-  const map:Record<string,LoanStatus>={solicitado:'requested',aprovado:'approved',rejeitado:'rejected',liberado:'released',em_uso:'in_use',devolucao_pendente:'return_pending',concluido:'completed',cancelado:'cancelled'}
+  const map:Record<string,LoanStatus>={solicitado:'requested',aprovado:'approved',rejeitado:'rejected',liberado:'released',em_uso:'in_use',devolucao_pendente:'return_pending',finalizado:'completed',concluido:'completed',cancelado:'cancelled'}
   return map[normalized]??'requested'
 }
 const orderStatus=(value:unknown):WorkOrderStatus=>{
@@ -50,23 +51,32 @@ export function createMobileRuntime(client:SupabaseClient, storage:Pick<Storage,
     if(vehicleIds) vehicleQuery=vehicleQuery.in('id',vehicleIds)
     let driverQuery=client.from('motoristas').select('id,nome').eq('tenant',granted.tenant)
     if(driverIds!==null) driverQuery=driverQuery.in('id',driverIds)
-    const loanQuery=client.from('emprestimos_veiculos').select('id,veiculo_id,motorista_id,setor_id,status,data_saida,hora_saida,data_prevista_retorno,hora_prevista_retorno,destino,finalidade,solicitante').eq('tenant',granted.tenant).eq('ativo',true)
+    const hasLoans=granted.permissions.some(p=>p.startsWith('loan.'))
+    const loanQuery=hasLoans ? client.rpc('get_mobile_loans') : Promise.resolve({data:{loans:[],reservations:[]},error:null})
     let orderQuery=client.from('ordens_servico').select('id,numero,equipamento_id,status,descricao,motivo,itens').eq('tenant',granted.tenant)
     if(vehicleIds) orderQuery=orderQuery.in('equipamento_id',vehicleIds)
-    const [vehicles,drivers,loans,orders]=await Promise.all([vehicleQuery,driverQuery,loanQuery,orderQuery])
+    const hasOrders=granted.permissions.some(p=>p.startsWith('work_order.'))
+    const [vehicles,drivers,loans,orders]=await Promise.all([vehicleQuery,driverQuery,loanQuery,hasOrders?orderQuery:Promise.resolve({data:[],error:null})])
     for(const result of [vehicles,drivers,loans,orders])if(result.error)throw new Error(result.error.message)
     return cache({scope:granted,
       vehicles:(vehicles.data??[]).map((x:any)=>({id:text(x.id),label:`${text(x.placa)||'Sem placa'}${x.modelo?` — ${x.modelo}`:''}`})),
       drivers:(drivers.data??[]).map((x:any)=>({id:text(x.id),label:text(x.nome)})),
-      loans:(loans.data??[]).filter((x:any)=>!vehicleIds||vehicleIds.includes(Number(x.veiculo_id))).map((x:any)=>({id:text(x.id),vehicleId:text(x.veiculo_id),driverId:text(x.motorista_id),requesterId:text(x.solicitante),sectorId:x.setor_id==null?null:text(x.setor_id),status:loanStatus(x.status),period:{start:dateTime(x.data_saida,x.hora_saida),end:dateTime(x.data_prevista_retorno,x.hora_prevista_retorno)},destination:text(x.destino),purpose:text(x.finalidade)})),
+      reservations:loans.data?.reservations??[],
+      loans:(loans.data?.loans??[]).map((x:any)=>({id:text(x.id),vehicleId:text(x.veiculo_id),driverId:text(x.motorista_id),requesterId:text(x.solicitante_usuario_id),sectorId:x.setor_id==null?null:text(x.setor_id),status:loanStatus(x.status),period:{start:dateTime(x.data_saida,x.hora_saida),end:dateTime(x.data_prevista_retorno,x.hora_prevista_retorno)},destination:text(x.destino),purpose:text(x.finalidade)})),
       orders:(orders.data??[]).map((x:any)=>({id:text(x.numero||x.id),equipmentId:x.equipamento_id==null?null:text(x.equipamento_id),status:orderStatus(x.status),description:text(x.descricao||x.motivo||'Sem descrição'),steps:[]})),
     })
   }
   return {
     async restore(){
-      const local=cached();if(typeof navigator!=='undefined'&&!navigator.onLine)return local
+      // Never reuse the previous release's unscoped cache.
+      storage.removeItem('frotamanager.mobile.snapshot.v1')
+      const local=cached()
       const {data}=await client.auth.getSession();if(!data.session)return null
-      try{return await load(await scope())}catch(error){if(local&&Date.parse(local.scope.expiresAt)>Date.now())return local;throw error}
+      if(typeof navigator!=='undefined'&&!navigator.onLine){
+        if(local?.scope.userId===data.session.user.id && Date.parse(local.scope.expiresAt)>Date.now())return cache(local)
+        return null
+      }
+      return load(await scope())
     },
     async login(email,password){const {data,error}=await client.auth.signInWithPassword({email:email.trim().toLowerCase(),password});if(error||!data.session)throw new Error(error?.message??'Falha no login');return load(await scope())},
     async logout(){await client.auth.signOut();current=null;storage.removeItem(CACHE)},
