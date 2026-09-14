@@ -13,8 +13,8 @@ describe('Supabase auth gateway', () => {
       },
       rpc: async () => ({
         data: {
-          tenant: 'oficinafni', user_id: 'user-1', company_ids: ['company-1'],
-          sector_ids: ['sector-1'], vehicle_ids: ['vehicle-1'], driver_ids: ['driver-1'],
+          tenant: 'oficinafni', userId: 'user-1', companyIds: ['company-1'],
+          sectorIds: ['sector-1'], vehicleIds: ['vehicle-1'], driverIds: ['driver-1'],
           permissions: ['mobile.access'],
         },
         error: null,

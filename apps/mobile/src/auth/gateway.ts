@@ -5,11 +5,11 @@ import type { AuthGateway } from './session'
 
 const scopeSchema = z.object({
   tenant: z.string().min(1),
-  user_id: z.string().min(1),
-  company_ids: z.array(z.string()),
-  sector_ids: z.array(z.string()),
-  vehicle_ids: z.array(z.string()),
-  driver_ids: z.array(z.string()),
+  userId: z.string().min(1),
+  companyIds: z.array(z.string()),
+  sectorIds: z.array(z.string()),
+  vehicleIds: z.array(z.string()),
+  driverIds: z.array(z.string()),
   permissions: z.array(z.string()),
 })
 
@@ -31,11 +31,11 @@ export function createSupabaseAuthGateway(client: SupabaseClient): AuthGateway {
       const scope = scopeSchema.parse(data)
       return {
         tenant: scope.tenant,
-        userId: scope.user_id,
-        companyIds: scope.company_ids,
-        sectorIds: scope.sector_ids,
-        vehicleIds: scope.vehicle_ids,
-        driverIds: scope.driver_ids,
+        userId: scope.userId,
+        companyIds: scope.companyIds,
+        sectorIds: scope.sectorIds,
+        vehicleIds: scope.vehicleIds,
+        driverIds: scope.driverIds,
         permissions: scope.permissions,
       }
     },

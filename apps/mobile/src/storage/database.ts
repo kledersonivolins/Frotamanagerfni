@@ -3,7 +3,7 @@ import {
   SQLiteConnection,
   type SQLiteDBConnection,
 } from '@capacitor-community/sqlite'
-import type { SyncOperation } from '../domain/contracts'
+import type { ChangeRecord, SyncOperation } from '../domain/contracts'
 
 export type EntityTable =
   | 'reference_records'
@@ -25,6 +25,11 @@ export interface MobileDatabase {
   readMetadata(key: string): Promise<string | null>
   writeMetadata(key: string, value: string): Promise<void>
   deleteMetadata(key: string): Promise<void>
+  markOperationSynced(operationId: string): Promise<void>
+  markOperationAttention(operationId: string, code: string, message?: string): Promise<void>
+  markOperationRetry(operationId: string, message: string): Promise<void>
+  applyChangesAndCursor(changes: ChangeRecord[], cursor: string): Promise<void>
+  countOperations(state: 'pending' | 'attention'): Promise<number>
 }
 
 const DATABASE_NAME = 'frotamanager_mobile'
@@ -195,6 +200,64 @@ class SqliteMobileDatabase implements MobileDatabase {
   async deleteMetadata(key: string): Promise<void> {
     await this.connection.run('DELETE FROM metadata WHERE key = ?', [key], true)
   }
+
+  async markOperationSynced(operationId: string): Promise<void> {
+    await this.connection.run("UPDATE outbox SET state = 'synced', last_error = NULL WHERE operation_id = ?", [operationId], true)
+  }
+
+  async markOperationAttention(operationId: string, code: string, message?: string): Promise<void> {
+    await this.connection.beginTransaction()
+    try {
+      await this.connection.run("UPDATE outbox SET state = 'attention', last_error = ? WHERE operation_id = ?", [message ?? code, operationId], false)
+      await this.connection.run(
+        `INSERT INTO conflicts(operation_id, code, message, created_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT(operation_id) DO UPDATE SET code=excluded.code, message=excluded.message`,
+        [operationId, code, message ?? null, new Date().toISOString()], false,
+      )
+      await this.connection.commitTransaction()
+    } catch (error) {
+      await this.connection.rollbackTransaction()
+      throw error
+    }
+  }
+
+  async markOperationRetry(operationId: string, message: string): Promise<void> {
+    await this.connection.run(
+      "UPDATE outbox SET state = 'pending', attempts = attempts + 1, last_error = ? WHERE operation_id = ?",
+      [message, operationId], true,
+    )
+  }
+
+  async applyChangesAndCursor(changes: ChangeRecord[], cursor: string): Promise<void> {
+    await this.connection.beginTransaction()
+    try {
+      const tx = new SqliteMobileTransaction(this.connection)
+      for (const change of changes) {
+        const table = entityTable(change.entityType)
+        await tx.upsert(table, change.entityId, { ...change.payload, serverVersion: change.serverVersion, deleted: change.deleted })
+      }
+      await this.connection.run(
+        `INSERT INTO metadata(key,value) VALUES ('sync_cursor',?)
+         ON CONFLICT(key) DO UPDATE SET value=excluded.value`, [cursor], false,
+      )
+      await this.connection.commitTransaction()
+    } catch (error) {
+      await this.connection.rollbackTransaction()
+      throw error
+    }
+  }
+
+  async countOperations(state: 'pending' | 'attention'): Promise<number> {
+    const result = await this.connection.query('SELECT count(*) AS total FROM outbox WHERE state = ?', [state])
+    return Number(result.values?.[0]?.total ?? 0)
+  }
+}
+
+function entityTable(entityType: SyncOperation['entityType']): EntityTable {
+  return ({
+    loan: 'loans', loan_checklist: 'loan_checklists', work_order: 'work_orders',
+    work_order_entry: 'work_order_entries', attachment: 'attachments',
+  } as const)[entityType]
 }
 
 class SqliteMobileTransaction implements MobileTransaction {

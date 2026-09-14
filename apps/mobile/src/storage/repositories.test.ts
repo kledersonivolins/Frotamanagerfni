@@ -54,6 +54,11 @@ class MemoryDatabase implements MobileDatabase {
   async readMetadata(key: string) { return this.metadata.get(key) ?? null }
   async writeMetadata(key: string, value: string) { this.metadata.set(key, value) }
   async deleteMetadata(key: string) { this.metadata.delete(key) }
+  async markOperationSynced(operationId: string) { this.outbox.delete(operationId) }
+  async markOperationAttention(operationId: string) { this.outbox.delete(operationId) }
+  async markOperationRetry() { return undefined }
+  async applyChangesAndCursor() { return undefined }
+  async countOperations() { return this.outbox.size }
 
   entity(table: EntityTable, id: string) {
     return this.entities.get(`${table}:${id}`)
