@@ -6,7 +6,7 @@
 
 **Architecture:** A React/TypeScript application in `apps/mobile` runs inside Capacitor and writes first to SQLite. A durable outbox sends authenticated operations to a Supabase Edge Function, which invokes transactional Postgres routines and returns accepted, duplicate, rejected, or conflict results.
 
-**Tech Stack:** Node.js 22.12+, React 19.3.0, TypeScript 7.0.2, Vite 8.3.0, Capacitor 8.5.2, Capacitor Community SQLite 8.1.1, Supabase JS 2.116.0, Zod 4.6.5, Vitest 5.0.0, Playwright 1.63.0.
+**Tech Stack:** Node.js 22.12+, React 19.3.0, TypeScript 7.0.2, Vite 8.3.0, Capacitor 8.5.2, Capacitor Community SQLite 8.1.1, Supabase JS 2.116.0, Supabase CLI 2.117.0, Zod 4.6.5, Vitest 5.0.0, Playwright 1.63.0.
 
 **Spec:** `docs/superpowers/specs/2026-09-14-aplicativo-movel-offline-design.md`
 
@@ -38,7 +38,7 @@
 - `apps/mobile/src/sync/client.ts`: push/pull orchestration and retry policy.
 - `apps/mobile/src/sync/SyncProvider.tsx`: lifecycle/network triggers and visible state.
 - `apps/mobile/src/features/sync/SyncScreen.tsx`: pending/conflict recovery UI.
-- `supabase/migrations/202609140001_mobile_sync_foundation.sql`: devices, operations, audit, RLS, RPC.
+- `supabase/migrations/20260914121956_mobile_sync_foundation.sql`: devices, operations, audit, RLS, RPC.
 - `supabase/functions/mobile-sync/index.ts`: authenticated batch endpoint.
 - `supabase/tests/mobile_sync_rls.sql`: allow/deny database tests.
 
@@ -323,7 +323,7 @@ git commit -m "feat(mobile): adicionar sessao offline segura"
 ### Task 5: Add Supabase Sync Schema, RLS, and Transactional RPC
 
 **Files:**
-- Create: `supabase/migrations/202609140001_mobile_sync_foundation.sql`
+- Create: `supabase/migrations/20260914121956_mobile_sync_foundation.sql`
 - Create: `supabase/tests/mobile_sync_rls.sql`
 
 **Interfaces:**
@@ -359,7 +359,7 @@ Expected: PASS for all allow and deny assertions.
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add supabase/migrations/202609140001_mobile_sync_foundation.sql supabase/tests/mobile_sync_rls.sql
+git add supabase/migrations/20260914121956_mobile_sync_foundation.sql supabase/tests/mobile_sync_rls.sql
 git commit -m "feat(supabase): criar fundacao de sincronizacao mobile"
 ```
 
