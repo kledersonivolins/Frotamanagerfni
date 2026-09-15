@@ -48,11 +48,11 @@ describe('App', () => {
   it('permite ao aprovador aprovar e depois liberar a solicitação do setor',async()=>{
     const permissions=['mobile.access','loan.view','loan.approve','loan.release']
     const approve=async()=>({...snapshot,loans:[{...loan,status:'approved' as const}],scope:{...snapshot.scope,permissions}})
-    const loan:Loan={id:'99',vehicleId:'10',driverId:'20',requesterId:'30',sectorId:'2',status:'requested',period:{start:'2026-09-15T14:00',end:'2026-09-15T17:00'},destination:'Obra',purpose:'Serviço'}
+    const loan:Loan={id:'99',vehicleId:'10',driverId:'20',requesterId:'30',sectorId:'2',status:'requested',period:{start:'2026-09-15T14:00',end:'2026-09-15T17:00'},destination:'Obra',purpose:'Serviço',checklistRequired:true,checklistDone:false}
     const r=runtime();r.restore=async()=>({...snapshot,loans:[loan],scope:{...snapshot.scope,permissions}});r.transitionLoan=async(_id,action)=>action==='approve'?approve():snapshot
     render(<App runtime={r}/>)
     fireEvent.click(await screen.findByRole('button',{name:'Empréstimos'}))
     fireEvent.click(await screen.findByRole('button',{name:'Aprovar solicitação'}))
-    expect(await screen.findByRole('button',{name:'Liberar veículo'})).toBeVisible()
+    expect(await screen.findByRole('button',{name:'Liberar veículo'})).toBeEnabled()
   })
 })
