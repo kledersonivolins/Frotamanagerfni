@@ -1,6 +1,6 @@
 export type LoanStatus = 'draft'|'pending_sync'|'availability_pending'|'requested'|'approved'|'rejected'|'released'|'in_use'|'return_pending'|'completed'|'cancelled'
 export interface LoanPeriod { start: string; end: string }
-export interface Loan { id:string; vehicleId:string; driverId:string; requesterId:string; sectorId:string|null; status:LoanStatus; period:LoanPeriod; destination:string; purpose:string; checklistDone?:boolean }
+export interface Loan { id:string; vehicleId:string; driverId:string; requesterId:string; sectorId:string|null; status:LoanStatus; period:LoanPeriod; destination:string; purpose:string; checklistDone?:boolean; checklistRequired?:boolean }
 
 export const periodsOverlap = (a:LoanPeriod,b:LoanPeriod) => Date.parse(a.start)<Date.parse(b.end) && Date.parse(b.start)<Date.parse(a.end)
 export const isProvisional = (status:LoanStatus) => ['pending_sync','availability_pending'].includes(status)

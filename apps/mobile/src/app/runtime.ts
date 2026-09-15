@@ -6,18 +6,19 @@ import type {WorkOrder, WorkOrderStatus} from '../features/work-orders/domain'
 export interface Option {id:string;label:string}
 export interface LoanInput {vehicleId:string;driverId:string;start:string;end:string;destination:string;purpose:string}
 export interface Reservation {vehicleId:string;start:string;end:string}
-export interface MobileSnapshot {scope:EffectiveScope;vehicles:Option[];drivers:Option[];loans:Loan[];orders:WorkOrder[];reservations?:Reservation[]}
+export interface MobileSnapshot {scope:EffectiveScope;vehicles:Option[];calendarVehicles?:Option[];drivers:Option[];loans:Loan[];orders:WorkOrder[];reservations?:Reservation[]}
 export interface MobileRuntime {
   restore():Promise<MobileSnapshot|null>
   login(email:string,password:string):Promise<MobileSnapshot>
   logout():Promise<void>
   refresh():Promise<MobileSnapshot>
   requestLoan(input:LoanInput):Promise<void>
+  transitionLoan(id:string,action:'approve'|'release'):Promise<MobileSnapshot>
 }
 
 const URL='https://gocdyfhzqezpqyebixid.supabase.co'
 const KEY='sb_publishable_i6Gue0-k2TnW4PsHe-QnPg__EECrNbS'
-const CACHE='frotamanager.mobile.snapshot.v2'
+const CACHE='frotamanager.mobile.snapshot.v3'
 
 const text=(value:unknown)=>value==null?'':String(value)
 export const resolveScopedIds=(values:string[])=>{const parsed=values.map(Number).filter(Number.isFinite);return parsed.length?parsed:null}
@@ -58,11 +59,15 @@ export function createMobileRuntime(client:SupabaseClient, storage:Pick<Storage,
     const hasOrders=granted.permissions.some(p=>p.startsWith('work_order.'))
     const [vehicles,drivers,loans,orders]=await Promise.all([vehicleQuery,driverQuery,loanQuery,hasOrders?orderQuery:Promise.resolve({data:[],error:null})])
     for(const result of [vehicles,drivers,loans,orders])if(result.error)throw new Error(result.error.message)
+    const vehicleOption=(x:any)=>({id:text(x.id),label:`${text(x.placa)||'Sem placa'}${x.modelo?` — ${x.modelo}`:''}`})
+    const requestVehicles=(vehicles.data??[]).map(vehicleOption)
+    const calendarVehicles=(loans.data?.calendarVehicles??vehicles.data??[]).map(vehicleOption)
     return cache({scope:granted,
-      vehicles:(vehicles.data??[]).map((x:any)=>({id:text(x.id),label:`${text(x.placa)||'Sem placa'}${x.modelo?` — ${x.modelo}`:''}`})),
+      vehicles:requestVehicles,
+      calendarVehicles,
       drivers:(drivers.data??[]).map((x:any)=>({id:text(x.id),label:text(x.nome)})),
       reservations:loans.data?.reservations??[],
-      loans:(loans.data?.loans??[]).map((x:any)=>({id:text(x.id),vehicleId:text(x.veiculo_id),driverId:text(x.motorista_id),requesterId:text(x.solicitante_usuario_id),sectorId:x.setor_id==null?null:text(x.setor_id),status:loanStatus(x.status),period:{start:dateTime(x.data_saida,x.hora_saida),end:dateTime(x.data_prevista_retorno,x.hora_prevista_retorno)},destination:text(x.destino),purpose:text(x.finalidade)})),
+      loans:(loans.data?.loans??[]).map((x:any)=>({id:text(x.id),vehicleId:text(x.veiculo_id),driverId:text(x.motorista_id),requesterId:text(x.solicitante_usuario_id),sectorId:x.setor_id==null?null:text(x.setor_id),status:loanStatus(x.status),period:{start:dateTime(x.data_saida,x.hora_saida),end:dateTime(x.data_prevista_retorno,x.hora_prevista_retorno)},destination:text(x.destino),purpose:text(x.finalidade),checklistRequired:!!x.checklist_saida_obrigatorio,checklistDone:['concluido','concluida','finalizado','finalizada','aprovado','aprovada'].includes(text(x.checklist_saida_status).toLowerCase())})),
       orders:(orders.data??[]).map((x:any)=>({id:text(x.numero||x.id),equipmentId:x.equipamento_id==null?null:text(x.equipamento_id),status:orderStatus(x.status),description:text(x.descricao||x.motivo||'Sem descrição'),steps:[]})),
     })
   }
@@ -90,6 +95,13 @@ export function createMobileRuntime(client:SupabaseClient, storage:Pick<Storage,
       if(!profile?.id) throw new Error('Perfil do solicitante não encontrado')
       const {error}=await client.from('emprestimos_veiculos').insert({id:Date.now(),tenant:current.scope.tenant,veiculo_id:Number(input.vehicleId),veiculo_placa:vehicle?.label.split(' — ')[0]??'',motorista_id:Number(input.driverId),motorista_nome:driver?.label??'',solicitante:'Aplicativo móvel',solicitante_usuario_id:Number(profile.id),finalidade:input.purpose,destino:input.destination,data_solicitacao:new Date().toISOString().slice(0,10),data_saida:input.start.slice(0,10),hora_saida:input.start.slice(11,16),data_prevista_retorno:input.end.slice(0,10),hora_prevista_retorno:input.end.slice(11,16),status:'Solicitado',setor_id:current.scope.sectorIds[0]?Number(current.scope.sectorIds[0]):null,ativo:true})
       if(error)throw new Error(error.message);await load(current.scope)
+    },
+    async transitionLoan(id,action){
+      if(!current)throw new Error('Sessão não carregada')
+      if(typeof navigator!=='undefined'&&!navigator.onLine)throw new Error('Conecte-se à internet para aprovar ou liberar o veículo')
+      const {error}=await client.rpc('transition_mobile_loan',{p_loan_id:Number(id),p_action:action})
+      if(error)throw new Error(error.message)
+      return load(current.scope)
     },
   }
 }

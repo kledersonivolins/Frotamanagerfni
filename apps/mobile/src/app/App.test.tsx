@@ -2,6 +2,7 @@ import {fireEvent, render, screen, waitFor} from '@testing-library/react'
 import {describe, expect, it} from 'vitest'
 import {App} from './App'
 import type {MobileRuntime, MobileSnapshot} from './runtime'
+import type {Loan} from '../features/loans/domain'
 
 const snapshot: MobileSnapshot = {
   scope: {tenant:'oficinafni',userId:'u1',companyIds:['1'],sectorIds:['2'],vehicleIds:['10'],driverIds:['20'],permissions:['mobile.access','loan.view','loan.request','work_order.view'],validatedAt:'2026-09-14T10:00:00Z',expiresAt:'2026-09-21T10:00:00Z'},
@@ -10,7 +11,7 @@ const snapshot: MobileSnapshot = {
 }
 
 function runtime(): MobileRuntime {
-  return {restore:async()=>null,login:async()=>snapshot,logout:async()=>undefined,refresh:async()=>snapshot,requestLoan:async()=>undefined}
+  return {restore:async()=>null,login:async()=>snapshot,logout:async()=>undefined,refresh:async()=>snapshot,requestLoan:async()=>undefined,transitionLoan:async()=>snapshot}
 }
 
 describe('App', () => {
@@ -42,5 +43,16 @@ describe('App', () => {
     const r=runtime();r.restore=async()=>snapshot
     render(<App runtime={r}/>)
     expect(await screen.findByRole('button',{name:'Sair do aplicativo'})).toBeVisible()
+  })
+
+  it('permite ao aprovador aprovar e depois liberar a solicitação do setor',async()=>{
+    const permissions=['mobile.access','loan.view','loan.approve','loan.release']
+    const approve=async()=>({...snapshot,loans:[{...loan,status:'approved' as const}],scope:{...snapshot.scope,permissions}})
+    const loan:Loan={id:'99',vehicleId:'10',driverId:'20',requesterId:'30',sectorId:'2',status:'requested',period:{start:'2026-09-15T14:00',end:'2026-09-15T17:00'},destination:'Obra',purpose:'Serviço'}
+    const r=runtime();r.restore=async()=>({...snapshot,loans:[loan],scope:{...snapshot.scope,permissions}});r.transitionLoan=async(_id,action)=>action==='approve'?approve():snapshot
+    render(<App runtime={r}/>)
+    fireEvent.click(await screen.findByRole('button',{name:'Empréstimos'}))
+    fireEvent.click(await screen.findByRole('button',{name:'Aprovar solicitação'}))
+    expect(await screen.findByRole('button',{name:'Liberar veículo'})).toBeVisible()
   })
 })
