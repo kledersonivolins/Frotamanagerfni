@@ -1,5 +1,5 @@
 import {act, fireEvent, render, screen, waitFor} from '@testing-library/react'
-import {describe, expect, it} from 'vitest'
+import {describe, expect, it, vi} from 'vitest'
 import {App} from './App'
 import type {MobileRuntime, MobileSnapshot} from './runtime'
 import type {Loan} from '../features/loans/domain'
@@ -64,5 +64,18 @@ describe('App', () => {
     const approved:Loan={id:'99',vehicleId:'10',driverId:'20',requesterId:'30',sectorId:'2',status:'approved',period:{start:'2026-09-15T14:00',end:'2026-09-15T17:00'},destination:'Obra',purpose:'Serviço'}
     act(()=>listener?.({...snapshot,loans:[approved],scope:{...snapshot.scope,permissions:['mobile.access','loan.release']}}))
     expect(await screen.findByRole('button',{name:'Registrar saída / liberar'})).toBeEnabled()
+  })
+
+  it('permite ao coordenador recusar uma solicitação informando o motivo',async()=>{
+    const loan:Loan={id:'99',vehicleId:'10',driverId:'20',requesterId:'30',sectorId:'2',status:'requested',period:{start:'2026-09-15T14:00',end:'2026-09-15T17:00'},destination:'Obra',purpose:'Serviço'}
+    const r=runtime();r.restore=async()=>({...snapshot,loans:[loan],scope:{...snapshot.scope,permissions:['mobile.access','loan.view','loan.approve']}})
+    r.transitionLoan=vi.fn(async()=>({...snapshot,loans:[{...loan,status:'rejected' as const}],scope:{...snapshot.scope,permissions:['mobile.access','loan.view','loan.approve']}}))
+    render(<App runtime={r}/>)
+    fireEvent.click(await screen.findByRole('button',{name:'Empréstimos'}))
+    fireEvent.click(await screen.findByRole('button',{name:'Recusar solicitação'}))
+    fireEvent.change(screen.getByLabelText('Motivo da recusa'),{target:{value:'Veículo necessário no setor'}})
+    fireEvent.click(screen.getByRole('button',{name:'Confirmar recusa'}))
+    await waitFor(()=>expect(r.transitionLoan).toHaveBeenCalledWith('99','reject','Veículo necessário no setor'))
+    expect(await screen.findByText('Recusado')).toBeVisible()
   })
 })

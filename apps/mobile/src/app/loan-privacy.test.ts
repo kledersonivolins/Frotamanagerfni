@@ -37,4 +37,10 @@ describe('privacidade de empréstimos',()=>{
   expect(rpc).toHaveBeenCalledWith('transition_mobile_loan',{p_loan_id:9,p_action:'approve'})
   expect(rpc).toHaveBeenCalledWith('get_mobile_loans')
  })
+ it('envia a recusa e o motivo ao endpoint protegido',async()=>{
+  const {runtime,rpc}=fixture()
+  await runtime.restore()
+  await (runtime.transitionLoan as any)('9','reject','Sem disponibilidade operacional')
+  expect(rpc).toHaveBeenCalledWith('transition_mobile_loan',{p_loan_id:9,p_action:'reject',p_reason:'Sem disponibilidade operacional'})
+ })
 })

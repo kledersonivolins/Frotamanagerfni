@@ -64,16 +64,17 @@ asUser({ id: 10, nivel: 'operador', funcao_emprestimo: 'solicitante' }, () => {
 
 asUser({ id: 20, nivel: 'operador', funcao_emprestimo: 'coordenador' }, () => {
   assert.equal(context._empPodeAprovar(), true, 'coordenador pode aprovar');
-  assert.equal(context._empPodeOperar(), true, 'coordenador pode registrar o fluxo do veículo');
+  assert.equal(context._empPodeOperar(), false, 'coordenador decide a solicitação, mas não registra a saída');
   assert.equal(context._empStatusNovaSolicitacao('aprovado'), 'aprovado');
 });
 
 asUser({ id: 30, nivel: 'super', funcao_emprestimo: null }, () => {
   assert.equal(context._empPodeAprovar(), true, 'superusuário mantém a gestão do módulo');
+  assert.equal(context._empPodeOperar(), true, 'Frota administradora registra a saída e a devolução');
 });
 
 asUser({ id: 40, nivel: 'operador', funcao_emprestimo: null }, () => {
   assert.equal(context._empPodeAprovar(), false, 'operador sem função de empréstimo não recebe aprovação implícita');
 });
 
-console.log('OK: subníveis do Empréstimo limitam o Solicitante e liberam os aprovadores.');
+console.log('OK: subníveis limitam o solicitante, o coordenador decide e a Frota opera o veículo.');

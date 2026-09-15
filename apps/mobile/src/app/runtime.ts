@@ -13,7 +13,7 @@ export interface MobileRuntime {
   logout():Promise<void>
   refresh():Promise<MobileSnapshot>
   requestLoan(input:LoanInput):Promise<void>
-  transitionLoan(id:string,action:'approve'|'release'):Promise<MobileSnapshot>
+  transitionLoan(id:string,action:'approve'|'reject'|'release',reason?:string):Promise<MobileSnapshot>
   subscribeLoans?(listener:(snapshot:MobileSnapshot)=>void):()=>void
 }
 
@@ -68,7 +68,7 @@ export function createMobileRuntime(client:SupabaseClient, storage:Pick<Storage,
       calendarVehicles,
       drivers:(drivers.data??[]).map((x:any)=>({id:text(x.id),label:text(x.nome)})),
       reservations:loans.data?.reservations??[],
-      loans:(loans.data?.loans??[]).map((x:any)=>({id:text(x.id),vehicleId:text(x.veiculo_id),driverId:text(x.motorista_id),requesterId:text(x.solicitante_usuario_id),sectorId:x.setor_id==null?null:text(x.setor_id),status:loanStatus(x.status),period:{start:dateTime(x.data_saida,x.hora_saida),end:dateTime(x.data_prevista_retorno,x.hora_prevista_retorno)},destination:text(x.destino),purpose:text(x.finalidade),checklistRequired:!!x.checklist_saida_obrigatorio,checklistDone:['concluido','concluida','finalizado','finalizada','aprovado','aprovada'].includes(text(x.checklist_saida_status).toLowerCase())})),
+      loans:(loans.data?.loans??[]).map((x:any)=>({id:text(x.id),vehicleId:text(x.veiculo_id),driverId:text(x.motorista_id),requesterId:text(x.solicitante_usuario_id),sectorId:x.setor_id==null?null:text(x.setor_id),status:loanStatus(x.status),period:{start:dateTime(x.data_saida,x.hora_saida),end:dateTime(x.data_prevista_retorno,x.hora_prevista_retorno)},destination:text(x.destino),purpose:text(x.finalidade),checklistRequired:!!x.checklist_saida_obrigatorio,checklistDone:['concluido','concluida','finalizado','finalizada','aprovado','aprovada'].includes(text(x.checklist_saida_status).toLowerCase()),rejectionReason:text(x.motivo_recusa),decidedBy:text(x.decidido_por),decidedAt:text(x.decidido_em)})),
       orders:(orders.data??[]).map((x:any)=>({id:text(x.numero||x.id),equipmentId:x.equipamento_id==null?null:text(x.equipamento_id),status:orderStatus(x.status),description:text(x.descricao||x.motivo||'Sem descrição'),steps:[]})),
     })
   }
@@ -97,10 +97,12 @@ export function createMobileRuntime(client:SupabaseClient, storage:Pick<Storage,
       const {error}=await client.from('emprestimos_veiculos').insert({id:Date.now(),tenant:current.scope.tenant,veiculo_id:Number(input.vehicleId),veiculo_placa:vehicle?.label.split(' — ')[0]??'',motorista_id:Number(input.driverId),motorista_nome:driver?.label??'',solicitante:'Aplicativo móvel',solicitante_usuario_id:Number(profile.id),finalidade:input.purpose,destino:input.destination,data_solicitacao:new Date().toISOString().slice(0,10),data_saida:input.start.slice(0,10),hora_saida:input.start.slice(11,16),data_prevista_retorno:input.end.slice(0,10),hora_prevista_retorno:input.end.slice(11,16),status:'Solicitado',setor_id:current.scope.sectorIds[0]?Number(current.scope.sectorIds[0]):null,ativo:true})
       if(error)throw new Error(error.message);await load(current.scope)
     },
-    async transitionLoan(id,action){
+    async transitionLoan(id,action,reason){
       if(!current)throw new Error('Sessão não carregada')
-      if(typeof navigator!=='undefined'&&!navigator.onLine)throw new Error('Conecte-se à internet para aprovar ou liberar o veículo')
-      const {error}=await client.rpc('transition_mobile_loan',{p_loan_id:Number(id),p_action:action})
+      if(typeof navigator!=='undefined'&&!navigator.onLine)throw new Error('Conecte-se à internet para decidir ou liberar o veículo')
+      const payload:{p_loan_id:number;p_action:string;p_reason?:string}={p_loan_id:Number(id),p_action:action}
+      if(action==='reject')payload.p_reason=reason?.trim()??''
+      const {error}=await client.rpc('transition_mobile_loan',payload)
       if(error)throw new Error(error.message)
       return load(current.scope)
     },
