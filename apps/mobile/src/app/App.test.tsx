@@ -37,4 +37,10 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button',{name:'Ordens de Serviço'}))
     expect(await screen.findByText('Trocar óleo')).toBeVisible()
   })
+
+  it('oferece saída do aplicativo após o login', async () => {
+    const r=runtime();r.restore=async()=>snapshot
+    render(<App runtime={r}/>)
+    expect(await screen.findByRole('button',{name:'Sair do aplicativo'})).toBeVisible()
+  })
 })
