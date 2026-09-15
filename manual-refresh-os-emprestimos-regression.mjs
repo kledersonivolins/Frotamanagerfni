@@ -35,14 +35,20 @@ assert.equal(intervalos,0,'o sistema não pode iniciar nenhum temporizador de at
 
 assert.match(
   html,
-  /const _TABELAS_ATUALIZACAO_MANUAL\s*=\s*new Set\(\['ordens_servico','emprestimos_veiculos'\]\)/,
-  'OS e empréstimos devem ser marcados como módulos de atualização somente manual'
+  /const _TABELAS_ATUALIZACAO_MANUAL\s*=\s*new Set\(\['ordens_servico'\]\)/,
+  'somente OS deve permanecer com atualização exclusivamente manual'
 );
 
 assert.match(
   html,
   /function _realtimeProcessar\(payload\)\s*{[\s\S]*?if\(_TABELAS_ATUALIZACAO_MANUAL\.has\(table\)\) return;/,
-  'eventos Realtime não podem alterar OS ou empréstimos automaticamente'
+  'eventos Realtime não podem alterar OS automaticamente'
+);
+
+assert.match(
+  html,
+  /if\(table === 'emprestimos_veiculos'[\s\S]{0,220}?loadPage\(_paginaAtual\)/,
+  'empréstimos devem atualizar a tela ativa quando outro usuário aprovar ou liberar'
 );
 
 const paginasLive = html.match(/const _PAGINAS_LIVE\s*=\s*\[([^\]]*)\]/)?.[1] ?? '';
@@ -64,4 +70,4 @@ assert.doesNotMatch(
   'a reconexão automática não pode recarregar OS e empréstimos silenciosamente'
 );
 
-console.log('OK: OS e empréstimos permanecem fixos até atualização manual.');
+console.log('OK: OS permanece manual e empréstimos acompanham o fluxo entre usuários.');

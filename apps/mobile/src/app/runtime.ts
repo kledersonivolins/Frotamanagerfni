@@ -14,6 +14,7 @@ export interface MobileRuntime {
   refresh():Promise<MobileSnapshot>
   requestLoan(input:LoanInput):Promise<void>
   transitionLoan(id:string,action:'approve'|'release'):Promise<MobileSnapshot>
+  subscribeLoans?(listener:(snapshot:MobileSnapshot)=>void):()=>void
 }
 
 const URL='https://gocdyfhzqezpqyebixid.supabase.co'
@@ -102,6 +103,15 @@ export function createMobileRuntime(client:SupabaseClient, storage:Pick<Storage,
       const {error}=await client.rpc('transition_mobile_loan',{p_loan_id:Number(id),p_action:action})
       if(error)throw new Error(error.message)
       return load(current.scope)
+    },
+    subscribeLoans(listener){
+      if(!current)return()=>undefined
+      const userId=current.scope.userId
+      const channel=client.channel(`mobile_loans_${userId}`).on('postgres_changes',{event:'*',schema:'public',table:'emprestimos_veiculos',filter:`tenant=eq.${current.scope.tenant}`},()=>{
+        if(!current||current.scope.userId!==userId)return
+        void load(current.scope).then(listener).catch(()=>undefined)
+      }).subscribe()
+      return()=>{void client.removeChannel(channel)}
     },
   }
 }

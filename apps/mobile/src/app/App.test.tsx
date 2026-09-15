@@ -1,4 +1,4 @@
-import {fireEvent, render, screen, waitFor} from '@testing-library/react'
+import {act, fireEvent, render, screen, waitFor} from '@testing-library/react'
 import {describe, expect, it} from 'vitest'
 import {App} from './App'
 import type {MobileRuntime, MobileSnapshot} from './runtime'
@@ -53,6 +53,16 @@ describe('App', () => {
     render(<App runtime={r}/>)
     fireEvent.click(await screen.findByRole('button',{name:'Empréstimos'}))
     fireEvent.click(await screen.findByRole('button',{name:'Aprovar solicitação'}))
-    expect(await screen.findByRole('button',{name:'Liberar veículo'})).toBeEnabled()
+    expect(await screen.findByRole('button',{name:'Registrar saída / liberar'})).toBeEnabled()
+  })
+
+  it('recebe aprovação de outro usuário enquanto o aplicativo está aberto',async()=>{
+    let listener:((value:MobileSnapshot)=>void)|undefined
+    const r=runtime();r.restore=async()=>({...snapshot,loans:[],scope:{...snapshot.scope,permissions:['mobile.access','loan.release']}});r.subscribeLoans=callback=>{listener=callback;return()=>undefined}
+    render(<App runtime={r}/>)
+    fireEvent.click(await screen.findByRole('button',{name:'Empréstimos'}))
+    const approved:Loan={id:'99',vehicleId:'10',driverId:'20',requesterId:'30',sectorId:'2',status:'approved',period:{start:'2026-09-15T14:00',end:'2026-09-15T17:00'},destination:'Obra',purpose:'Serviço'}
+    act(()=>listener?.({...snapshot,loans:[approved],scope:{...snapshot.scope,permissions:['mobile.access','loan.release']}}))
+    expect(await screen.findByRole('button',{name:'Registrar saída / liberar'})).toBeEnabled()
   })
 })

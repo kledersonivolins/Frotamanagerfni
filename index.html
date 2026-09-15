@@ -3183,9 +3183,9 @@ async function sbInit(url, key, tenant){
 //  SUPABASE REALTIME — sincronização instantânea
 // ═══════════════════════════════════════════════
 let _realtimeChannel = null;
-// OS e empréstimos ficam estáveis na tela. Esses módulos só recebem uma nova
-// leitura do banco quando o usuário manda sincronizar/recarregar manualmente.
-const _TABELAS_ATUALIZACAO_MANUAL = new Set(['ordens_servico','emprestimos_veiculos']);
+// OS permanece estável na tela. Empréstimos precisam refletir imediatamente a
+// passagem solicitante -> aprovador -> Frota em sessões e plataformas distintas.
+const _TABELAS_ATUALIZACAO_MANUAL = new Set(['ordens_servico']);
 
 function sbIniciarRealtime(){
   if(!_sb || _sbMode !== 'supabase') return;
@@ -3387,6 +3387,10 @@ function _realtimeAtualizarTela(table, eventType){
   };
 
   const paginas = tabelaPagina[table] || [];
+  if(table === 'emprestimos_veiculos' && paginas.includes(_paginaAtual) && currentUser){
+    loadPage(_paginaAtual);
+    return;
+  }
   if(paginas.includes(_paginaAtual) && currentUser){
     // Atualizar página atual silenciosamente
     const body = document.getElementById('pageBody');
@@ -22837,6 +22841,7 @@ function _empStatusLista(){
   return Array.isArray(window._EMP_STATUS) && window._EMP_STATUS.length ? window._EMP_STATUS : [
     { val:'solicitado',  label:'📋 Solicitado',  cor:'#3A3F42', bg:'#e3f2fd' },
     { val:'aprovado',    label:'✅ Aprovado',     cor:'#2e7d32', bg:'#e8f5e9' },
+    { val:'liberado',    label:'🔑 Liberado',     cor:'#1565c0', bg:'#e3f2fd' },
     { val:'em_uso',      label:'🚗 Em Uso',       cor:'#f57c00', bg:'#fff3e0' },
     { val:'finalizado',  label:'🏁 Finalizado',   cor:'#546e7a', bg:'#f5f5f5' },
     { val:'cancelado',   label:'❌ Cancelado',    cor:'#c62828', bg:'#ffebee' },
@@ -22916,7 +22921,7 @@ function _empPodeAprovar(){
 }
 
 function _empPodeOperar(){
-  return _empPodeAprovar();
+  return _empFuncaoUsuario()==='administrador';
 }
 
 function _empStatusNovaSolicitacao(statusEscolhido){
@@ -22953,14 +22958,14 @@ function _empIntervalo(dataInicio,horaInicio,dataFim,horaFim){
 function _empConflitoDisponibilidade(veiculoId,dataInicio,horaInicio,dataFim,horaFim,ignorarId=null){
   const novo=_empIntervalo(dataInicio,horaInicio,dataFim,horaFim);
   if(!Number.isFinite(novo.ini)||!Number.isFinite(novo.fim)||novo.fim<novo.ini) return null;
-  return _empTodosRegistrosAtivos().find(e=>String(e.veiculo_id)===String(veiculoId)&&e.id!==ignorarId&&['solicitado','aprovado','em_uso'].includes(String(e.status||''))&&(()=>{const x=_empIntervalo(e.data_saida,e.hora_saida,e.data_prevista_retorno,e.hora_prevista_retorno);return x.ini<novo.fim&&novo.ini<x.fim;})())||null;
+  return _empTodosRegistrosAtivos().find(e=>String(e.veiculo_id)===String(veiculoId)&&e.id!==ignorarId&&['solicitado','aprovado','liberado','em_uso'].includes(String(e.status||''))&&(()=>{const x=_empIntervalo(e.data_saida,e.hora_saida,e.data_prevista_retorno,e.hora_prevista_retorno);return x.ini<novo.fim&&novo.ini<x.fim;})())||null;
 }
 async function _empGarantirHistoricoCarregado(){
   return;
 }
 
 function _empAgendaRegistrosDia(data){
-  return _empRegistrosAtivos().filter(e=>e.data_saida&&e.data_prevista_retorno&&e.data_saida<=data&&e.data_prevista_retorno>=data&&['solicitado','aprovado','em_uso'].includes(String(e.status||'')));
+  return _empRegistrosAtivos().filter(e=>e.data_saida&&e.data_prevista_retorno&&e.data_saida<=data&&e.data_prevista_retorno>=data&&['solicitado','aprovado','liberado','em_uso'].includes(String(e.status||'')));
 }
 function _empAgendaMudarMes(delta){
   const base=window._empAgendaMes?new Date(window._empAgendaMes+'-01T12:00:00'):new Date();
@@ -23017,6 +23022,7 @@ function _renderEmprestimosListaConteudo(){
   const total    = registrosAtivos.length;
   const emUso    = registrosAtivos.filter(e=>e.status==='em_uso').length;
   const pendente = registrosAtivos.filter(e=>e.status==='solicitado').length;
+  const aguardandoLiberacao = registrosAtivos.filter(e=>e.status==='aprovado').length;
   const atraso   = registrosAtivos.filter(e=>{
     if(e.status!=='em_uso' || !e.data_prevista_retorno) return false;
     return new Date(e.data_prevista_retorno) < new Date();
@@ -23066,10 +23072,11 @@ function _renderEmprestimosListaConteudo(){
       }).join('');
 
   return `
-  <div class="grid-stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+  <div class="grid-stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
     <div class="stat"><label>📋 Total</label><div class="val">${total}</div></div>
     <div class="stat" style="border-left:3px solid #f57c00"><label>🚗 Em Uso</label><div class="val" style="color:#f57c00">${emUso}</div></div>
     <div class="stat" style="border-left:3px solid #3A3F42"><label>📋 Pendentes</label><div class="val" style="color:#3A3F42">${pendente}</div></div>
+    <div class="stat" style="border-left:3px solid #2e7d32;cursor:pointer" onclick="_empFiltrarStatus('aprovado')" title="Mostrar veículos aprovados aguardando saída"><label>🔑 Aguardando liberação</label><div class="val" style="color:#2e7d32">${aguardandoLiberacao}</div></div>
     <div class="stat" style="border-left:3px solid #c62828"><label>⚠️ Atrasados</label><div class="val" style="color:#c62828">${atraso}</div></div>
   </div>
 
@@ -23120,6 +23127,12 @@ function _empFiltrar(){
   window._empFMot = document.getElementById('emp_fmot')?.value||'';
   window._empFDe  = document.getElementById('emp_fde')?.value||'';
   window._empFAte = document.getElementById('emp_fate')?.value||'';
+  loadPage('emprestimos_lista');
+}
+
+function _empFiltrarStatus(status){
+  window._empFSt=status||'';
+  window._empFEq=''; window._empFMot=''; window._empFDe=''; window._empFAte='';
   loadPage('emprestimos_lista');
 }
 
