@@ -3887,6 +3887,7 @@ const MENU = [
 
   // ── MANUTENÇÃO ──
   { section:'Manutenção', items:[
+    { page:'agendar_manutencao', icon:'fa-calendar-plus', label:'Agendar Manutenção', min:'operador' },
     { page:'agendamentos_externos', icon:'fa-calendar-plus', label:'Agendamentos Externos', min:'operador' },
     { page:'os', icon:'fa-clipboard-list', label:'Ordens de Serviço', min:'operador' },
     { page:'manutencao', icon:'fa-wrench', label:'Histórico de Manutenção', min:'operador' },
@@ -4844,7 +4845,7 @@ const PAGE_TITLES = {
   motoristas:'🪪 Cadastro de Motoristas', formulario:'🖨️ Formulário de Manutenção p/ Mecânico',
   pneus:'🔵 Controle de Pneus', documentos:'📄 Documentos & Vencimentos',
   usuarios:'👥 Usuários & Níveis de Acesso', combustivel:'⛽ Movimentos de Combustível',
-  manutencao:'🔧 Histórico de Manutenção', agendamentos_externos:'📅 Agendamentos Externos', operacoes:'⚙️ Controle de Operações',
+  manutencao:'🔧 Histórico de Manutenção', agendar_manutencao:'🗓️ Agendar Manutenção', agendamentos_externos:'📅 Agendamentos Externos', operacoes:'⚙️ Controle de Operações',
   os:'📋 Ordens de Serviço', relatorios:'📈 Relatórios Gerenciais',
   painel_tv_os:'📺 Painel TV da Oficina / Compartilhar',
   mecanicos:'👷 Cadastro de Mecânicos',
@@ -5768,10 +5769,133 @@ async function recusarAgendamentoExterno(id){
   showToast('Agendamento recusado.','info'); loadPage('agendamentos_externos');
 }
 
+// ═══════════════════════════════════════════════
+//  AGENDAR MANUTENÇÃO (operador — Pré-OS própria)
+// ═══════════════════════════════════════════════
+function _origemAgendamentoOperador(o){ return String(o?.origem||'')==='agendamento_operador'; }
+function _disponibilidadeEq(eq){
+  const osAberta = _osVisiveis().find(o=>String(o.equipamento_id)===String(eq.id) && _isOSAbertaOperacional(o));
+  if(osAberta) return { key:'em_manutencao', label:'Em manutenção', cls:'bd', ref:'OS #'+(osAberta.numero||osAberta.id) };
+  const preOS = _preOSAbertasDoEquipamento(eq.id);
+  if(preOS.length) return { key:'pre_os', label:'Pré-OS pendente', cls:'bw', ref:'#'+(preOS[0].numero||preOS[0].id) };
+  return { key:'livre', label:'Livre', cls:'bs', ref:'' };
+}
+function renderAgendarManutencao(){
+  const eqs = _eqsDaEmpresa().slice().sort((a,b)=>(a.placa||'').localeCompare(b.placa||''));
+  const linhas = eqs.map(eq=>{
+    const d = _disponibilidadeEq(eq);
+    return `<tr>
+      <td><strong>${esc(eq.placa||'—')}</strong></td>
+      <td>${esc(eq.modelo||'—')}</td>
+      <td><span class="badge ${d.cls}">${esc(d.label)}</span>${d.ref?` <small class="muted">${esc(d.ref)}</small>`:''}</td>
+      <td><button class="btn btn-p btn-sm" onclick="_abrirModalAgendamento(${eq.id})"><i class="fas fa-calendar-plus"></i> Agendar</button></td>
+    </tr>`;
+  }).join('');
+
+  const nomeUsuario = currentUser?.nome || currentUser?.username || '';
+  const meus = (db.ordens_servico||[])
+    .filter(o=>_origemAgendamentoOperador(o) && String(o.solicitante||'')===String(nomeUsuario))
+    .sort((a,b)=>String(b.data_abertura||'').localeCompare(String(a.data_abertura||'')));
+  const sbClsMeus = {pre_os:'bw', aberta:'bi', em_andamento:'bw', concluida:'bs', cancelada:'bd'};
+  const linhasMeus = meus.map(o=>{
+    const eq=(db.equipamentos||[]).find(e=>String(e.id)===String(o.equipamento_id));
+    const podeCancelar = String(o.status||'')==='pre_os';
+    return `<tr>
+      <td>${eq?esc(eq.placa||'—'):'—'}<br><small class="muted">${eq?esc(eq.modelo||''):''}</small></td>
+      <td>${esc(o.tipo||'—')}</td>
+      <td>${fmtDt(o.data_previsao)||'—'}</td>
+      <td><div style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(o.descricao||'')}">${esc(o.descricao||'—')}</div></td>
+      <td><span class="badge ${sbClsMeus[o.status]||'bi'}">${esc(String(o.status||'').replace('_',' '))}</span>${o.status==='cancelada'&&o.motivo_cancelamento?`<div style="font-size:10px;color:var(--danger);margin-top:2px" title="${esc(o.motivo_cancelamento||'')}"><i class="fas fa-ban"></i> ${esc((o.motivo_cancelamento||'').slice(0,40))}</div>`:''}</td>
+      <td>${podeCancelar?`<button class="btn btn-d btn-sm" onclick="_cancelarAgendamentoOperador('${o.id}')"><i class="fas fa-times"></i> Cancelar</button>`:'<span class="muted">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="page-head"><div><h2>Agendar Manutenção</h2><p class="muted">Solicite uma Pré-OS de manutenção para um veículo/equipamento da sua empresa.</p></div><button class="btn btn-o" onclick="loadPage('agendar_manutencao')"><i class="fas fa-sync"></i> Atualizar</button></div>
+  <div class="card" style="overflow:auto;margin-bottom:16px">
+    <table><thead><tr><th>Placa</th><th>Modelo</th><th>Disponibilidade</th><th>Ação</th></tr></thead><tbody>
+    ${linhas||'<tr><td colspan="4" class="muted" style="text-align:center;padding:30px">Nenhum equipamento disponível para esta empresa.</td></tr>'}
+    </tbody></table>
+  </div>
+  <h3 style="margin:18px 0 8px;font-size:15px">Meus Agendamentos</h3>
+  <div class="card" style="overflow:auto">
+    <table><thead><tr><th>Veículo</th><th>Tipo</th><th>Data desejada</th><th>Descrição</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+    ${linhasMeus||'<tr><td colspan="6" class="muted" style="text-align:center;padding:30px">Você ainda não criou nenhum agendamento.</td></tr>'}
+    </tbody></table>
+  </div>`;
+}
+function _abrirModalAgendamento(eqId){
+  const eq=(db.equipamentos||[]).find(e=>String(e.id)===String(eqId));
+  if(!eq){ showToast('Equipamento não encontrado.','danger'); return; }
+  const d = _disponibilidadeEq(eq);
+  const aviso = d.key!=='livre' ? `<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#e65100"><i class="fas fa-exclamation-triangle"></i> Este equipamento já está com <strong>${esc(d.label.toLowerCase())}</strong>${d.ref?' ('+esc(d.ref)+')':''}. Você ainda pode registrar o agendamento, mas ele pode não ser priorizado.</div>` : '';
+  openModal(`<i class="fas fa-calendar-plus" style="color:var(--primary)"></i> Agendar Manutenção — ${esc(eq.placa||'')}`, `
+    ${aviso}
+    <input type="hidden" id="agm_eq" value="${eq.id}">
+    <div class="fg"><label>Veículo / Equipamento</label><div class="val" style="padding:6px 0">${esc(eq.placa||'—')} — ${esc(eq.modelo||'—')}</div></div>
+    <div class="frow">
+      <div class="fg"><label>Tipo de Serviço *</label><select class="fs" id="agm_tipo">
+        <option value="Preventiva">Preventiva</option>
+        <option value="Corretiva">Corretiva</option>
+      </select></div>
+      <div class="fg"><label>Data desejada *</label><input type="date" class="fs" id="agm_data" value="${today_static()}"></div>
+    </div>
+    <div class="fg"><label>Descrição do problema / serviço *</label><textarea class="fta" id="agm_desc" style="min-height:90px" placeholder="Descreva o problema ou o serviço desejado..."></textarea></div>
+    <div class="mf">
+      <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-p" onclick="_salvarAgendamentoOperador()"><i class="fas fa-check"></i> Agendar</button>
+    </div>`);
+}
+async function _salvarAgendamentoOperador(){
+  const eqId = document.getElementById('agm_eq')?.value;
+  const tipo = document.getElementById('agm_tipo')?.value || 'Preventiva';
+  const data = document.getElementById('agm_data')?.value;
+  const desc = document.getElementById('agm_desc')?.value?.trim();
+  const eq=(db.equipamentos||[]).find(e=>String(e.id)===String(eqId));
+  if(!eq){ showToast('Equipamento não encontrado.','danger'); return; }
+  if(!data){ showToast('Informe a data desejada.','warning'); return; }
+  if(!desc){ showToast('Descreva o problema ou serviço desejado.','warning'); return; }
+  const numeros=(db.ordens_servico||[]).map(o=>parseInt(o.numero,10)).filter(Number.isFinite);
+  const n=String((Math.max(0,...numeros)+1)).padStart(4,'0');
+  const os={ id:uid(), numero:n, equipamento_id:eq.id, empresa_id:eq.empresa_id||null,
+    tipo, tipo_abertura:'Pre-OS', status:'pre_os', origem:'agendamento_operador',
+    data_abertura:today_static(), data_previsao:data,
+    solicitante:currentUser?.nome||currentUser?.username||'', oficina:'', descricao:desc, custo:0, obs:'' };
+  db.ordens_servico.push(os);
+  closeModal(); loadPage('agendar_manutencao');
+  showToast('Agendamento (Pré-OS #'+n+') criado com sucesso.','success');
+  try{ await sbSalvar('ordens_servico', os); }catch(e){ /* sbSalvar já notifica erro */ }
+}
+function _cancelarAgendamentoOperador(id){
+  const os=(db.ordens_servico||[]).find(o=>String(o.id)===String(id));
+  if(!os || String(os.status||'')!=='pre_os') return;
+  openModal('<i class="fas fa-times-circle" style="color:#c62828"></i> Cancelar agendamento', `
+    <div class="fg"><label>Motivo do cancelamento *</label>
+      <textarea class="fta" id="agm_cancel_motivo" style="min-height:90px" placeholder="Informe por que este agendamento está sendo cancelado"></textarea>
+    </div>
+    <div class="mf">
+      <button class="btn btn-o" onclick="closeModal()">Voltar</button>
+      <button class="btn btn-d" onclick="_confirmarCancelamentoAgendamento('${os.id}')"><i class="fas fa-times"></i> Confirmar cancelamento</button>
+    </div>`);
+}
+async function _confirmarCancelamentoAgendamento(id){
+  const os=(db.ordens_servico||[]).find(o=>String(o.id)===String(id));
+  const motivo=String(document.getElementById('agm_cancel_motivo')?.value||'').trim();
+  if(!os || String(os.status||'')!=='pre_os') return;
+  if(!motivo){ showToast('Informe o motivo do cancelamento.','warning'); return; }
+  os.status='cancelada';
+  os.motivo_cancelamento=motivo;
+  os.cancelado_por=currentUser?.nome||currentUser?.username||'';
+  os.cancelado_em=new Date().toLocaleString('pt-BR');
+  closeModal(); loadPage('agendar_manutencao');
+  showToast('Agendamento cancelado.','info');
+  try{ await sbSalvar('ordens_servico', os); }catch(e){ /* sbSalvar já notifica erro */ }
+}
+
 const PAGE_FNS = {
   painel_publico: renderPainelPublico,
   gestao_master: renderGestaoMaster,
   dashboard: renderDashboard, equipamentos: renderEquipamentos, agendamentos_externos: renderAgendamentosExternos,
+  agendar_manutencao: renderAgendarManutencao,
   mapa_chassi: renderMapaChassi,
   planos: renderPlanos,
   modelos: renderModelos,
@@ -33205,6 +33329,29 @@ function osFormularioBranco(){
   setTimeout(()=>w.print(), 400);
 }
 
+// Calcula o tempo total de permanência do equipamento no pátio (entrada → saída, ou até agora se ainda aberta).
+function _calcPermanenciaOS(os){
+  const dataEntrada = os.data_entrada || os.data_abertura;
+  if(!dataEntrada) return null;
+  const _hhmm = h => (h && String(h).length===5) ? String(h)+':00' : (h || '00:00:00');
+  const horaEntrada = _hhmm(os.hora_entrada || os.hora_inicio);
+  const entradaMs = new Date(dataEntrada+'T'+horaEntrada).getTime();
+  if(!entradaMs || isNaN(entradaMs)) return null;
+  const dataSaida = os.data_saida || os.data_conclusao || os.data_fechamento;
+  const aberta = !dataSaida;
+  const horaSaida = _hhmm(os.hora_saida || os.hora_fim);
+  const saidaMs = aberta ? Date.now() : new Date(dataSaida+'T'+horaSaida).getTime();
+  if(isNaN(saidaMs)) return null;
+  let diffMs = Math.max(0, saidaMs - entradaMs);
+  const dias = Math.floor(diffMs/86400000); diffMs -= dias*86400000;
+  const horas = Math.floor(diffMs/3600000); diffMs -= horas*3600000;
+  const minutos = Math.floor(diffMs/60000);
+  return {
+    dias, horas, minutos, aberta,
+    entradaFmt: (fmtDt(dataEntrada)||'—')+' '+horaEntrada.slice(0,5),
+    saidaFmt: aberta ? 'Em aberto (calculado até agora)' : (fmtDt(dataSaida)||'—')+' '+horaSaida.slice(0,5)
+  };
+}
 function imprimirOS(i){
   const _askLinhas=()=>{const r=prompt('Quantas linhas?\n(itens + em branco)','5');if(r===null)return null;const n=parseInt(r,10);if(isNaN(n)||n<1||n>50){alert('1 a 50.');return _askLinhas();}return n;};const _linhasImprimir=_askLinhas();if(_linhasImprimir===null)return;
   const os = db.ordens_servico[i];
@@ -33461,26 +33608,20 @@ function imprimirOS(i){
   </div>
 
   ${(()=>{
-    // ── PÁGINA 2 — CUSTOS E VALORES (peças, mão de obra e totais) ──
-    // Fica em página separada de propósito: a página 1 é a OS operacional
-    // (assinada por mecânico/operador), sem valores visíveis.
-    const itens = os.itens||[];
-    if(!itens.length) return '';
-    const custoPecasItem = it => (it.quantidade||0)*(it.custo_unitario||0);
-    const totalPecas = itens.reduce((s,it)=>s+custoPecasItem(it),0);
-    const totalMO = itens.reduce((s,it)=>s+((it.mao_de_obra||[]).reduce((s2,m)=>s2+Number(m.custo||0),0)),0);
-    const totalGeral = totalPecas + totalMO;
-    const moLinhas = itens.flatMap((it,ii)=>(it.mao_de_obra||[]).map(m=>
-      `<tr><td>${ii+1}</td><td>${esc(it.descricao||"")}</td><td>${esc(m.nome||"")}</td><td>${m.horas||0}h</td><td style="text-align:right">R$ ${Number(m.valor_hora||0).toFixed(2)}</td><td style="text-align:right">R$ ${Number(m.custo||0).toFixed(2)}</td></tr>`
-    )).join('');
+    // ── PÁGINA 2 — RESUMO OPERACIONAL ──
+    // Substitui a antiga página de custos/valores: a impressão da OS não deve
+    // exibir nenhum valor financeiro. Em vez disso, traz campos em branco para
+    // preenchimento manual e o cálculo do tempo total de permanência no pátio.
+    const perm = _calcPermanenciaOS(os);
+    const mecanico = os.mecanico_os || os.responsavel || '—';
     return `
   <div style="page-break-before:always"></div>
 
   <div class="hdr" style="margin-top:12mm">
     <div class="hdr-row">
       <div>
-        <div class="os-title">Valores da OS</div>
-        <div class="os-sub">Peças, materiais e mão de obra — uso interno</div>
+        <div class="os-title">Resumo da OS</div>
+        <div class="os-sub">Diagnósticos, observações finais e permanência no pátio</div>
       </div>
       <div class="emit">
         <div><strong>OS Nº:</strong> <span style="font-size:14px;font-weight:800;color:#3A3F42">#${os.numero}</span></div>
@@ -33490,51 +33631,48 @@ function imprimirOS(i){
   </div>
 
   <div class="section">
-    <div class="sec-hdr" style="background:#00695c">▌ Peças / Materiais / Serviços</div>
-    <div class="sec-body" style="padding:0">
-      <table>
-        <thead><tr><th style="width:30px">Nº</th><th>Descrição</th><th style="width:90px">Referência</th><th style="width:50px">Qtd</th><th style="width:40px">Un</th><th style="width:80px">Custo Unit.</th><th style="width:90px">Subtotal</th></tr></thead>
-        <tbody>
-        ${itens.map((it,ii)=>`<tr>
-          <td>${ii+1}</td>
-          <td><strong>${esc(it.descricao||"")}</strong></td>
-          <td>${it.referencia||'—'}</td>
-          <td>${it.quantidade||1}</td>
-          <td>${it.unidade||'un'}</td>
-          <td style="text-align:right">R$ ${Number(it.custo_unitario||0).toFixed(2)}</td>
-          <td style="text-align:right"><strong>R$ ${custoPecasItem(it).toFixed(2)}</strong></td>
-        </tr>`).join('')}
-        </tbody>
-      </table>
+    <div class="sec-hdr" style="background:#37474f">▌ Identificação</div>
+    <div class="sec-body">
+      <div class="grid4">
+        <div class="field"><span class="lbl">Empresa</span><span class="val">${esc(eq?.empresa||'—')}</span></div>
+        <div class="field"><span class="lbl">Placa</span><span class="val lg">${esc(eq?.placa||'—')}</span></div>
+        <div class="field"><span class="lbl">Mecânico Responsável</span><span class="val">${esc(mecanico)}</span></div>
+        <div class="field"><span class="lbl">Status</span><span class="val">${statusMap[os.status]||os.status||'—'}</span></div>
+      </div>
     </div>
   </div>
 
-  ${moLinhas ? `
   <div class="section">
-    <div class="sec-hdr" style="background:#1565c0">▌ Mão de Obra</div>
-    <div class="sec-body" style="padding:0">
-      <table>
-        <thead><tr><th style="width:30px">Item</th><th>Descrição</th><th>Funcionário</th><th style="width:60px">Horas</th><th style="width:80px">Valor/Hora</th><th style="width:90px">Custo</th></tr></thead>
-        <tbody>${moLinhas}</tbody>
-      </table>
-    </div>
-  </div>` : ''}
+    <div class="sec-hdr" style="background:#4a148c">▌ Diagnóstico do Engenheiro</div>
+    <div class="sec-body"><div class="write-area" style="min-height:80px">&nbsp;</div></div>
+  </div>
 
   <div class="section">
-    <div class="sec-hdr orange">▌ Totais</div>
+    <div class="sec-hdr" style="background:#00695c">▌ Diagnóstico do Mecânico</div>
+    <div class="sec-body"><div class="write-area" style="min-height:80px">&nbsp;</div></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-hdr orange">▌ Observações Finais</div>
+    <div class="sec-body"><div class="write-area" style="min-height:80px">&nbsp;</div></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-hdr green">▌ Tempo Total de Permanência no Pátio</div>
     <div class="sec-body">
+      ${perm ? `
       <div class="grid4">
-        <div class="field"><span class="lbl">Total Peças/Materiais</span><span class="val lg">R$ ${totalPecas.toFixed(2)}</span></div>
-        <div class="field"><span class="lbl">Total Mão de Obra</span><span class="val lg">R$ ${totalMO.toFixed(2)}</span></div>
-        <div class="field"><span class="lbl">Total Geral (itens)</span><span class="val lg" style="color:#c62828">R$ ${totalGeral.toFixed(2)}</span></div>
-        <div class="field"><span class="lbl">Custo Lançado na OS</span><span class="val lg" style="color:#2e7d32">R$ ${Number(os.custo||0).toFixed(2)}</span></div>
-      </div>
+        <div class="field"><span class="lbl">Entrada</span><span class="val">${perm.entradaFmt}</span></div>
+        <div class="field"><span class="lbl">Saída</span><span class="val">${perm.saidaFmt}</span></div>
+        <div class="field"><span class="lbl">Situação</span><span class="val">${perm.aberta?'Em aberto (ainda no pátio)':'Encerrada'}</span></div>
+        <div class="field"><span class="lbl">Permanência Total</span><span class="val lg" style="color:#2e7d32">${perm.dias}d ${perm.horas}h ${perm.minutos}min</span></div>
+      </div>` : `<div style="border:1px dashed #bbb;border-radius:4px;padding:10px;background:#fff;color:#555;font-size:11px">Data/hora de entrada não informada — não é possível calcular a permanência.</div>`}
     </div>
   </div>
 
   <div class="rodape">
     <span>FrotaManager — Sistema de Gestão de Frota</span>
-    <span>${tipoLabel} #${os.numero} — Página de Valores | Emissão: ${hoje} ${hora}</span>
+    <span>${tipoLabel} #${os.numero} — Página de Resumo | Emissão: ${hoje} ${hora}</span>
   </div>`;
   })()}
   </body></html>`);
