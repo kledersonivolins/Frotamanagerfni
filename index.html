@@ -464,12 +464,13 @@ body{font-family:var(--font-display);background:var(--bg);color:var(--text);font
   height:44px;border:1.5px solid #e5e7eb;border-radius:8px;
   font-size:14px;padding:0 13px;width:100%;box-sizing:border-box;
   background:#fafafa;color:#111827;
-  transition:border-color .14s,box-shadow .14s,background .14s;
+  transition:border-color .14s,box-shadow .14s,background .14s,transform .14s;
   font-family:inherit;
 }
 .login-card .fi:focus{
   border-color:#1d4ed8 !important;background:#fff !important;
   box-shadow:0 0 0 3px rgba(29,78,216,.1) !important;outline:none !important;
+  transform:translateY(-1px);
 }
 /* Botão — sólido, confiante */
 .login-card .btn-p{
@@ -481,6 +482,42 @@ body{font-family:var(--font-display);background:var(--bg);color:var(--text);font
 }
 .login-card .btn-p:hover{background:#1d4ed8 !important;transform:none !important;box-shadow:none !important}
 .login-card .btn-p:active{background:#1e3a8a !important}
+
+/* ── Ambiente animado — orbs flutuantes sutis ── */
+.login-orb{position:absolute;border-radius:50%;filter:blur(64px);pointer-events:none;z-index:0;opacity:.6}
+.login-orb-1{width:380px;height:380px;top:-130px;right:8%;background:radial-gradient(circle,rgba(37,99,235,.35),transparent 70%);animation:orbFloat1 16s ease-in-out infinite}
+.login-orb-2{width:300px;height:300px;bottom:-110px;left:6%;background:radial-gradient(circle,rgba(201,168,76,.22),transparent 70%);animation:orbFloat2 20s ease-in-out infinite}
+.login-orb-3{width:220px;height:220px;top:38%;left:42%;background:radial-gradient(circle,rgba(37,99,235,.18),transparent 70%);animation:orbFloat3 24s ease-in-out infinite}
+@keyframes orbFloat1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-40px,50px) scale(1.12)}}
+@keyframes orbFloat2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(35px,-30px) scale(1.08)}}
+@keyframes orbFloat3{0%,100%{transform:translate(0,0) scale(1);opacity:.4}50%{transform:translate(-25px,-45px) scale(1.15);opacity:.65}}
+/* Glow ambiental — respiração sutil */
+.login-screen::before{animation:glowBreathe 9s ease-in-out infinite}
+@keyframes glowBreathe{0%,100%{opacity:.85}50%{opacity:1}}
+/* Marca — ícone com respiro luminoso */
+.login-logo .logo-icon{animation:logoPulse 3.2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 4px 12px rgba(29,78,216,.3)}50%{box-shadow:0 4px 22px rgba(29,78,216,.55)}}
+/* Lista de recursos — entrada escalonada */
+.lh-features li{opacity:0;animation:featIn .5s ease both}
+.lh-features li:nth-child(1){animation-delay:.32s}
+.lh-features li:nth-child(2){animation-delay:.42s}
+.lh-features li:nth-child(3){animation-delay:.52s}
+@keyframes featIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+/* Botão — brilho deslizante ao passar o mouse + spinner de carregamento */
+.login-card .btn-p{position:relative;overflow:hidden}
+.login-card .btn-p::after{
+  content:'';position:absolute;top:0;left:-60%;width:50%;height:100%;
+  background:linear-gradient(120deg,transparent,rgba(255,255,255,.16),transparent);
+  transform:skewX(-20deg);transition:left .55s ease;
+}
+.login-card .btn-p:hover::after{left:130%}
+.login-card .btn-p .fa-spinner{animation:loginSpin .7s linear infinite}
+@keyframes loginSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){
+  .login-orb, .login-screen::before, .login-logo .logo-icon, .lh-features li{animation:none !important}
+  .lh-features li{opacity:1}
+  .login-card .btn-p::after{display:none}
+}
 /* Mobile */
 @media(max-width:860px){
   .login-screen{flex-direction:column;align-items:center;justify-content:center;padding:24px;background:#0a0a0f}
@@ -2077,6 +2114,9 @@ tbody tr:nth-child(10){animation-delay:198ms}
 
 <!-- LOGIN -->
 <div class="login-screen" id="loginScreen">
+  <div class="login-orb login-orb-1" aria-hidden="true"></div>
+  <div class="login-orb login-orb-2" aria-hidden="true"></div>
+  <div class="login-orb login-orb-3" aria-hidden="true"></div>
 
   <!-- ── Hero editorial — lado esquerdo ── -->
   <div class="login-hero">
@@ -2122,7 +2162,7 @@ tbody tr:nth-child(10){animation-delay:198ms}
           </label>
           <div id="lgpd_erro" style="display:none;color:#dc2626;font-size:11px;margin-top:6px;font-weight:600">Você precisa concordar com a Política de Privacidade para entrar.</div>
         </div>
-        <button type="submit" class="btn btn-p" style="width:100%;justify-content:center;padding:12px"><i class="fas fa-arrow-right"></i> Entrar</button>
+        <button type="submit" class="btn btn-p" id="loginSubmitBtn" style="width:100%;justify-content:center;padding:12px"><i class="fas fa-arrow-right" id="loginSubmitIcon"></i> <span id="loginSubmitLabel">Entrar</span></button>
         <div style="text-align:center;margin-top:16px;padding-top:16px;border-top:1px solid #f3f4f6">
           <span style="font-size:12px;color:#9ca3af">Não tem acesso? </span>
           <button type="button" onclick="abrirSolicitarAcesso()" style="background:none;border:none;color:#1d4ed8;font-size:12px;font-weight:600;cursor:pointer;padding:0">Solicitar</button>
@@ -4181,6 +4221,13 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
   const senha = document.getElementById('loginPass').value;
   if(!login || !senha){ showToast('Informe usuário/e-mail e senha.','warning'); return; }
 
+  const _btn = document.getElementById('loginSubmitBtn');
+  const _icon = document.getElementById('loginSubmitIcon');
+  const _label = document.getElementById('loginSubmitLabel');
+  if(_btn) _btn.disabled = true;
+  if(_icon) _icon.className = 'fas fa-spinner';
+  if(_label) _label.textContent = 'Entrando...';
+
   try{
     if(_sbMode === 'supabase' && _sb){
       await fmLoginSupabase(login, senha);
@@ -4197,6 +4244,10 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     await fmAplicarUsuarioLogado(u, false);
   }catch(err){
     showToast('Falha no login: '+(err.message || err), 'danger');
+  }finally{
+    if(_btn) _btn.disabled = false;
+    if(_icon) _icon.className = 'fas fa-arrow-right';
+    if(_label) _label.textContent = 'Entrar';
   }
 });
 
