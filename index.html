@@ -16698,6 +16698,26 @@ function renderImportacao(){
     Para substituir tudo, use a opção "Importar JSON (substituir)".</div>
   </div>
 
+  <!-- IMPORTAR OS/PRE-OS POR PLANILHA (abre novas e fecha/atualiza existentes, já salva no banco) -->
+  <div class="card" style="margin-bottom:20px;border-top:3px solid var(--purple)">
+    <div class="card-title"><i class="fas fa-clipboard-list" style="color:var(--purple)"></i> Abrir/Fechar OS e Pré-OS por planilha</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">
+      Baixe o modelo, preencha uma linha por veículo (identificado pela <strong>placa</strong>) e faça upload.
+      Linha sem "numero": abre uma <strong>OS ou Pré-OS nova</strong> (defina pelo campo status).
+      Linha com "numero" de uma OS já existente: <strong>atualiza/fecha</strong> essa OS (ex: status = concluida + data_conclusao).
+      Diferente da importação genérica abaixo, esta grava direto no banco de dados.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-o" onclick="_impExp_baixarModeloOS()">
+        <i class="fas fa-table"></i> Baixar modelo de OS
+      </button>
+      <label class="btn btn-sm btn-p" style="cursor:pointer;margin:0">
+        <i class="fas fa-file-upload"></i> Importar planilha de OS
+        <input type="file" accept=".xlsx,.xls" style="display:none" onchange="_impExp_importarOS(this)">
+      </label>
+    </div>
+  </div>
+
   <!-- EXPORTAR BANCO COMPLETO -->
   <div class="card" style="margin-bottom:20px">
     <div class="card-title"><i class="fas fa-database" style="color:var(--primary)"></i> Backup / Restore Completo</div>
@@ -16855,6 +16875,103 @@ function _impExp_baixarModelo(tabela){
   XLSX.utils.book_append_sheet(wb, ws, 'Modelo_'+tabela.substring(0,20));
   XLSX.writeFile(wb, 'MODELO_'+tabela+'_.xlsx');
   showToast('Modelo baixado! Preencha e faça o upload.','info');
+}
+
+var _IMP_CAMPOS_OS = ['numero','placa','tipo','status','data_abertura','data_previsao','data_conclusao','hodometro','descricao','custo','responsavel','solicitante','oficina','obs'];
+
+function _impExp_baixarModeloOS(){
+  if(typeof XLSX === 'undefined'){ showToast('Biblioteca Excel não carregada','danger'); return; }
+  const campos = _IMP_CAMPOS_OS;
+  const exemploAbrir  = ['','ABC-1234','Corretiva','aberta','2026-09-21','','','85000','Troca de amortecedor','','','João Silva','Oficina FN',''];
+  const exemploFechar = ['0004','ABC-1234','Corretiva','concluida','2026-09-18','','2026-09-21','85200','Troca de amortecedor',450,'ADRIANO','João Silva','Oficina FN','Concluído sem intercorrências'];
+  const wsInstr = XLSX.utils.aoa_to_sheet([
+    ['Como preencher a aba Modelo_OS'],
+    ['Deixe "numero" em branco para ABRIR uma OS ou Pré-OS nova.'],
+    ['Preencha "numero" com o número de uma OS já existente para ATUALIZAR/FECHAR essa OS (ex: dar baixa preenchendo status=concluida e data_conclusao).'],
+    ['placa: obrigatório, precisa já existir cadastrada no sistema.'],
+    ['status possíveis: pre_os, aberta, em_andamento, concluida, cancelada'],
+    ['Preencha data_conclusao só quando status = concluida.'],
+    ['Datas no formato AAAA-MM-DD.'],
+  ]);
+  wsInstr['!cols'] = [{ wch: 100 }];
+  const ws = XLSX.utils.aoa_to_sheet([campos, exemploAbrir, exemploFechar]);
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for(let c=range.s.c; c<=range.e.c; c++){
+    const addr = XLSX.utils.encode_cell({r:0, c});
+    if(!ws[addr]) ws[addr]={};
+    ws[addr].s = { fill:{fgColor:{rgb:'6A1B9A'}}, font:{color:{rgb:'FFFFFF'},bold:true} };
+  }
+  ws['!cols'] = campos.map(()=>({wch:16}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsInstr, 'Instruções');
+  XLSX.utils.book_append_sheet(wb, ws, 'Modelo_OS');
+  XLSX.writeFile(wb, 'MODELO_ordens_servico.xlsx');
+  showToast('Modelo de OS baixado! Preencha e faça upload em "Importar planilha de OS".','info');
+}
+
+async function _impExp_importarOS(input){
+  const file = input.files[0]; if(!file) return;
+  if(typeof XLSX === 'undefined'){ showToast('Biblioteca Excel não carregada','danger'); return; }
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try{
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const nomeAba = wb.SheetNames.includes('Modelo_OS') ? 'Modelo_OS' : wb.SheetNames[0];
+      const ws = wb.Sheets[nomeAba];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+      if(rows.length < 2){ showToast('Planilha vazia ou sem dados','warning'); return; }
+      const headers = rows[0].map(h=>String(h||'').trim());
+      const linhas = rows.slice(1).filter(r=>r.some(c=>c!==''&&c!==null&&c!==undefined));
+      let abertas=0, atualizadas=0; const erros=[];
+      const numerosExistentes = (db.ordens_servico||[]).map(o=>parseInt(o.numero,10)).filter(Number.isFinite);
+      let proximoNumero = Math.max(0, ...numerosExistentes) + 1;
+      for(const row of linhas){
+        const obj = {}; headers.forEach((h,i)=>{ if(h) obj[h] = row[i]!==undefined?row[i]:null; });
+        try{
+          const placa = String(obj.placa||'').trim().toUpperCase();
+          if(!placa){ erros.push('Linha sem placa preenchida'); continue; }
+          const eq = (db.equipamentos||[]).find(e=>String(e.placa||'').trim().toUpperCase()===placa);
+          if(!eq){ erros.push('Placa não encontrada no cadastro: '+placa); continue; }
+          ['hodometro','custo'].forEach(c=>{ if(obj[c]!==null && obj[c]!=='') obj[c]=parseFloat(obj[c])||0; });
+          const numeroInformado = obj.numero ? String(obj.numero).trim() : '';
+          const existente = numeroInformado ? (db.ordens_servico||[]).find(o=>String(o.numero)===numeroInformado) : null;
+          if(existente){
+            const atualizado = {...existente, ...obj, equipamento_id:eq.id, numero:existente.numero};
+            delete atualizado.placa;
+            const ok = await sbSalvar('ordens_servico', atualizado);
+            if(ok){ const i=db.ordens_servico.findIndex(o=>String(o.id)===String(existente.id)); if(i>=0) db.ordens_servico[i]=atualizado; atualizadas++; }
+            else erros.push('Falha ao atualizar OS '+numeroInformado);
+          } else {
+            const numero = String(proximoNumero++).padStart(4,'0');
+            const novo = {
+              id: uid(), numero, equipamento_id: eq.id,
+              tipo: obj.tipo || 'Manutenção', status: obj.status || 'aberta',
+              data_abertura: obj.data_abertura || today_static(), data_previsao: obj.data_previsao || null,
+              data_conclusao: obj.data_conclusao || null, hodometro: obj.hodometro || null,
+              descricao: obj.descricao || '', custo: obj.custo || 0,
+              responsavel: obj.responsavel || null, solicitante: obj.solicitante || null,
+              oficina: obj.oficina || null, obs: obj.obs || null, origem: 'importacao_planilha'
+            };
+            if(novo.status === 'pre_os') novo.tipo_abertura = 'Pre-OS';
+            const ok = await sbSalvar('ordens_servico', novo);
+            if(ok){ db.ordens_servico.push(novo); abertas++; }
+            else erros.push('Falha ao abrir OS para a placa '+placa);
+          }
+        }catch(err){ erros.push(err.message); }
+      }
+      document.getElementById('imp_log').style.display='block';
+      document.getElementById('imp_log_content').innerHTML = `
+        <div class="al-s alert"><i class="fas fa-check-circle"></i>
+          <strong>${abertas}</strong> OS/Pré-OS aberta(s), <strong>${atualizadas}</strong> atualizada(s)/fechada(s).
+          ${erros.length?'<div style="color:var(--danger);margin-top:6px">'+erros.length+' linha(s) com erro:<ul style="margin:4px 0 0 18px">'+erros.slice(0,15).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>':''}
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:6px">Arquivo: <strong>${file.name}</strong> | ${new Date().toLocaleString('pt-BR')} | ${currentUser?.nome||''}</div>`;
+      loadPage('importacao');
+      showToast(abertas+' aberta(s), '+atualizadas+' atualizada(s)'+(erros.length?', '+erros.length+' erro(s)':''), erros.length?'warning':'success');
+    }catch(err){ showToast('Erro ao processar planilha: '+err.message,'danger'); }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
 }
 
 function _impExp_importarExcel(input, tabela){
