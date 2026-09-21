@@ -3250,6 +3250,7 @@ function sbIniciarRealtime(){
     .on('postgres_changes', {
       event: '*',
       schema: 'public',
+      table: '*', // sem 'table' o filtro de tenant não entrega nenhum evento (testado no Supabase)
       filter: 'tenant=eq.'+_sbTenant
     }, (payload) => {
       _realtimeProcessar(payload);
