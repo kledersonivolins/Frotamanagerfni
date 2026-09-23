@@ -3345,7 +3345,7 @@ function _realtimeProcessar(payload){
 
   // Desserializar campos JSON
   const campos_json = ['motor','hidraulico','combustiveis','parametros','pecas',
-    'veiculos_autorizados','documentos','historico','itens','diario_execucao','historico_edicoes','historico_fluxo','plano_padrao','componentes','layout_eixos','layout_posicoes'];
+    'veiculos_autorizados','documentos','historico','itens','diario_execucao','documentos_fechamento','historico_edicoes','historico_fluxo','plano_padrao','componentes','layout_eixos','layout_posicoes'];
 
   const _tabelasStringIdRT = ['portaria_qrcodes','portaria_movimentacoes','portaria_veiculos','portaria_pessoas','access_tokens','logs_auditoria'];
   const _usaStringIdRT = _tabelasStringIdRT.includes(table);
@@ -3495,7 +3495,7 @@ async function _sbCarregarUmaTabela(tabela){
     db[tabela] = data.map(row => {
       const { tenant, ...rest } = row;
       ['motor','hidraulico','combustiveis','parametros','pecas',
-       'veiculos_autorizados','documentos','historico','itens','diario_execucao',
+       'veiculos_autorizados','documentos','historico','itens','diario_execucao','documentos_fechamento',
        'historico_edicoes','historico_fluxo','plano_padrao','modulos_liberados','empresas','anexos','ocorrencias_tipos'].forEach(campo=>{
         if(rest[campo] && typeof rest[campo]==='string'){
           try { rest[campo]=JSON.parse(rest[campo]); }catch(e){}
@@ -3639,7 +3639,7 @@ async function sbSalvar(tabela, registro){
         if(!dados.email || dados.email.trim() === '') dados.email = null;
       }
       ['motor','hidraulico','combustiveis','parametros','pecas',
-       'veiculos_autorizados','documentos','historico','itens','diario_execucao',
+       'veiculos_autorizados','documentos','historico','itens','diario_execucao','documentos_fechamento',
        'historico_edicoes','historico_fluxo','plano_padrao','modulos_liberados','empresas','anexos'].forEach(campo=>{
         if(dados[campo] && typeof dados[campo]==='object'){
           dados[campo] = JSON.stringify(dados[campo]);
@@ -4273,7 +4273,7 @@ const _PAGINAS_LIVE = ['chamados','portaria_op','portaria_historico','rastreio_p
 
 // Campos JSON que precisam de desserialização (mesma lista do sbCarregarTudo)
 const _CAMPOS_JSON = ['motor','hidraulico','combustiveis','parametros','pecas',
-  'veiculos_autorizados','documentos','historico','itens','diario_execucao',
+  'veiculos_autorizados','documentos','historico','itens','diario_execucao','documentos_fechamento',
   'historico_edicoes','historico_fluxo','plano_padrao'];
 
 // FIX: flag para evitar refreshes simultâneos
@@ -13714,6 +13714,11 @@ function verOS(i){
     </tr>`).join('')}
     </tbody>
   </table></div>`:''}
+  ${(os.documentos_fechamento||[]).length>0?`
+  <div class="sec-title"><i class="fas fa-file-pdf"></i> Documentos do Fechamento (${os.documentos_fechamento.length})</div>
+  <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+    ${os.documentos_fechamento.map(d=>`<a href="${esc(d.url)}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px"><i class="fas fa-file-pdf" style="color:#e53935"></i>${esc(d.nome||'documento')}</a>`).join('')}
+  </div>`:''}
   ${os.status==='cancelada'&&os.motivo_cancelamento?`
   <div style="background:#fdecea;border-left:4px solid var(--danger);border-radius:8px;padding:14px;margin-bottom:12px">
     <div style="font-weight:800;font-size:13px;color:var(--danger);margin-bottom:6px"><i class="fas fa-ban"></i> OS Cancelada</div>
@@ -14060,6 +14065,8 @@ function editStatusOS(i){
   const dataSaidaAtual = os.data_saida || os.data_conclusao || today();
   const horaSaidaAtual = os.hora_saida || os.hora_fim_relogio || os.hora_fim || _agoraHHMM;
   const dataConclusaoAnterior = os.data_saida || os.data_conclusao || '';
+  window._eosDocsTemp = [];
+  window._eosDocsExistentes = Array.isArray(os.documentos_fechamento) ? os.documentos_fechamento.slice() : [];
   openModal(`<i class="fas fa-clipboard-check" style="color:var(--purple)"></i> Encerrar / Atualizar OS #${os.numero}`,`
   <div class="al-i alert" style="margin-bottom:14px"><i class="fas fa-info-circle"></i>
     Equipamento: <strong>${eqDesc(os.equipamento_id)}</strong> | KM: <strong>${fmt(eq?.parametros?.km)} km</strong> | Horas: <strong>${fmt(eq?.parametros?.horas)} h</strong>
@@ -14074,6 +14081,15 @@ function editStatusOS(i){
       ${pendentes.length>0?` <span style="color:var(--danger)">${pendentes.length} item(s) pendente(s) não executado(s).</span>`:''}
     </div>`;
   })()}
+  <div class="fg" style="margin-bottom:12px">
+    <label>Documento do fechamento (PDF ou foto escaneada) <span style="font-size:10px;color:var(--text2)">— comprovante de como o veículo saiu, com ou sem pendência</span></label>
+    <div id="eos_docs_list">${(window._eosDocsExistentes||[]).map((d,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px"><i class="fas fa-file-pdf" style="color:#e53935"></i><a href="${esc(d.url)}" target="_blank" style="flex:1;font-size:12px">${esc(d.nome||'documento')}</a><button type="button" class="ic-btn rd btn-xs" onclick="_eosRemoverDocExistente(${i})" title="Remover"><i class="fas fa-trash"></i></button></div>`).join('')}</div>
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border:2px dashed var(--border);border-radius:10px;cursor:pointer;font-size:13px;color:var(--text2)">
+      <i class="fas fa-file-upload" style="font-size:18px;color:var(--primary)"></i>
+      <span>Clique para anexar PDF ou foto do documento (pode escolher mais de um)</span>
+      <input type="file" id="eos_doc_input" accept="application/pdf,image/*" multiple style="display:none" onchange="_eosAdicionarDocs(this)">
+    </label>
+  </div>
   <div class="frow">
     <div class="fg"><label>Novo Status *</label><select class="fs" id="eos_st">
       <option value="aberta" ${os.status==='aberta'?'selected':''}>Aberta</option>
@@ -14208,11 +14224,31 @@ function _verificarMudancaData(dataAnterior){
   bloco.style.display = (dataAnterior && novaData !== dataAnterior) ? 'block' : 'none';
 }
 
-function confirmarBaixaOS(i, dataAnterior=''){
+async function confirmarBaixaOS(i, dataAnterior=''){
   try {
     const st = document.getElementById('eos_st')?.value;
     if(!st){ showToast('Selecione o status','warning'); return; }
     if(!db.ordens_servico[i]){ showToast('OS não encontrada','danger'); return; }
+
+    // Documento de fechamento: obrigatório quando o veículo está de fato saindo (concluída).
+    const _docsJaTem = (window._eosDocsExistentes||[]).length + (window._eosDocsTemp||[]).length;
+    if(st === 'concluida' && _docsJaTem === 0){
+      showToast('Anexe o documento (PDF ou foto) do fechamento antes de concluir a OS.','danger');
+      return;
+    }
+    let _docsEnviados = [];
+    if((window._eosDocsTemp||[]).length){
+      const btnConfirmar = document.querySelector('.mf .btn-pu');
+      if(btnConfirmar){ btnConfirmar.disabled = true; btnConfirmar.textContent = 'Enviando documento(s)...'; }
+      try {
+        _docsEnviados = await Promise.all(window._eosDocsTemp.map(f=>_uploadArquivoSupabaseStorage(f)));
+      } catch(upErr){
+        showToast('Falha ao enviar documento: '+upErr.message,'danger');
+        if(btnConfirmar){ btnConfirmar.disabled = false; btnConfirmar.innerHTML = '<i class="fas fa-check"></i> Confirmar'; }
+        return;
+      }
+    }
+    db.ordens_servico[i].documentos_fechamento = [...(window._eosDocsExistentes||[]), ..._docsEnviados];
 
     if(!db.ordens_servico[i].historico_fluxo) db.ordens_servico[i].historico_fluxo = [];
     if(typeof db.ordens_servico[i].historico_fluxo === 'string'){
@@ -35428,6 +35464,56 @@ function _htmlFotos(urls){
   if(!urls.length) return '';
   return `<div style="margin-top:12px"><div style="font-size:10px;font-weight:800;color:var(--text2);margin-bottom:6px;text-transform:uppercase">Fotos anexadas</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${urls.map(u=>`<a href="${esc(u)}" target="_blank" style="display:block;height:76px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--bg)"><img src="${esc(u)}" style="width:100%;height:100%;object-fit:cover"></a>`).join('')}</div></div>`;
 }
+async function _uploadArquivoSupabaseStorage(file, pasta='documentos-os'){
+  const nomeOriginal = (file.name||'').toLowerCase();
+  const ext = nomeOriginal.includes('.') ? nomeOriginal.split('.').pop() : (file.type==='application/pdf'?'pdf':'jpg');
+  const nome = pasta+'/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.'+ext;
+  const uploadUrl = _SB_URL+'/storage/v1/object/fotos-checklist/'+nome;
+  const res = await fetch(uploadUrl, {
+    method:'POST',
+    headers:{ 'Authorization':'Bearer '+_SB_KEY, 'Content-Type': file.type||'application/octet-stream', 'x-upsert':'true' },
+    body: file
+  });
+  if(!res.ok){
+    let msg=''; try{ const j=await res.json(); msg=j?.message||j?.error||''; }catch(e){}
+    throw new Error('Upload HTTP '+res.status+(msg?': '+msg:''));
+  }
+  return { nome: file.name||nome, url: _SB_URL+'/storage/v1/object/public/fotos-checklist/'+nome, enviado_em: new Date().toISOString() };
+}
+
+// ── Documentos de fechamento da OS (comprovante escaneado / PDF) ──
+window._eosDocsTemp = [];
+window._eosDocsExistentes = [];
+function _eosDocsRender(){
+  const wrap = document.getElementById('eos_docs_list');
+  if(!wrap) return;
+  const existentes = window._eosDocsExistentes||[];
+  const novos = window._eosDocsTemp||[];
+  if(!existentes.length && !novos.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML =
+    existentes.map((d,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px">
+      <i class="fas fa-file-pdf" style="color:#e53935"></i>
+      <a href="${esc(d.url)}" target="_blank" style="flex:1;font-size:12px">${esc(d.nome||'documento')}</a>
+      <button type="button" class="ic-btn rd btn-xs" onclick="_eosRemoverDocExistente(${i})" title="Remover"><i class="fas fa-trash"></i></button>
+    </div>`).join('')
+    + novos.map((f,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #bae6fd;background:#f0f9ff;border-radius:8px;margin-bottom:5px">
+      <i class="fas fa-file-import" style="color:#0284c7"></i>
+      <span style="flex:1;font-size:12px">${esc(f.name)} <small style="color:var(--text2)">(novo, será enviado ao confirmar)</small></span>
+      <button type="button" class="ic-btn rd btn-xs" onclick="_eosRemoverDocNovo(${i})" title="Remover"><i class="fas fa-trash"></i></button>
+    </div>`).join('');
+}
+function _eosAdicionarDocs(input){
+  const files = Array.from(input.files||[]);
+  files.forEach(f=>{
+    if(f.size > 15*1024*1024){ showToast('Arquivo "'+f.name+'" maior que 15MB','warning'); return; }
+    window._eosDocsTemp.push(f);
+  });
+  input.value='';
+  _eosDocsRender();
+}
+function _eosRemoverDocNovo(i){ window._eosDocsTemp.splice(i,1); _eosDocsRender(); }
+function _eosRemoverDocExistente(i){ window._eosDocsExistentes.splice(i,1); _eosDocsRender(); }
+
 async function _uploadFotoSupabaseStorage(file){
   const nome = Date.now()+'_'+Math.random().toString(36).slice(2)+'.jpg';
   const uploadUrl = _SB_URL+'/storage/v1/object/fotos-checklist/'+nome;
