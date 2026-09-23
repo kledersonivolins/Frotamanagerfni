@@ -3345,7 +3345,7 @@ function _realtimeProcessar(payload){
 
   // Desserializar campos JSON
   const campos_json = ['motor','hidraulico','combustiveis','parametros','pecas',
-    'veiculos_autorizados','documentos','historico','itens','historico_edicoes','historico_fluxo','plano_padrao','componentes','layout_eixos','layout_posicoes'];
+    'veiculos_autorizados','documentos','historico','itens','diario_execucao','historico_edicoes','historico_fluxo','plano_padrao','componentes','layout_eixos','layout_posicoes'];
 
   const _tabelasStringIdRT = ['portaria_qrcodes','portaria_movimentacoes','portaria_veiculos','portaria_pessoas','access_tokens','logs_auditoria'];
   const _usaStringIdRT = _tabelasStringIdRT.includes(table);
@@ -3495,7 +3495,7 @@ async function _sbCarregarUmaTabela(tabela){
     db[tabela] = data.map(row => {
       const { tenant, ...rest } = row;
       ['motor','hidraulico','combustiveis','parametros','pecas',
-       'veiculos_autorizados','documentos','historico','itens',
+       'veiculos_autorizados','documentos','historico','itens','diario_execucao',
        'historico_edicoes','historico_fluxo','plano_padrao','modulos_liberados','empresas','anexos','ocorrencias_tipos'].forEach(campo=>{
         if(rest[campo] && typeof rest[campo]==='string'){
           try { rest[campo]=JSON.parse(rest[campo]); }catch(e){}
@@ -3639,7 +3639,7 @@ async function sbSalvar(tabela, registro){
         if(!dados.email || dados.email.trim() === '') dados.email = null;
       }
       ['motor','hidraulico','combustiveis','parametros','pecas',
-       'veiculos_autorizados','documentos','historico','itens',
+       'veiculos_autorizados','documentos','historico','itens','diario_execucao',
        'historico_edicoes','historico_fluxo','plano_padrao','modulos_liberados','empresas','anexos'].forEach(campo=>{
         if(dados[campo] && typeof dados[campo]==='object'){
           dados[campo] = JSON.stringify(dados[campo]);
@@ -4273,7 +4273,7 @@ const _PAGINAS_LIVE = ['chamados','portaria_op','portaria_historico','rastreio_p
 
 // Campos JSON que precisam de desserialização (mesma lista do sbCarregarTudo)
 const _CAMPOS_JSON = ['motor','hidraulico','combustiveis','parametros','pecas',
-  'veiculos_autorizados','documentos','historico','itens',
+  'veiculos_autorizados','documentos','historico','itens','diario_execucao',
   'historico_edicoes','historico_fluxo','plano_padrao'];
 
 // FIX: flag para evitar refreshes simultâneos
@@ -12882,12 +12882,14 @@ function openModalOS(tipo='OS', preenchido=null){
   const optsEq=_eqsParaOS().slice().sort((a,b)=>(a.placa||'').localeCompare(b.placa||'')).map(e=>`<option value="${e.id}" ${preenchido?.equipamento_id==e.id?'selected':''}>${esc(e.placa||"")} — ${esc(e.modelo||"")}</option>`).join('');
   const n=(db.ordens_servico.length+1).toString().padStart(4,'0');
   const itensIniciais = preenchido?.itens || [];
+  window._osDiasTemp = Array.isArray(preenchido?.diario_execucao) ? preenchido.diario_execucao.slice() : [];
   const optsCC = db.centros_custo.filter(c=>c.ativo!==false).map(c=>`<option value="${c.id}" ${preenchido?.centro_custo_id==c.id?'selected':''}>${esc(c.nome||"")}${c.codigo?' ('+c.codigo+')':''}</option>`).join('');
   const optsObra = db.obras.filter(o=>o.status==='ativa').map(o=>`<option value="${o.id}" ${preenchido?.obra_id==o.id?'selected':''}>${esc(o.nome||"")}${o.codigo?' — '+o.codigo:''}</option>`).join('');
   openModal(`<i class="fas fa-clipboard-list" style="color:var(--purple)"></i> ${tipo==='Pre-OS'?'Nova Pré-OS':'Nova OS'} #${n}`,`
   <div class="tabs">
     <button class="tab active" onclick="switchTab(event,'os-tab-dados')"><i class="fas fa-info-circle"></i> Dados da OS</button>
     <button class="tab" onclick="switchTab(event,'os-tab-itens')"><i class="fas fa-box"></i> Itens / Peças <span id="os_itens_count" class="ncount">0</span></button>
+    <button class="tab" onclick="switchTab(event,'os-tab-dias')"><i class="fas fa-calendar-day"></i> Execução Diária <span id="os_dias_count" class="ncount">${window._osDiasTemp.length||0}</span></button>
     <button class="tab" onclick="switchTab(event,'os-tab-fotos')"><i class="fas fa-camera"></i> Fotos <span id="os_fotos_count" class="ncount" style="display:none">0</span></button>
     <button class="tab" onclick="switchTab(event,'os-tab-hist');carregarHistoricoOS()"><i class="fas fa-history"></i> Histórico do Ativo</button>
   </div>
@@ -13015,12 +13017,6 @@ function openModalOS(tipo='OS', preenchido=null){
     <div class="frow">
       <div class="fg"><label>Oficina / Local de Manutenção</label><input class="fi" id="os_oficina" placeholder="Nome da oficina ou local"></div>
       <div class="fg"><label>Solicitante</label><input class="fi" id="os_sol" placeholder="Nome"></div>
-      <div class="fg"><label>Responsável Execução</label>
-        <select class="fs" id="os_resp">
-          <option value="">— Selecione —</option>
-          ${db.mecanicos.map(m=>`<option value="${m.nome}">${esc(m.nome||"")}${m.especialidade?' — '+m.especialidade:''}</option>`).join('')}
-        </select>
-      </div>
     </div>
     <div class="fg"><label>Descrição do Problema / Diagnóstico *</label><textarea class="fta" id="os_desc" placeholder="Descreva o problema, diagnóstico e serviços a executar..." style="min-height:80px">${preenchido?.descricao||''}</textarea></div>
     <div class="fg"><label>Observações Técnicas</label><textarea class="fta" id="os_ob" placeholder="Observações adicionais..."></textarea></div>
@@ -13175,6 +13171,12 @@ function openModalOS(tipo='OS', preenchido=null){
         <i class="fas fa-magic"></i> Gerar nova OS com itens futuros
       </button>
     </div>
+  </div>
+
+  <div id="os-tab-dias" class="tab-c">
+    <div style="margin-bottom:12px;font-size:12px;color:var(--text2)"><i class="fas fa-info-circle"></i> Um serviço que atravessa vários dias: lance um dia de cada vez com o horário que chegou na oficina, iniciou e terminou (ou parou) o serviço. Adicione quantos dias precisar.</div>
+    <div id="os_dias_list">${_diasExecucaoRowsHTML(window._osDiasTemp)}</div>
+    <button type="button" class="btn btn-s btn-sm" onclick="_osDiaAdd()"><i class="fas fa-plus"></i> Adicionar dia</button>
   </div>
 
   <div id="os-tab-fotos" class="tab-c">
@@ -13452,6 +13454,32 @@ function _coletarItensOS(){
   return items;
 }
 
+// ── Execução Diária da OS (serviço que atravessa vários dias) ──
+window._osDiasTemp = window._osDiasTemp || [];
+function _diasExecucaoRowsHTML(dias){
+  if(!dias || !dias.length) return '<div class="empty" style="padding:12px"><i class="fas fa-calendar-day"></i><p style="font-size:12px">Nenhum dia lançado ainda.</p></div>';
+  return dias.map((d,i)=>`
+    <div class="frow" style="align-items:flex-end;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px">
+      <div class="fg" style="margin:0"><label style="font-size:10px">Data</label><input class="fi" type="date" value="${d.data||''}" onchange="_osDiaSet(${i},'data',this.value)"></div>
+      <div class="fg" style="margin:0"><label style="font-size:10px">Chegou na oficina</label><input class="fi" type="time" value="${d.chegada||''}" onchange="_osDiaSet(${i},'chegada',this.value)"></div>
+      <div class="fg" style="margin:0"><label style="font-size:10px">Iniciou serviço</label><input class="fi" type="time" value="${d.inicio||''}" onchange="_osDiaSet(${i},'inicio',this.value)"></div>
+      <div class="fg" style="margin:0"><label style="font-size:10px">Terminou / parou</label><input class="fi" type="time" value="${d.fim||''}" onchange="_osDiaSet(${i},'fim',this.value)"></div>
+      <button type="button" class="ic-btn rd" onclick="_osDiaRemover(${i})" title="Remover dia"><i class="fas fa-trash"></i></button>
+    </div>`).join('');
+}
+function _osDiasRerender(){
+  const wrap = document.getElementById('os_dias_list');
+  if(wrap) wrap.innerHTML = _diasExecucaoRowsHTML(window._osDiasTemp);
+  const cont = document.getElementById('os_dias_count');
+  if(cont) cont.textContent = window._osDiasTemp.length||0;
+}
+function _osDiaSet(i, campo, val){ if(window._osDiasTemp[i]) window._osDiasTemp[i][campo] = val; }
+function _osDiaAdd(){
+  window._osDiasTemp.push({ data: today(), chegada:'', inicio:'', fim:'' });
+  _osDiasRerender();
+}
+function _osDiaRemover(i){ window._osDiasTemp.splice(i,1); _osDiasRerender(); }
+
 function carregarHistoricoOS(){
   const eqId=parseInt(document.getElementById('os_eq')?.value||0);
   const body=document.getElementById('os_hist_body');
@@ -13551,7 +13579,7 @@ async function salvarOS(){
     agente:document.getElementById('os_agente').value,
     oficina:document.getElementById('os_oficina').value,
     solicitante:document.getElementById('os_sol').value,
-    responsavel:document.getElementById('os_resp').value,
+    responsavel:document.getElementById('os_mecanico')?.value || null,
     descricao:desc, custo:parseFloat(document.getElementById('os_cu').value)||0,
     custo_vinculado_ativo:true, origem_custo:'ordem_servico',
     status:(aberturaTipo==='Pre-OS'?'pre_os':document.getElementById('os_st').value),
@@ -13560,6 +13588,7 @@ async function salvarOS(){
     horas_mecanico_os: parseFloat(document.getElementById('os_horas_mecanico')?.value || 0) || null,
     ajudante_os: document.getElementById('os_ajudante')?.value || null,
     horas_ajudante_os: parseFloat(document.getElementById('os_horas_ajudante')?.value || 0) || null,
+    diario_execucao: (window._osDiasTemp||[]).filter(d=>d.data||d.chegada||d.inicio||d.fim),
     fotos: JSON.stringify(window._osFotosTemp||[]),
     remonta_ativo: remontaAtivo,
     remonta_litros: remontaLitros,
@@ -13672,6 +13701,19 @@ function verOS(i){
     </tr>`).join('')}
     </tbody>
   </table></div>`:''}
+  ${(os.diario_execucao||[]).length>0?`
+  <div class="sec-title"><i class="fas fa-calendar-day"></i> Execução Diária (${os.diario_execucao.length} dia(s))</div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Data</th><th>Chegou na oficina</th><th>Iniciou serviço</th><th>Terminou / parou</th></tr></thead>
+    <tbody>
+    ${os.diario_execucao.map(d=>`<tr>
+      <td>${d.data?fmtDt(d.data):'—'}</td>
+      <td>${d.chegada||'—'}</td>
+      <td>${d.inicio||'—'}</td>
+      <td>${d.fim||'—'}</td>
+    </tr>`).join('')}
+    </tbody>
+  </table></div>`:''}
   ${os.status==='cancelada'&&os.motivo_cancelamento?`
   <div style="background:#fdecea;border-left:4px solid var(--danger);border-radius:8px;padding:14px;margin-bottom:12px">
     <div style="font-weight:800;font-size:13px;color:var(--danger);margin-bottom:6px"><i class="fas fa-ban"></i> OS Cancelada</div>
@@ -13726,10 +13768,12 @@ function editarItensOS(i){
     if(!nivel('admin')){ showToast('OS encerrada. Apenas Admin pode editar.','danger'); return; }
   }
   const itensAtuais = os.itens || [];
+  window._osDiasTemp = Array.isArray(os.diario_execucao) ? os.diario_execucao.slice() : [];
   openModal(`<i class="fas fa-edit" style="color:var(--primary)"></i> Editar OS #${os.numero} — ${eqDesc(os.equipamento_id)}`,`
   <div class="tabs">
     <button class="tab active" onclick="switchTab(event,'edt-dados')"><i class="fas fa-info-circle"></i> Dados Gerais</button>
     <button class="tab" onclick="switchTab(event,'edt-itens')"><i class="fas fa-box"></i> Itens / Peças</button>
+    <button class="tab" onclick="switchTab(event,'edt-dias')"><i class="fas fa-calendar-day"></i> Execução Diária <span id="os_dias_count" class="ncount">${window._osDiasTemp.length||0}</span></button>
   </div>
 
   <div id="edt-dados" class="tab-c active">
@@ -13772,12 +13816,6 @@ function editarItensOS(i){
     </div>
     <div class="frow">
       <div class="fg"><label>Oficina / Local</label><input class="fi" id="edt_oficina" value="${os.oficina||''}"></div>
-      <div class="fg"><label>Responsável</label>
-        <select class="fs" id="edt_resp">
-          <option value="">— Selecione —</option>
-          ${_optsHH(_mecsTodos(), os.responsavel)}
-        </select>
-      </div>
       <div class="fg"><label>Hodômetro / Horímetro</label><input class="fi" type="number" id="edt_hod" value="${os.hodometro||0}"></div>
     </div>
     <div class="fg"><label>Descrição / Diagnóstico</label>
@@ -13885,6 +13923,12 @@ function editarItensOS(i){
     </div>
   </div>
 
+  <div id="edt-dias" class="tab-c">
+    <div style="margin-bottom:12px;font-size:12px;color:var(--text2)"><i class="fas fa-info-circle"></i> Um serviço que atravessa vários dias: lance um dia de cada vez com o horário que chegou na oficina, iniciou e terminou (ou parou) o serviço. Adicione quantos dias precisar.</div>
+    <div id="os_dias_list">${_diasExecucaoRowsHTML(window._osDiasTemp)}</div>
+    <button type="button" class="btn btn-s btn-sm" onclick="_osDiaAdd()"><i class="fas fa-plus"></i> Adicionar dia</button>
+  </div>
+
   <div class="mf">
     <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
     <button class="btn btn-p" onclick="salvarEdicaoOS(${i})"><i class="fas fa-save"></i> Salvar Alterações</button>
@@ -13990,7 +14034,7 @@ function salvarEdicaoOS(i){
   os.hora_inicio = document.getElementById('edt_hi')?.value||'';
   os.hora_fim    = document.getElementById('edt_hf')?.value||'';
   os.oficina     = document.getElementById('edt_oficina').value;
-  os.responsavel = document.getElementById('edt_resp').value;
+  os.responsavel = document.getElementById('edt_mecanico')?.value || null;
   os.hodometro   = parseFloat(document.getElementById('edt_hod').value)||0;
   os.descricao   = document.getElementById('edt_desc').value;
   os.obs         = document.getElementById('edt_obs').value;
@@ -14001,6 +14045,7 @@ function salvarEdicaoOS(i){
   os.ajudante_os       = document.getElementById('edt_ajudante')?.value || null;
   os.horas_ajudante_os = parseFloat(document.getElementById('edt_horas_ajudante')?.value)||null;
   os.itens       = novosItens;
+  os.diario_execucao = (window._osDiasTemp||[]).filter(d=>d.data||d.chegada||d.inicio||d.fim);
   sbSalvar('ordens_servico', os);
   closeModal(); loadPage('os');
   showToast(`OS #${os.numero} atualizada! ${novosItens.length} item(s). Edição registrada no histórico.`,'success');
