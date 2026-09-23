@@ -35464,17 +35464,35 @@ async function _uploadArquivoSupabaseStorage(file, pasta='documentos-os'){
   const nomeOriginal = (file.name||'').toLowerCase();
   const ext = nomeOriginal.includes('.') ? nomeOriginal.split('.').pop() : (file.type==='application/pdf'?'pdf':'jpg');
   const nome = pasta+'/'+Date.now()+'_'+Math.random().toString(36).slice(2)+'.'+ext;
-  const uploadUrl = _SB_URL+'/storage/v1/object/fotos-checklist/'+nome;
-  const res = await fetch(uploadUrl, {
-    method:'POST',
-    headers:{ 'Authorization':'Bearer '+_SB_KEY, 'Content-Type': file.type||'application/octet-stream', 'x-upsert':'true' },
-    body: file
-  });
-  if(!res.ok){
-    let msg=''; try{ const j=await res.json(); msg=j?.message||j?.error||''; }catch(e){}
-    throw new Error('Upload HTTP '+res.status+(msg?': '+msg:''));
+  try{
+    const uploadUrl = _SB_URL+'/storage/v1/object/fotos-checklist/'+nome;
+    const res = await fetch(uploadUrl, {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer '+_SB_KEY, 'Content-Type': file.type||'application/octet-stream', 'x-upsert':'true' },
+      body: file
+    });
+    if(!res.ok){
+      let msg=''; try{ const j=await res.json(); msg=j?.message||j?.error||''; }catch(e){}
+      throw new Error('Upload HTTP '+res.status+(msg?': '+msg:''));
+    }
+    return { nome: file.name||nome, url: _SB_URL+'/storage/v1/object/public/fotos-checklist/'+nome, enviado_em: new Date().toISOString() };
+  }catch(sbErr){
+    console.warn('Supabase Storage falhou, tentando Cloudinary:', sbErr.message);
   }
-  return { nome: file.name||nome, url: _SB_URL+'/storage/v1/object/public/fotos-checklist/'+nome, enviado_em: new Date().toISOString() };
+  // Fallback: Cloudinary (mesma conta já usada pras fotos, endpoint /auto/upload detecta PDF sozinho)
+  if(!_cloudinaryConfigurado()){
+    throw new Error('Upload falhou: Supabase e Cloudinary indisponíveis');
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', _CDN_PRESET);
+  formData.append('folder', 'frota/'+pasta);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${_CDN_CLOUD_NAME}/auto/upload`, { method:'POST', body: formData });
+  const data = await res.json();
+  if(!data.secure_url){
+    throw new Error(data?.error?.message || 'Cloudinary: upload recusado (verifique se o preset permite arquivos não-imagem)');
+  }
+  return { nome: file.name||nome, url: data.secure_url, enviado_em: new Date().toISOString() };
 }
 
 // ── Documentos de fechamento da OS (comprovante escaneado / PDF) ──
