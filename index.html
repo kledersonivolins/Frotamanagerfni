@@ -14082,7 +14082,7 @@ function editStatusOS(i){
     </div>`;
   })()}
   <div class="fg" style="margin-bottom:12px">
-    <label>Documento do fechamento (PDF ou foto escaneada) <span style="font-size:10px;color:var(--text2)">— comprovante de como o veículo saiu, com ou sem pendência</span></label>
+    <label>Documento do fechamento (PDF ou foto escaneada) <span style="font-size:10px;color:var(--text2)">— opcional; comprovante de como o veículo saiu, com ou sem pendência</span></label>
     <div id="eos_docs_list">${(window._eosDocsExistentes||[]).map((d,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px"><i class="fas fa-file-pdf" style="color:#e53935"></i><a href="${esc(d.url)}" target="_blank" style="flex:1;font-size:12px">${esc(d.nome||'documento')}</a><button type="button" class="ic-btn rd btn-xs" onclick="_eosRemoverDocExistente(${i})" title="Remover"><i class="fas fa-trash"></i></button></div>`).join('')}</div>
     <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border:2px dashed var(--border);border-radius:10px;cursor:pointer;font-size:13px;color:var(--text2)">
       <i class="fas fa-file-upload" style="font-size:18px;color:var(--primary)"></i>
@@ -14230,12 +14230,8 @@ async function confirmarBaixaOS(i, dataAnterior=''){
     if(!st){ showToast('Selecione o status','warning'); return; }
     if(!db.ordens_servico[i]){ showToast('OS não encontrada','danger'); return; }
 
-    // Documento de fechamento: obrigatório quando o veículo está de fato saindo (concluída).
-    const _docsJaTem = (window._eosDocsExistentes||[]).length + (window._eosDocsTemp||[]).length;
-    if(st === 'concluida' && _docsJaTem === 0){
-      showToast('Anexe o documento (PDF ou foto) do fechamento antes de concluir a OS.','danger');
-      return;
-    }
+    // Documento de fechamento: opcional — nem todo serviço gera comprovante
+    // (ex: serviço rápido, pedido direto pelo dono).
     let _docsEnviados = [];
     if((window._eosDocsTemp||[]).length){
       const btnConfirmar = document.querySelector('.mf .btn-pu');
