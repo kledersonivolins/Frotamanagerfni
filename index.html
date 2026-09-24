@@ -5901,6 +5901,15 @@ function renderAgendarManutencao(){
 function _abrirModalAgendamento(eqId){
   const eq=(db.equipamentos||[]).find(e=>String(e.id)===String(eqId));
   if(!eq){ showToast('Equipamento não encontrado.','danger'); return; }
+  const FERRO_LESTE_EMPRESA_ID = 1778591635572; // empresa_id da FERRO LESTE — regra: só 1 OS aberta por vez, além do limite geral da oficina
+  if(String(eq.empresa_id)===String(FERRO_LESTE_EMPRESA_ID) && _empresaTemOSAbertaBloqueio(FERRO_LESTE_EMPRESA_ID, db.ordens_servico)){
+    openModal(`<i class="fas fa-ban" style="color:var(--danger)"></i> Agendamento bloqueado`, `
+      <div style="background:#fdecea;border:1px solid #f5c6cb;border-radius:8px;padding:12px 14px;font-size:13px;color:#b71c1c">
+        <i class="fas fa-exclamation-triangle"></i> A FERRO LESTE já tem uma OS aberta na oficina. Não é possível agendar outro veículo até essa OS ser concluída.
+      </div>
+      <div class="mf"><button class="btn btn-o" onclick="closeModal()">Entendi</button></div>`);
+    return;
+  }
   const d = _disponibilidadeEq(eq);
   const aviso = d.key!=='livre' ? `<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#e65100"><i class="fas fa-exclamation-triangle"></i> Este equipamento já está com <strong>${esc(d.label.toLowerCase())}</strong>${d.ref?' ('+esc(d.ref)+')':''}. Você ainda pode registrar o agendamento, mas ele pode não ser priorizado.</div>` : '';
   const kmInfo = _kmAtualLabel(eq);
@@ -33798,6 +33807,15 @@ function _mediaPermanenciaDias(osList){
   }).filter(d=>d!==null && isFinite(d));
   if(!dias.length) return null;
   return dias.reduce((a,b)=>a+b,0)/dias.length;
+}
+function _empresaTemOSAbertaBloqueio(empresaId, osList){
+  const abertos = ['pre_os','aberta','em_andamento','oficina_externa'];
+  return (osList||[]).some(o=>
+    String(o.empresa_id)===String(empresaId) &&
+    !o.excluido &&
+    ['agendamento_operador','agendamento_externo'].includes(o.origem) &&
+    abertos.includes(String(o.status||''))
+  );
 }
 function _prognosticoTexto(dataBaseISO, diasMedios){
   if(diasMedios===null || diasMedios===undefined || !isFinite(diasMedios)) return 'Sem histórico suficiente para estimar prazo.';

@@ -199,4 +199,38 @@ function functionSource(name){
   console.log('PASS: "Meus Agendamentos" exibe motorista responsável e km/horas registrados no agendamento.');
 }
 
+// ── Teste 10: _empresaTemOSAbertaBloqueio detecta OS de agendamento ainda sem baixa ──
+{
+  const context = vm.createContext({ String });
+  vm.runInContext(functionSource('_empresaTemOSAbertaBloqueio'), context);
+
+  const comPreOS = [{ empresa_id:1778591635572, status:'pre_os', origem:'agendamento_operador' }];
+  assert.equal(context._empresaTemOSAbertaBloqueio(1778591635572, comPreOS), true, 'Pré-OS sem baixa deve bloquear novo agendamento da mesma empresa');
+
+  const emAndamento = [{ empresa_id:1778591635572, status:'em_andamento', origem:'agendamento_externo' }];
+  assert.equal(context._empresaTemOSAbertaBloqueio(1778591635572, emAndamento), true, 'OS em andamento também bloqueia');
+
+  const concluida = [{ empresa_id:1778591635572, status:'concluida', origem:'agendamento_operador' }];
+  assert.equal(context._empresaTemOSAbertaBloqueio(1778591635572, concluida), false, 'OS já concluída (com baixa) não bloqueia');
+
+  const outraEmpresa = [{ empresa_id:999, status:'pre_os', origem:'agendamento_operador' }];
+  assert.equal(context._empresaTemOSAbertaBloqueio(1778591635572, outraEmpresa), false, 'OS aberta de outra empresa não bloqueia');
+
+  const excluida = [{ empresa_id:1778591635572, status:'pre_os', origem:'agendamento_operador', excluido:true }];
+  assert.equal(context._empresaTemOSAbertaBloqueio(1778591635572, excluida), false, 'OS excluída não conta');
+
+  const osManual = [{ empresa_id:1778591635572, status:'aberta', origem:null }];
+  assert.equal(context._empresaTemOSAbertaBloqueio(1778591635572, osManual), false, 'OS aberta manualmente (fora do agendamento) não entra nessa checagem');
+
+  console.log('PASS: _empresaTemOSAbertaBloqueio detecta corretamente OS de agendamento ainda sem baixa da mesma empresa.');
+}
+
+// ── Teste 11: modal de agendamento bloqueia a FERRO LESTE enquanto ela tiver OS aberta ──
+{
+  const modal = functionSource('_abrirModalAgendamento');
+  assert.match(modal, /1778591635572/, 'modal deve checar o empresa_id da FERRO LESTE (1778591635572)');
+  assert.match(modal, /_empresaTemOSAbertaBloqueio/, 'modal deve usar _empresaTemOSAbertaBloqueio antes de liberar o formulário');
+  console.log('PASS: modal de Agendar Manutenção bloqueia novo agendamento da FERRO LESTE enquanto houver OS aberta.');
+}
+
 console.log('\nTODOS OS TESTES PASSARAM: Agendar Manutenção (operador) + impressão de OS sem valores financeiros.');
