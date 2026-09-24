@@ -100,4 +100,103 @@ function functionSource(name){
   console.log('PASS: impressão da OS remove valores financeiros e inclui a nova página de resumo.');
 }
 
+// ── Teste 5: _kmAtualLabel lê km/horas atuais do equipamento conforme tipo_medida ──
+{
+  const context = vm.createContext({ String });
+  vm.runInContext(functionSource('_kmAtualLabel'), context);
+
+  const porKm = context._kmAtualLabel({ tipo_medida:'km', parametros:{ km:45230 } });
+  assert.equal(porKm.valor, 45230, 'equipamento medido por km deve trazer o km atual');
+  assert.equal(porKm.unidade, 'km', 'unidade deve ser km');
+
+  const porHoras = context._kmAtualLabel({ tipo_medida:'horas', parametros:{ horas:1200 } });
+  assert.equal(porHoras.valor, 1200, 'equipamento medido por horas deve trazer o horímetro atual');
+  assert.equal(porHoras.unidade, 'h', 'unidade deve ser h (horímetro)');
+
+  assert.equal(context._kmAtualLabel({ tipo_medida:'km', parametros:{} }), null, 'sem valor registrado, deve retornar null');
+  assert.equal(context._kmAtualLabel(null), null, 'sem equipamento, deve retornar null');
+  console.log('PASS: _kmAtualLabel lê o parâmetro certo conforme o tipo de medida do equipamento.');
+}
+
+// ── Teste 6: _mediaPermanenciaDias calcula a média histórica de permanência em dias ──
+{
+  const context = vm.createContext({ String, Date, Math, fmtDt: d=>d });
+  vm.runInContext(functionSource('_calcPermanenciaOS'), context);
+  vm.runInContext(functionSource('_mediaPermanenciaDias'), context);
+
+  // Duas OS encerradas: 2 dias e 4 dias de permanência -> média 3
+  const os = [
+    { data_abertura:'2026-09-01', hora_inicio:'08:00', data_conclusao:'2026-09-03', hora_fim:'08:00' },
+    { data_abertura:'2026-09-01', hora_inicio:'08:00', data_conclusao:'2026-09-05', hora_fim:'08:00' },
+  ];
+  assert.equal(context._mediaPermanenciaDias(os), 3, 'média de 2 e 4 dias de permanência deve ser 3');
+
+  // OS ainda aberta não entra na média (histórico só conta OS já concluídas)
+  const comAberta = [...os, { data_abertura:'2026-09-01', hora_inicio:'08:00' }];
+  assert.equal(context._mediaPermanenciaDias(comAberta), 3, 'OS em aberto não deve entrar na média histórica');
+
+  assert.equal(context._mediaPermanenciaDias([]), null, 'sem histórico, não há média a calcular');
+  assert.equal(context._mediaPermanenciaDias(undefined), null, 'lista ausente também deve retornar null');
+  console.log('PASS: _mediaPermanenciaDias calcula a média de permanência ignorando OS ainda abertas.');
+}
+
+// ── Teste 7: _prognosticoTexto informa previsão de conclusão a partir da média histórica ──
+{
+  const context = vm.createContext({ String, Date, Math });
+  vm.runInContext(functionSource('_prognosticoTexto'), context);
+
+  assert.equal(
+    context._prognosticoTexto('2026-10-01', 2.4),
+    '≈2 dias · previsão de conclusão: 03/10',
+    'deve arredondar a média e somar à data escolhida'
+  );
+  assert.equal(
+    context._prognosticoTexto('2026-10-01', 0.4),
+    '≈1 dia · previsão de conclusão: 02/10',
+    'previsão mínima é de 1 dia, no singular'
+  );
+  assert.equal(
+    context._prognosticoTexto('2026-10-01', null),
+    'Sem histórico suficiente para estimar prazo.',
+    'sem média histórica, deve avisar que não há estimativa'
+  );
+  console.log('PASS: _prognosticoTexto informa a previsão de conclusão com base na média histórica.');
+}
+
+// ── Teste 8: modal de agendamento reaproveita o calendário/vagas do link externo ──
+{
+  const modal = functionSource('_abrirModalAgendamento');
+  assert.match(modal, /id="agm_motorista"/, 'modal deve ter campo de motorista responsável (texto livre)');
+  assert.match(modal, /id="agm_km"/, 'modal deve ter campo de km/horas atual');
+  assert.match(modal, /id="agm_cal"/, 'modal deve ter o contêiner do calendário do mês');
+  assert.match(modal, /id="agm_slots"/, 'modal deve ter o contêiner da grade de horários/vagas');
+  assert.match(modal, /id="agm_prognostico"/, 'modal deve ter o contêiner do prognóstico de conclusão');
+
+  assert.notEqual(html.indexOf('function _agmCarregarMes('), -1, '_agmCarregarMes deve existir para popular o calendário do mês');
+  assert.notEqual(html.indexOf('function _agmCarregarSlots('), -1, '_agmCarregarSlots deve existir para popular a grade de horários');
+
+  const carregarMes = functionSource('_agmCarregarMes');
+  assert.match(carregarMes, /agendamento_ocupacao_mes/, '_agmCarregarMes deve reaproveitar a RPC agendamento_ocupacao_mes do link externo');
+
+  const carregarSlots = functionSource('_agmCarregarSlots');
+  assert.match(carregarSlots, /agendamento_ocupacao_dia/, '_agmCarregarSlots deve reaproveitar a RPC agendamento_ocupacao_dia do link externo');
+  assert.match(carregarSlots, /_mediaPermanenciaDias/, '_agmCarregarSlots deve calcular a média histórica de permanência');
+  assert.match(carregarSlots, /_prognosticoTexto/, '_agmCarregarSlots deve exibir o prognóstico de conclusão');
+
+  const salvar = functionSource('_salvarAgendamentoOperador');
+  assert.match(salvar, /motorista_responsavel/, '_salvarAgendamentoOperador deve persistir o motorista responsável');
+  assert.match(salvar, /km_atual_agendamento/, '_salvarAgendamentoOperador deve persistir o km/horas atual informado');
+  assert.match(salvar, /agendamento_ocupacao_dia/, '_salvarAgendamentoOperador deve revalidar a vaga do horário antes de gravar');
+  console.log('PASS: modal de Agendar Manutenção reaproveita calendário, vagas e prognóstico do link externo, e persiste motorista/km.');
+}
+
+// ── Teste 9: "Meus Agendamentos" exibe motorista responsável e km/horas informados ──
+{
+  const render = functionSource('renderAgendarManutencao');
+  assert.match(render, /Motorista/, 'tabela de Meus Agendamentos deve ter coluna Motorista');
+  assert.match(render, /motorista_responsavel/, 'tabela de Meus Agendamentos deve exibir o motorista_responsavel de cada OS');
+  assert.match(render, /km_atual_agendamento/, 'tabela de Meus Agendamentos deve exibir o km_atual_agendamento de cada OS');
+  console.log('PASS: "Meus Agendamentos" exibe motorista responsável e km/horas registrados no agendamento.');
+}
+
 console.log('\nTODOS OS TESTES PASSARAM: Agendar Manutenção (operador) + impressão de OS sem valores financeiros.');

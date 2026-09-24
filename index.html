@@ -5872,9 +5872,12 @@ function renderAgendarManutencao(){
   const linhasMeus = meus.map(o=>{
     const eq=(db.equipamentos||[]).find(e=>String(e.id)===String(o.equipamento_id));
     const podeCancelar = String(o.status||'')==='pre_os';
+    const kmTxt = o.km_atual_agendamento!=null ? fmt(o.km_atual_agendamento)+(String(eq?.tipo_medida||'')==='km'?' km':' h') : '—';
     return `<tr>
       <td>${eq?esc(eq.placa||'—'):'—'}<br><small class="muted">${eq?esc(eq.modelo||''):''}</small></td>
       <td>${esc(o.tipo||'—')}</td>
+      <td>${esc(o.motorista_responsavel||'—')}</td>
+      <td>${kmTxt}</td>
       <td>${fmtDt(o.data_previsao)||'—'}</td>
       <td><div style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(o.descricao||'')}">${esc(o.descricao||'—')}</div></td>
       <td><span class="badge ${sbClsMeus[o.status]||'bi'}">${esc(String(o.status||'').replace('_',' '))}</span>${o.status==='cancelada'&&o.motivo_cancelamento?`<div style="font-size:10px;color:var(--danger);margin-top:2px" title="${esc(o.motivo_cancelamento||'')}"><i class="fas fa-ban"></i> ${esc((o.motivo_cancelamento||'').slice(0,40))}</div>`:''}</td>
@@ -5890,8 +5893,8 @@ function renderAgendarManutencao(){
   </div>
   <h3 style="margin:18px 0 8px;font-size:15px">Meus Agendamentos</h3>
   <div class="card" style="overflow:auto">
-    <table><thead><tr><th>Veículo</th><th>Tipo</th><th>Data desejada</th><th>Descrição</th><th>Status</th><th>Ações</th></tr></thead><tbody>
-    ${linhasMeus||'<tr><td colspan="6" class="muted" style="text-align:center;padding:30px">Você ainda não criou nenhum agendamento.</td></tr>'}
+    <table><thead><tr><th>Veículo</th><th>Tipo</th><th>Motorista</th><th>Km/Horas</th><th>Data desejada</th><th>Descrição</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+    ${linhasMeus||'<tr><td colspan="8" class="muted" style="text-align:center;padding:30px">Você ainda não criou nenhum agendamento.</td></tr>'}
     </tbody></table>
   </div>`;
 }
@@ -5900,6 +5903,9 @@ function _abrirModalAgendamento(eqId){
   if(!eq){ showToast('Equipamento não encontrado.','danger'); return; }
   const d = _disponibilidadeEq(eq);
   const aviso = d.key!=='livre' ? `<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#e65100"><i class="fas fa-exclamation-triangle"></i> Este equipamento já está com <strong>${esc(d.label.toLowerCase())}</strong>${d.ref?' ('+esc(d.ref)+')':''}. Você ainda pode registrar o agendamento, mas ele pode não ser priorizado.</div>` : '';
+  const kmInfo = _kmAtualLabel(eq);
+  window._agmEqAtual = eq;
+  window._agmMesRef = new Date(); window._agmMesRef.setDate(1);
   openModal(`<i class="fas fa-calendar-plus" style="color:var(--primary)"></i> Agendar Manutenção — ${esc(eq.placa||'')}`, `
     ${aviso}
     <input type="hidden" id="agm_eq" value="${eq.id}">
@@ -5909,28 +5915,142 @@ function _abrirModalAgendamento(eqId){
         <option value="Preventiva">Preventiva</option>
         <option value="Corretiva">Corretiva</option>
       </select></div>
-      <div class="fg"><label>Data desejada *</label><input type="date" class="fs" id="agm_data" value="${today_static()}"></div>
+      <div class="fg"><label>Motorista responsável</label><input type="text" class="fs" id="agm_motorista" placeholder="Nome do motorista"></div>
     </div>
+    <div class="fg"><label>${kmInfo&&kmInfo.unidade==='h'?'Horímetro atual':'Km atual'}</label><input type="number" class="fs" id="agm_km" value="${kmInfo?kmInfo.valor:''}" placeholder="Sem leitura registrada"></div>
     <div class="fg"><label>Descrição do problema / serviço *</label><textarea class="fta" id="agm_desc" style="min-height:90px" placeholder="Descreva o problema ou o serviço desejado..."></textarea></div>
+    <div class="fg">
+      <label>Data desejada * <small class="muted">(dias em negrito têm vaga)</small></label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <button type="button" class="btn btn-o btn-sm" onclick="_agmMudarMes(-1)">‹</button>
+        <strong id="agm_mes_label" style="font-size:13px;text-transform:capitalize"></strong>
+        <button type="button" class="btn btn-o btn-sm" onclick="_agmMudarMes(1)">›</button>
+      </div>
+      <div id="agm_cal" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:12px;text-align:center"></div>
+    </div>
+    <input type="hidden" id="agm_data">
+    <div class="fg"><label>Horário disponível *</label><div id="agm_slots" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px"><span class="muted">Escolha um dia no calendário acima.</span></div></div>
+    <input type="hidden" id="agm_hora">
+    <div id="agm_prognostico" style="font-size:12px;margin-top:4px;color:var(--text2)"></div>
     <div class="mf">
       <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-p" onclick="_salvarAgendamentoOperador()"><i class="fas fa-check"></i> Agendar</button>
+      <button class="btn btn-p" id="agm_btn_salvar" disabled style="opacity:.6" onclick="_salvarAgendamentoOperador()"><i class="fas fa-check"></i> Agendar</button>
     </div>`);
+  _agmCarregarMes();
+}
+function _agmMudarMes(delta){
+  if(!window._agmMesRef) return;
+  window._agmMesRef.setMonth(window._agmMesRef.getMonth()+delta);
+  _agmCarregarMes();
+}
+async function _agmCarregarMes(){
+  const calEl = document.getElementById('agm_cal');
+  const mesLabel = document.getElementById('agm_mes_label');
+  if(!calEl || !window._agmMesRef) return;
+  const ref = window._agmMesRef, ano = ref.getFullYear(), mes = ref.getMonth()+1;
+  if(mesLabel) mesLabel.textContent = ref.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  calEl.innerHTML = '<span style="grid-column:1/-1;color:var(--text2)">Carregando calendário...</span>';
+  const diasSemana=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  try{
+    const r = await _sb.rpc('agendamento_ocupacao_mes', { p_tenant:_sbTenant, p_ano:ano, p_mes:mes });
+    if(r.error) throw r.error;
+    const porDia={}; (r.data||[]).forEach(dd=>porDia[dd.dia]=dd);
+    const primeiroDia=new Date(ano,mes-1,1), offset=primeiroDia.getDay(), ultimoDia=new Date(ano,mes,0).getDate();
+    const hojeISO=today_static();
+    let htmlCal=diasSemana.map(dw=>`<div style="font-weight:700;color:var(--text2);padding:2px 0">${dw}</div>`).join('');
+    for(let i=0;i<offset;i++) htmlCal+='<div></div>';
+    for(let dia=1;dia<=ultimoDia;dia++){
+      const iso=`${ano}-${String(mes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+      const info=porDia[iso], passado=iso<hojeISO, temVaga=!!(info&&info.tem_vaga), ativo=temVaga&&!passado;
+      htmlCal+=`<button type="button" data-dia="${iso}" ${ativo?'':'disabled'} style="padding:6px 2px;border-radius:6px;border:1px solid ${ativo?'var(--primary)':'var(--border)'};background:${ativo?'rgba(58,63,66,.08)':'transparent'};color:${ativo?'var(--primary)':'var(--text2)'};font-weight:${ativo?'800':'400'};cursor:${ativo?'pointer':'not-allowed'}">${dia}</button>`;
+    }
+    calEl.innerHTML = htmlCal;
+    calEl.querySelectorAll('button[data-dia]').forEach(b=>{
+      if(b.disabled) return;
+      b.onclick=()=>{
+        calEl.querySelectorAll('button').forEach(x=>x.style.outline='');
+        b.style.outline='3px solid #f39c12';
+        const dataEl=document.getElementById('agm_data');
+        if(dataEl) dataEl.value=b.dataset.dia;
+        _agmCarregarSlots();
+      };
+    });
+  }catch(e){
+    calEl.innerHTML='<span style="grid-column:1/-1;color:var(--danger)">Não foi possível carregar o calendário.</span>';
+  }
+}
+async function _agmCarregarSlots(){
+  const dataEl=document.getElementById('agm_data'), slotsEl=document.getElementById('agm_slots'),
+        horaEl=document.getElementById('agm_hora'), prognEl=document.getElementById('agm_prognostico'),
+        btnSalvar=document.getElementById('agm_btn_salvar');
+  if(!dataEl?.value || !slotsEl) return;
+  if(horaEl) horaEl.value='';
+  if(btnSalvar){ btnSalvar.disabled=true; btnSalvar.style.opacity='.6'; }
+  slotsEl.innerHTML='<span class="muted">Carregando vagas...</span>';
+  try{
+    const r = await _sb.rpc('agendamento_ocupacao_dia', { p_tenant:_sbTenant, p_data:dataEl.value });
+    if(r.error) throw r.error;
+    const linhas = r.data||[];
+    if(!linhas.length){ slotsEl.innerHTML='<span style="color:var(--danger)">Sem grade de horários configurada para hoje.</span>'; }
+    else{
+      slotsEl.innerHTML = linhas.map(l=>{
+        const cheio=l.vagas<=0, hh=String(l.hora).padStart(2,'0')+':00';
+        return `<button type="button" data-hora="${l.hora}" ${cheio?'disabled':''} style="padding:8px 4px;border-radius:8px;border:1px solid ${cheio?'var(--danger)':'var(--border)'};background:transparent;color:${cheio?'var(--danger)':'var(--text)'};font-weight:700;cursor:${cheio?'not-allowed':'pointer'}">${hh}<br><span style="font-weight:400;font-size:10px">${cheio?'Lotado':l.vagas+' vaga(s)'}</span></button>`;
+      }).join('');
+      slotsEl.querySelectorAll('button[data-hora]').forEach(b=>{
+        if(b.disabled) return;
+        b.onclick=()=>{
+          slotsEl.querySelectorAll('button').forEach(x=>x.style.outline='');
+          b.style.outline='3px solid var(--primary)';
+          if(horaEl) horaEl.value=String(b.dataset.hora).padStart(2,'0')+':00';
+          if(btnSalvar){ btnSalvar.disabled=false; btnSalvar.style.opacity='1'; }
+        };
+      });
+    }
+  }catch(e){
+    slotsEl.innerHTML='<span style="color:var(--danger)">Não foi possível carregar as vagas.</span>';
+  }
+  if(prognEl){
+    const eq = window._agmEqAtual;
+    const historico = (db.ordens_servico||[]).filter(o=>
+      String(o.empresa_id)===String(eq?.empresa_id) && String(o.status||'').toLowerCase()==='concluida');
+    const media = _mediaPermanenciaDias(historico);
+    prognEl.textContent = _prognosticoTexto(dataEl.value, media);
+  }
 }
 async function _salvarAgendamentoOperador(){
   const eqId = document.getElementById('agm_eq')?.value;
   const tipo = document.getElementById('agm_tipo')?.value || 'Preventiva';
   const data = document.getElementById('agm_data')?.value;
+  const hora = document.getElementById('agm_hora')?.value;
+  const motorista = document.getElementById('agm_motorista')?.value?.trim();
+  const km = document.getElementById('agm_km')?.value;
   const desc = document.getElementById('agm_desc')?.value?.trim();
   const eq=(db.equipamentos||[]).find(e=>String(e.id)===String(eqId));
   if(!eq){ showToast('Equipamento não encontrado.','danger'); return; }
-  if(!data){ showToast('Informe a data desejada.','warning'); return; }
+  if(!data || !hora){ showToast('Escolha um dia e um horário disponível no calendário.','warning'); return; }
   if(!desc){ showToast('Descreva o problema ou serviço desejado.','warning'); return; }
+
+  // A oficina pode ter lotado entre a abertura do modal e o clique em Agendar — revalida.
+  try{
+    const r = await _sb.rpc('agendamento_ocupacao_dia', { p_tenant:_sbTenant, p_data:data });
+    if(!r.error){
+      const linha=(r.data||[]).find(l=>Number(l.hora)===Number(hora.slice(0,2)));
+      if(linha && linha.vagas<=0){
+        showToast('Esse horário acabou de lotar. Escolha outro.','warning');
+        _agmCarregarSlots();
+        return;
+      }
+    }
+  }catch(e){ /* se a checagem falhar aqui, o gatilho no banco ainda protege o limite de vagas */ }
+
   const numeros=(db.ordens_servico||[]).map(o=>parseInt(o.numero,10)).filter(Number.isFinite);
   const n=String((Math.max(0,...numeros)+1)).padStart(4,'0');
   const os={ id:uid(), numero:n, equipamento_id:eq.id, empresa_id:eq.empresa_id||null,
     tipo, tipo_abertura:'Pre-OS', status:'pre_os', origem:'agendamento_operador',
     data_abertura:today_static(), data_previsao:data,
+    motorista_responsavel: motorista||null,
+    km_atual_agendamento: km!==''&&km!==undefined&&km!==null ? Number(km) : null,
     solicitante:currentUser?.nome||currentUser?.username||'', oficina:'', descricao:desc, custo:0, obs:'' };
   db.ordens_servico.push(os);
   closeModal(); loadPage('agendar_manutencao');
@@ -33662,6 +33782,31 @@ function _calcPermanenciaOS(os){
     entradaFmt: (fmtDt(dataEntrada)||'—')+' '+horaEntrada.slice(0,5),
     saidaFmt: aberta ? 'Em aberto (calculado até agora)' : (fmtDt(dataSaida)||'—')+' '+horaSaida.slice(0,5)
   };
+}
+function _kmAtualLabel(eq){
+  if(!eq) return null;
+  const porKm = eq.tipo_medida === 'km';
+  const valor = porKm ? eq?.parametros?.km : eq?.parametros?.horas;
+  if(!valor) return null;
+  return { valor, unidade: porKm ? 'km' : 'h' };
+}
+function _mediaPermanenciaDias(osList){
+  const dias = (osList||[]).map(os=>{
+    const p = _calcPermanenciaOS(os);
+    if(!p || p.aberta) return null;
+    return p.dias + p.horas/24 + p.minutos/1440;
+  }).filter(d=>d!==null && isFinite(d));
+  if(!dias.length) return null;
+  return dias.reduce((a,b)=>a+b,0)/dias.length;
+}
+function _prognosticoTexto(dataBaseISO, diasMedios){
+  if(diasMedios===null || diasMedios===undefined || !isFinite(diasMedios)) return 'Sem histórico suficiente para estimar prazo.';
+  const dias = Math.max(1, Math.round(diasMedios));
+  const base = new Date(dataBaseISO+'T12:00:00');
+  base.setDate(base.getDate()+dias);
+  const dd = String(base.getDate()).padStart(2,'0');
+  const mm = String(base.getMonth()+1).padStart(2,'0');
+  return '≈'+dias+(dias===1?' dia':' dias')+' · previsão de conclusão: '+dd+'/'+mm;
 }
 function imprimirOS(i){
   const _askLinhas=()=>{const r=prompt('Quantas linhas?\n(itens + em branco)','5');if(r===null)return null;const n=parseInt(r,10);if(isNaN(n)||n<1||n>50){alert('1 a 50.');return _askLinhas();}return n;};const _linhasImprimir=_askLinhas();if(_linhasImprimir===null)return;
