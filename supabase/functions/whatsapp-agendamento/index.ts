@@ -106,8 +106,12 @@ const handler = createWhatsAppAgendamentoHandler(gateway)
 
 Deno.serve(async (request: Request): Promise<Response> => {
   // Fail closed: sem WHATSAPP_WEBHOOK_SECRET configurado, nenhuma requisição é aceita.
+  // Aceita o segredo tanto no header X-Webhook-Secret quanto na query string (?secret=...),
+  // porque o painel da Evolution API usado aqui não permite configurar headers customizados no webhook.
   const segredoEsperado = Deno.env.get('WHATSAPP_WEBHOOK_SECRET') ?? ''
-  const segredoRecebido = request.headers.get('X-Webhook-Secret') ?? ''
+  const segredoRecebido = request.headers.get('X-Webhook-Secret')
+    ?? new URL(request.url).searchParams.get('secret')
+    ?? ''
   if (!segredoEsperado || !segredoRecebido || !segredosIguais(segredoRecebido, segredoEsperado)) {
     return new Response(JSON.stringify({ error: 'Não autorizado.' }), {
       status: 401, headers: { 'Content-Type': 'application/json' },
