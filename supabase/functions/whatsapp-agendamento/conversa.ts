@@ -263,7 +263,7 @@ function passoConfirmando(dados: DadosSessao, entrada: string): ResultadoPasso {
     return { etapa: 'confirmando', dados, respostas: ['Não entendi. Responda SIM para confirmar ou NÃO para cancelar.'] }
   }
   if (!resposta) {
-    return { etapa: 'finalizado', dados, respostas: ['Tudo bem, agendamento cancelado. Se quiser recomeçar, é só mandar outra mensagem.'] }
+    return { etapa: 'finalizado', dados, respostas: ['Tudo bem, agendamento cancelado. Se quiser recomeçar, é só mandar uma mensagem dizendo que quer agendar.'] }
   }
   return { etapa: 'confirmando', dados, respostas: [], acaoPendente: 'criar_agendamento' }
 }
@@ -277,7 +277,7 @@ export function finalizarComProtocolo(
       etapa: 'finalizado',
       dados,
       respostas: [
-        `Protocolo: ${protocolo}.\nInfelizmente a oficina está lotada no momento e não foi possível reservar esse horário.${motivo}\nSe quiser, mande outra mensagem para tentar outra data ou fale com ${TELEFONE_ATENDIMENTO_HUMANO}.`,
+        `Protocolo: ${protocolo}.\nInfelizmente a oficina está lotada no momento e não foi possível reservar esse horário.${motivo}\nSe quiser tentar outra data, mande uma mensagem dizendo que quer agendar, ou fale com ${TELEFONE_ATENDIMENTO_HUMANO}.`,
       ],
     }
   }

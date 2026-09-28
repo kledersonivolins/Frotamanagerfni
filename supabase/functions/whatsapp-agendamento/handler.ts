@@ -28,7 +28,10 @@ const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body)
 // A Edge Function roda em UTC, então o offset precisa ir explícito no ISO.
 const OFFSET_FORTALEZA = '-03:00'
 
-const MENSAGEM_FALHA_GERAL = `Não consegui processar agora. Tente novamente em instantes ou fale com ${TELEFONE_ATENDIMENTO_HUMANO}.`
+// agendar/agendamento, manutenção/manutencao/manutenções, revisão/revisao/revisar.
+const GATILHO_NOVO_AGENDAMENTO = /agend|manuten[cç]|revis[aã]o|revisar/i
+
+const MENSAGEM_FALHA_GERAL =`Não consegui processar agora. Tente novamente em instantes ou fale com ${TELEFONE_ATENDIMENTO_HUMANO}.`
 
 async function montarContexto(
   gateway: AgendamentoBotGateway, etapa: Etapa, dados: DadosSessao, entradaUsuario: string,
@@ -106,6 +109,11 @@ export function createWhatsAppAgendamentoHandler(createGateway: (payload: unknow
       // Reentrega do mesmo webhook (mesmo data.key.id): não reprocessa, evitando agendamento duplicado.
       if (mensagem.id && mensagem.id === sessaoAtual?.dados?.ultimaMensagemId) {
         return reply({ ok: true, duplicado: true })
+      }
+      // Sem sessão em andamento, só inicia o fluxo se a mensagem pedir agendamento;
+      // qualquer outra conversa no número da oficina é ignorada (sem resposta, sem sessão).
+      if (!sessaoAtual && !GATILHO_NOVO_AGENDAMENTO.test(mensagem.texto)) {
+        return reply({ ok: true, ignorado: true })
       }
       const etapaAtual: Etapa = sessaoAtual?.etapa ?? 'inicio'
       const dadosAtuais: DadosSessao = sessaoAtual?.dados ?? {}

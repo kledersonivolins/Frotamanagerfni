@@ -26,10 +26,11 @@ function webhookRequest(corpo: unknown = {}): Request {
   return new Request('http://local/whatsapp-agendamento', { method: 'POST', body: JSON.stringify(corpo) })
 }
 
-test('sessao inexistente manda boas-vindas e cria sessao aguardando_nome', async () => {
+test('sessao inexistente com pedido de agendamento manda boas-vindas e cria sessao aguardando_nome', async () => {
   const salvas: Array<{ telefone: string; etapa: Etapa; dados: DadosSessao }> = []
   const enviadas: string[] = []
   const handler = createWhatsAppAgendamentoHandler(() => fakeGateway({
+    extrairMensagem: () => ({ telefone: '5586999990000', texto: 'quero agendar uma manutenção', id: '' }),
     salvarSessao: async (telefone, etapa, dados) => { salvas.push({ telefone, etapa, dados }) },
     enviarMensagem: async (_telefone, texto) => { enviadas.push(texto) },
   }))
@@ -38,6 +39,48 @@ test('sessao inexistente manda boas-vindas e cria sessao aguardando_nome', async
   assert.equal(salvas.length, 1)
   assert.equal(salvas[0].etapa, 'aguardando_nome')
   assert.match(enviadas[0], /nome/i)
+})
+
+test('sessao inexistente com mensagem sem gatilho ("oi") e ignorada: sem sessao, sem resposta', async () => {
+  let salvou = false
+  let enviou = false
+  let consultouRpc = false
+  const handler = createWhatsAppAgendamentoHandler(() => fakeGateway({
+    extrairMensagem: () => ({ telefone: '5586999990000', texto: 'oi', id: 'X1' }),
+    salvarSessao: async () => { salvou = true },
+    enviarMensagem: async () => { enviou = true },
+    listarEmpresas: async () => { consultouRpc = true; return empresas },
+  }))
+  const resposta = await handler(webhookRequest())
+  assert.equal(resposta.status, 200)
+  assert.deepEqual(await resposta.json(), { ok: true, ignorado: true })
+  assert.equal(salvou, false)
+  assert.equal(enviou, false)
+  assert.equal(consultouRpc, false)
+})
+
+test('gatilho aceita variacoes: Agendamento, REVISÃO, manutencao sem acento', async () => {
+  for (const texto of ['Bom dia, preciso de um Agendamento', 'REVISÃO do caminhão', 'manutencao preventiva']) {
+    let salvou = false
+    const handler = createWhatsAppAgendamentoHandler(() => fakeGateway({
+      extrairMensagem: () => ({ telefone: '5586999990000', texto, id: '' }),
+      salvarSessao: async () => { salvou = true },
+    }))
+    await handler(webhookRequest())
+    assert.equal(salvou, true, texto)
+  }
+})
+
+test('sessao em andamento continua mesmo com texto sem gatilho', async () => {
+  const salvas: Array<{ etapa: Etapa; dados: DadosSessao }> = []
+  const handler = createWhatsAppAgendamentoHandler(() => fakeGateway({
+    carregarSessao: async () => ({ etapa: 'aguardando_nome', dados: {} }),
+    extrairMensagem: () => ({ telefone: '5586999990000', texto: 'Maria', id: '' }),
+    salvarSessao: async (_t, etapa, dados) => { salvas.push({ etapa, dados }) },
+  }))
+  await handler(webhookRequest())
+  assert.equal(salvas[0].etapa, 'aguardando_empresa')
+  assert.equal(salvas[0].dados.nome, 'Maria')
 })
 
 test('mensagem que nao e do cliente e ignorada (200 sem efeitos)', async () => {

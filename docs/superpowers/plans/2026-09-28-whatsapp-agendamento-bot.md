@@ -1861,7 +1861,9 @@ Na mesma configuração de webhook da instância, adicionar o header customizado
 
 - [ ] **Step 5: Testar manualmente pelo WhatsApp**
 
-Mandar uma mensagem qualquer para o número da oficina e seguir o fluxo (nome →
+Mandar para o número da oficina uma mensagem pedindo agendamento (o bot só inicia
+conversa nova se o texto contiver "agend…", "manutenção" ou "revisão"/"revisar";
+um "oi" solto é ignorado de propósito) e seguir o fluxo (nome →
 empresa → placa em formato livre, ex. `abc-1234` → tipo → motivo → dia → hora →
 SIM). Conferir:
 - A resposta chega no WhatsApp em cada passo.
