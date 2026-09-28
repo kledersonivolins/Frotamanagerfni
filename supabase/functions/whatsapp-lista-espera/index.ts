@@ -1,7 +1,7 @@
 // supabase/functions/whatsapp-lista-espera/index.ts
 import 'jsr:@supabase/functions-js@2.4.4/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2.57.4'
-import { createListaEsperaHandler, type ListaEsperaGateway } from './handler.ts'
+import { createListaEsperaHandler, ofertaJaRecusada, type ListaEsperaGateway } from './handler.ts'
 import { enviarMensagemWhatsApp } from '../whatsapp-agendamento/evolution.ts'
 
 const TENANT = 'oficinafni'
@@ -34,7 +34,7 @@ function gateway(): ListaEsperaGateway {
       if (error) throw new Error(error.message)
       return (data ?? []).map(r => ({ telefone: r.telefone, dados: r.dados ?? {} }))
     },
-    async primeiroHorarioLivre() {
+    async primeiroHorarioLivre(dados) {
       const hoje = agoraFortaleza()
       const hojeISO = dataISO(hoje)
       for (const offsetMes of [0, 1]) {
@@ -45,8 +45,13 @@ function gateway(): ListaEsperaGateway {
           if (!d.tem_vaga || d.dia < hojeISO) continue
           const { data: horas, error: erroHoras } = await client.rpc('agendamento_ocupacao_dia', { p_tenant: TENANT, p_data: d.dia })
           if (erroHoras) throw new Error(erroHoras.message)
-          const livre = (horas ?? []).find((h: { vagas: number }) => h.vagas > 0)
-          if (livre) return { dia: d.dia, hora: `${String(livre.hora).padStart(2, '0')}:00` }
+          for (const h of (horas ?? []) as Array<{ hora: number; vagas: number }>) {
+            if (h.vagas <= 0) continue
+            const hora = `${String(h.hora).padStart(2, '0')}:00`
+            // Pula horário que este cliente já recusou, senão a mesma oferta se repetiria para sempre.
+            if (ofertaJaRecusada(dados, d.dia, hora)) continue
+            return { dia: d.dia, hora }
+          }
         }
       }
       return null

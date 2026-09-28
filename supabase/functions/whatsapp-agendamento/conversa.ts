@@ -24,6 +24,8 @@ export interface DadosSessao {
   hora?: string
   ofertaDia?: string
   ofertaHora?: string
+  /** Ofertas da lista de espera que o cliente recusou, como "AAAA-MM-DD|HH:MM". */
+  ofertasRecusadas?: string[]
   /** id (data.key.id) da última mensagem processada, para descartar reentregas do webhook. */
   ultimaMensagemId?: string
 }
@@ -319,7 +321,14 @@ function passoAguardandoConfirmacaoEspera(dados: DadosSessao, entrada: string): 
     return { etapa: 'aguardando_confirmacao_espera', dados, respostas: ['Não entendi. Responda SIM para garantir a vaga ou NÃO para continuar esperando.'] }
   }
   if (!resposta) {
-    return { etapa: 'lista_espera', dados, respostas: ['Sem problemas, você continua na lista de espera.'] }
+    const recusadas = dados.ofertasRecusadas ?? []
+    const oferta = dados.ofertaDia && dados.ofertaHora ? `${dados.ofertaDia}|${dados.ofertaHora}` : undefined
+    const ofertasRecusadas = oferta && !recusadas.includes(oferta) ? [...recusadas, oferta] : recusadas
+    return {
+      etapa: 'lista_espera',
+      dados: { ...dados, ofertasRecusadas },
+      respostas: ['Sem problemas, você continua na lista de espera.'],
+    }
   }
   return { etapa: 'aguardando_confirmacao_espera', dados, respostas: [], acaoPendente: 'confirmar_espera' }
 }

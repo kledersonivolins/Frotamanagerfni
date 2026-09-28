@@ -269,6 +269,24 @@ test('aguardando_confirmacao_espera com NAO volta pra lista de espera', () => {
     'nao', {},
   )
   assert.equal(r.etapa, 'lista_espera')
+  assert.deepEqual(r.dados.ofertasRecusadas, ['2026-10-05|09:00'])
+})
+
+test('aguardando_confirmacao_espera com NAO acumula ofertas recusadas anteriores', () => {
+  const dados = { nome: 'Maria', ofertaDia: '2026-10-06', ofertaHora: '10:00', ofertasRecusadas: ['2026-10-05|09:00'] }
+  const r = processarPasso('aguardando_confirmacao_espera', dados, 'não', {})
+  assert.deepEqual(r.dados.ofertasRecusadas, ['2026-10-05|09:00', '2026-10-06|10:00'])
+  // função pura: não altera o objeto de entrada
+  assert.deepEqual(dados.ofertasRecusadas, ['2026-10-05|09:00'])
+})
+
+test('aguardando_confirmacao_espera com NAO nao duplica oferta ja recusada', () => {
+  const r = processarPasso(
+    'aguardando_confirmacao_espera',
+    { ofertaDia: '2026-10-05', ofertaHora: '09:00', ofertasRecusadas: ['2026-10-05|09:00'] },
+    'n', {},
+  )
+  assert.deepEqual(r.dados.ofertasRecusadas, ['2026-10-05|09:00'])
 })
 
 test('confirmarEsperaComSucesso finaliza com protocolo', () => {
