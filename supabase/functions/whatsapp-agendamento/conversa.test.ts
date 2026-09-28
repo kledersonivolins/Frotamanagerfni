@@ -266,3 +266,47 @@ test('confirmarEsperaVagaPerdida volta pra lista de espera avisando', () => {
   assert.equal(r.etapa, 'lista_espera')
   assert.match(r.respostas[0], /já foi ocupado/i)
 })
+
+test('fluxo completo: do inicio ate finalizado, passo a passo', () => {
+  let etapa: import('./conversa.ts').Etapa = 'inicio'
+  let dados = {}
+
+  let r = processarPasso(etapa, dados, '', {})
+  etapa = r.etapa; dados = r.dados
+  assert.equal(etapa, 'aguardando_nome')
+
+  r = processarPasso(etapa, dados, 'João', { empresas })
+  etapa = r.etapa; dados = r.dados
+  assert.equal(etapa, 'aguardando_empresa')
+
+  r = processarPasso(etapa, dados, '2', { empresas })
+  etapa = r.etapa; dados = r.dados
+  assert.equal(etapa, 'aguardando_placa')
+
+  r = processarPasso(etapa, dados, 'abc-1234', { veiculosDaEmpresa: veiculos })
+  etapa = r.etapa; dados = r.dados
+  assert.equal(etapa, 'aguardando_tipo')
+
+  r = processarPasso(etapa, dados, '1', {})
+  etapa = r.etapa; dados = r.dados
+  assert.equal(etapa, 'aguardando_motivo')
+
+  r = processarPasso(etapa, dados, 'Troca de óleo', { diasComVaga: dias })
+  etapa = r.etapa; dados = r.dados
+  assert.equal(etapa, 'aguardando_dia')
+
+  r = processarPasso(etapa, dados, '1', { diasComVaga: dias, horariosDoDia: horarios })
+  etapa = r.etapa; dados = r.dados
+  assert.equal(etapa, 'aguardando_hora')
+
+  r = processarPasso(etapa, dados, '1', { horariosDoDia: horarios })
+  etapa = r.etapa; dados = r.dados
+  assert.equal(etapa, 'confirmando')
+
+  r = processarPasso(etapa, dados, 'sim', {})
+  assert.equal(r.acaoPendente, 'criar_agendamento')
+
+  const final = finalizarComProtocolo(r.dados, 'AG-999', 'autorizado')
+  assert.equal(final.etapa, 'finalizado')
+  assert.match(final.respostas[0], /AG-999/)
+})
