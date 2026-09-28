@@ -266,7 +266,19 @@ function passoConfirmando(dados: DadosSessao, entrada: string): ResultadoPasso {
   return { etapa: 'confirmando', dados, respostas: [], acaoPendente: 'criar_agendamento' }
 }
 
-export function finalizarComProtocolo(dados: DadosSessao, protocolo: string, statusRetornado: string): ResultadoPasso {
+export function finalizarComProtocolo(
+  dados: DadosSessao, protocolo: string, statusRetornado: string, motivoRecusa?: string,
+): ResultadoPasso {
+  if (statusRetornado === 'recusado') {
+    const motivo = motivoRecusa?.trim() ? `\nMotivo: ${motivoRecusa.trim()}` : ''
+    return {
+      etapa: 'finalizado',
+      dados,
+      respostas: [
+        `Protocolo: ${protocolo}.\nInfelizmente a oficina está lotada no momento e não foi possível reservar esse horário.${motivo}\nSe quiser, mande outra mensagem para tentar outra data ou fale com ${TELEFONE_ATENDIMENTO_HUMANO}.`,
+      ],
+    }
+  }
   const statusTexto = statusRetornado === 'autorizado'
     ? 'Confirmado — vaga reservada e Pré-OS gerada.'
     : 'Aguardando autorização.'
@@ -312,8 +324,10 @@ function passoAguardandoConfirmacaoEspera(dados: DadosSessao, entrada: string): 
   return { etapa: 'aguardando_confirmacao_espera', dados, respostas: [], acaoPendente: 'confirmar_espera' }
 }
 
-export function confirmarEsperaComSucesso(dados: DadosSessao, protocolo: string, statusRetornado: string): ResultadoPasso {
-  return finalizarComProtocolo(dados, protocolo, statusRetornado)
+export function confirmarEsperaComSucesso(
+  dados: DadosSessao, protocolo: string, statusRetornado: string, motivoRecusa?: string,
+): ResultadoPasso {
+  return finalizarComProtocolo(dados, protocolo, statusRetornado, motivoRecusa)
 }
 
 export function confirmarEsperaVagaPerdida(dados: DadosSessao): ResultadoPasso {

@@ -144,6 +144,24 @@ test('confirmar_espera envia inicioISO com offset de Fortaleza', async () => {
   assert.equal(inicioISO, '2026-10-05T09:00:00-03:00')
 })
 
+test('agendamento recusado pela oficina e comunicado como lotado, com motivo', async () => {
+  const enviadas: string[] = []
+  const handler = createWhatsAppAgendamentoHandler(() => fakeGateway({
+    carregarSessao: async () => ({
+      etapa: 'confirmando',
+      dados: { nome: 'Maria', empresaId: 20, veiculoId: 100, tipo: 'Corretiva', descricao: 'x', dia: '2026-10-01', hora: '08:00' },
+    }),
+    extrairMensagem: () => ({ telefone: '5586999990000', texto: 'sim', id: '' }),
+    solicitarAgendamento: async () => ({ protocolo: 'AG-9', status: 'recusado', motivoRecusa: 'Oficina lotada: 4 de 4' }),
+    enviarMensagem: async (_t, texto) => { enviadas.push(texto) },
+  }))
+  await handler(webhookRequest())
+  assert.match(enviadas[0], /AG-9/)
+  assert.match(enviadas[0], /lotada/i)
+  assert.match(enviadas[0], /Oficina lotada: 4 de 4/)
+  assert.doesNotMatch(enviadas[0], /aguardando autorização/i)
+})
+
 test('erro inesperado do gateway nao derruba o handler: responde 200 e pede desculpas ao cliente', async () => {
   const enviadas: string[] = []
   const handler = createWhatsAppAgendamentoHandler(() => fakeGateway({

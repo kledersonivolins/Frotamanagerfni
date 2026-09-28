@@ -16,7 +16,7 @@ export interface AgendamentoBotGateway {
   solicitarAgendamento(input: {
     nome: string; contato: string; empresaId: number; veiculoId: number
     tipo: string; descricao: string; inicioISO: string
-  }): Promise<{ protocolo: string; status: string }>
+  }): Promise<{ protocolo: string; status: string; motivoRecusa?: string }>
   enviarMensagem(telefone: string, texto: string): Promise<void>
   extrairMensagem(payload: unknown): { telefone: string; texto: string; id: string } | null
 }
@@ -66,7 +66,7 @@ async function executarAcaoPendente(gateway: AgendamentoBotGateway, telefone: st
         nome: d.nome ?? '', contato: telefone, empresaId: d.empresaId, veiculoId: d.veiculoId,
         tipo: d.tipo, descricao: d.descricao, inicioISO: `${d.dia}T${d.hora}:00${OFFSET_FORTALEZA}`,
       })
-      return finalizarComProtocolo(d, r.protocolo, r.status)
+      return finalizarComProtocolo(d, r.protocolo, r.status, r.motivoRecusa)
     } catch {
       return falhaAoConfirmar(d)
     }
@@ -83,7 +83,7 @@ async function executarAcaoPendente(gateway: AgendamentoBotGateway, telefone: st
         nome: d.nome ?? '', contato: telefone, empresaId: d.empresaId, veiculoId: d.veiculoId,
         tipo: d.tipo, descricao: d.descricao, inicioISO: `${d.ofertaDia}T${d.ofertaHora}:00${OFFSET_FORTALEZA}`,
       })
-      return confirmarEsperaComSucesso(d, r.protocolo, r.status)
+      return confirmarEsperaComSucesso(d, r.protocolo, r.status, r.motivoRecusa)
     } catch {
       return falhaAoConfirmar(d)
     }

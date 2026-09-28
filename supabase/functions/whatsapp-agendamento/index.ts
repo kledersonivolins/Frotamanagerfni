@@ -83,8 +83,8 @@ function gateway(): AgendamentoBotGateway {
       if (error) throw new Error(error.message)
       const protocolo = data?.[0]?.protocolo
       if (!protocolo) throw new Error('RPC agendamento_solicitar não retornou protocolo')
-      const { data: linha } = await client.from('agendamentos_externos').select('status').eq('protocolo', protocolo).eq('tenant', TENANT).maybeSingle()
-      return { protocolo, status: linha?.status ?? 'pendente' }
+      const { data: linha } = await client.from('agendamentos_externos').select('status,motivo_recusa').eq('protocolo', protocolo).eq('tenant', TENANT).maybeSingle()
+      return { protocolo, status: linha?.status ?? 'pendente', motivoRecusa: linha?.motivo_recusa ?? undefined }
     },
     async enviarMensagem(telefone, texto) {
       await enviarMensagemWhatsApp(evolutionConfig, telefone, texto)

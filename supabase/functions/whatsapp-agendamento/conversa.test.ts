@@ -215,6 +215,22 @@ test('finalizarComProtocolo com outro status avisa que aguarda autorizacao', () 
   assert.match(r.respostas[0], /aguardando autorização/i)
 })
 
+test('finalizarComProtocolo com status recusado avisa oficina lotada e o motivo', () => {
+  const r = finalizarComProtocolo(dadosConfirmando, 'AG-125', 'recusado', 'Oficina sem vagas: 4 de 4')
+  assert.equal(r.etapa, 'finalizado')
+  assert.match(r.respostas[0], /AG-125/)
+  assert.match(r.respostas[0], /lotada/i)
+  assert.match(r.respostas[0], /Motivo: Oficina sem vagas: 4 de 4/)
+  assert.doesNotMatch(r.respostas[0], /aguardando autorização/i)
+  assert.doesNotMatch(r.respostas[0], /Confirmado/i)
+})
+
+test('finalizarComProtocolo com status recusado sem motivo nao mostra linha de motivo', () => {
+  const r = finalizarComProtocolo(dadosConfirmando, 'AG-126', 'recusado')
+  assert.match(r.respostas[0], /lotada/i)
+  assert.doesNotMatch(r.respostas[0], /Motivo:/)
+})
+
 test('falhaAoConfirmar mantem etapa confirmando e avisa erro', () => {
   const r = falhaAoConfirmar(dadosConfirmando)
   assert.equal(r.etapa, 'confirmando')
