@@ -17,6 +17,7 @@ function fakeGateway(overrides: Partial<AgendamentoBotGateway> = {}): Agendament
     listarHorariosDoDia: async () => [],
     solicitarAgendamento: async () => ({ protocolo: 'AG-1', status: 'autorizado' }),
     enviarMensagem: async () => undefined,
+    notificarGrupo: async () => undefined,
     extrairMensagem: () => ({ telefone: '5586999990000', texto: 'oi', id: '' }),
     ...overrides,
   }
@@ -128,6 +129,44 @@ test('confirmacao com SIM chama solicitarAgendamento e encerra a sessao', async 
   assert.equal((chamouSolicitar as { veiculoId: number }).veiculoId, 100)
   assert.equal((chamouSolicitar as { inicioISO: string }).inicioISO, '2026-10-01T08:00:00-03:00')
   assert.equal(encerrou, true)
+  assert.match(enviadas[0], /AG-42/)
+})
+
+test('confirmacao com SIM tambem notifica o grupo com o protocolo', async () => {
+  const paraGrupo: string[] = []
+  const handler = createWhatsAppAgendamentoHandler(() => fakeGateway({
+    carregarSessao: async () => ({
+      etapa: 'confirmando',
+      dados: {
+        nome: 'Maria', empresaId: 20, empresaNome: 'Construtora BS', veiculoId: 100,
+        veiculoPlaca: 'ABC1234', tipo: 'Corretiva', descricao: 'Barulho', dia: '2026-10-01', hora: '08:00',
+      },
+    }),
+    extrairMensagem: () => ({ telefone: '5586999990000', texto: 'sim', id: '' }),
+    solicitarAgendamento: async () => ({ protocolo: 'AG-42', status: 'autorizado' }),
+    notificarGrupo: async (texto) => { paraGrupo.push(texto) },
+  }))
+  await handler(webhookRequest())
+  assert.equal(paraGrupo.length, 1)
+  assert.match(paraGrupo[0], /AG-42/)
+  assert.match(paraGrupo[0], /ABC1234/)
+  assert.match(paraGrupo[0], /Construtora BS/)
+})
+
+test('falha ao notificar grupo nao impede a resposta ao cliente', async () => {
+  const enviadas: string[] = []
+  const handler = createWhatsAppAgendamentoHandler(() => fakeGateway({
+    carregarSessao: async () => ({
+      etapa: 'confirmando',
+      dados: { nome: 'Maria', empresaId: 20, veiculoId: 100, tipo: 'Corretiva', descricao: 'x', dia: '2026-10-01', hora: '08:00' },
+    }),
+    extrairMensagem: () => ({ telefone: '5586999990000', texto: 'sim', id: '' }),
+    solicitarAgendamento: async () => ({ protocolo: 'AG-42', status: 'autorizado' }),
+    notificarGrupo: async () => { throw new Error('grupo indisponivel') },
+    enviarMensagem: async (_t, texto) => { enviadas.push(texto) },
+  }))
+  const resposta = await handler(webhookRequest())
+  assert.equal(resposta.status, 200)
   assert.match(enviadas[0], /AG-42/)
 })
 

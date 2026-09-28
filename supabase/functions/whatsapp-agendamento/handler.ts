@@ -18,6 +18,8 @@ export interface AgendamentoBotGateway {
     tipo: string; descricao: string; inicioISO: string
   }): Promise<{ protocolo: string; status: string; motivoRecusa?: string }>
   enviarMensagem(telefone: string, texto: string): Promise<void>
+  /** Notifica o grupo interno com o protocolo do agendamento. No-op se nenhum grupo estiver configurado. */
+  notificarGrupo(texto: string): Promise<void>
   extrairMensagem(payload: unknown): { telefone: string; texto: string; id: string } | null
 }
 
@@ -32,6 +34,25 @@ const OFFSET_FORTALEZA = '-03:00'
 const GATILHO_NOVO_AGENDAMENTO = /agend|manuten[cç]|revis[aã]o|revisar/i
 
 const MENSAGEM_FALHA_GERAL =`Não consegui processar agora. Tente novamente em instantes ou fale com ${TELEFONE_ATENDIMENTO_HUMANO}.`
+
+function mensagemGrupo(d: DadosSessao, protocolo: string, status: string): string {
+  return [
+    '📋 Novo agendamento via WhatsApp',
+    `Protocolo: ${protocolo}`,
+    `Cliente: ${d.nome ?? '?'}`,
+    `Empresa: ${d.empresaNome ?? '?'}`,
+    `Veículo: ${d.veiculoPlaca ?? '?'}`,
+    `Status: ${status}`,
+  ].join('\n')
+}
+
+async function notificarGrupoComSeguranca(gateway: AgendamentoBotGateway, texto: string): Promise<void> {
+  try {
+    await gateway.notificarGrupo(texto)
+  } catch (erro) {
+    console.error('whatsapp-agendamento: falha ao notificar grupo', erro)
+  }
+}
 
 async function montarContexto(
   gateway: AgendamentoBotGateway, etapa: Etapa, dados: DadosSessao, entradaUsuario: string,
@@ -69,10 +90,11 @@ async function executarAcaoPendente(gateway: AgendamentoBotGateway, telefone: st
         nome: d.nome ?? '', contato: telefone, empresaId: d.empresaId, veiculoId: d.veiculoId,
         tipo: d.tipo, descricao: d.descricao, inicioISO: `${d.dia}T${d.hora}:00${OFFSET_FORTALEZA}`,
       })
+      await notificarGrupoComSeguranca(gateway, mensagemGrupo(d, r.protocolo, r.status))
       return finalizarComProtocolo(d, r.protocolo, r.status, r.motivoRecusa)
     } catch (erro) {
       console.error('whatsapp-agendamento: falha ao solicitar agendamento', erro)
-      return falhaAoConfirmar(d)
+      return falhaAoConfirmar(d, erro instanceof Error ? erro.message : undefined)
     }
   }
   if (resultado.acaoPendente === 'confirmar_espera') {
@@ -87,10 +109,11 @@ async function executarAcaoPendente(gateway: AgendamentoBotGateway, telefone: st
         nome: d.nome ?? '', contato: telefone, empresaId: d.empresaId, veiculoId: d.veiculoId,
         tipo: d.tipo, descricao: d.descricao, inicioISO: `${d.ofertaDia}T${d.ofertaHora}:00${OFFSET_FORTALEZA}`,
       })
+      await notificarGrupoComSeguranca(gateway, mensagemGrupo(d, r.protocolo, r.status))
       return confirmarEsperaComSucesso(d, r.protocolo, r.status, r.motivoRecusa)
     } catch (erro) {
       console.error('whatsapp-agendamento: falha ao confirmar espera', erro)
-      return falhaAoConfirmar(d)
+      return falhaAoConfirmar(d, erro instanceof Error ? erro.message : undefined)
     }
   }
   return resultado

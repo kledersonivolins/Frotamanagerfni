@@ -26,6 +26,9 @@ function gateway(): AgendamentoBotGateway {
     apiKey: Deno.env.get('EVOLUTION_API_KEY')!,
     instancia: Deno.env.get('EVOLUTION_INSTANCE')!,
   }
+  // Opcional: grupo do WhatsApp que recebe uma cópia do protocolo de cada agendamento.
+  // Sem esse secret configurado, notificarGrupo vira no-op (não bloqueia o fluxo do cliente).
+  const grupoNotificacaoId = Deno.env.get('WHATSAPP_GRUPO_ID')
 
   return {
     async carregarSessao(telefone) {
@@ -88,6 +91,10 @@ function gateway(): AgendamentoBotGateway {
     },
     async enviarMensagem(telefone, texto) {
       await enviarMensagemWhatsApp(evolutionConfig, telefone, texto)
+    },
+    async notificarGrupo(texto) {
+      if (!grupoNotificacaoId) return
+      await enviarMensagemWhatsApp(evolutionConfig, grupoNotificacaoId, texto)
     },
     extrairMensagem: extrairMensagemRecebida,
   }
