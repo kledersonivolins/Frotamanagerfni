@@ -70,7 +70,8 @@ async function executarAcaoPendente(gateway: AgendamentoBotGateway, telefone: st
         tipo: d.tipo, descricao: d.descricao, inicioISO: `${d.dia}T${d.hora}:00${OFFSET_FORTALEZA}`,
       })
       return finalizarComProtocolo(d, r.protocolo, r.status, r.motivoRecusa)
-    } catch {
+    } catch (erro) {
+      console.error('whatsapp-agendamento: falha ao solicitar agendamento', erro)
       return falhaAoConfirmar(d)
     }
   }
@@ -87,7 +88,8 @@ async function executarAcaoPendente(gateway: AgendamentoBotGateway, telefone: st
         tipo: d.tipo, descricao: d.descricao, inicioISO: `${d.ofertaDia}T${d.ofertaHora}:00${OFFSET_FORTALEZA}`,
       })
       return confirmarEsperaComSucesso(d, r.protocolo, r.status, r.motivoRecusa)
-    } catch {
+    } catch (erro) {
+      console.error('whatsapp-agendamento: falha ao confirmar espera', erro)
       return falhaAoConfirmar(d)
     }
   }
