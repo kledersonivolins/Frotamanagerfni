@@ -80,27 +80,33 @@ fale com (86) 99995-9427" — nunca trava a conversa sem saída.
 
 ## Lista de espera
 
-- Quando o passo 7 não encontra nenhum horário livre, o pedido é salvo com
-  `status = 'lista_espera'` na própria tabela `agendamentos_externos`
-  (reaproveitada; coluna `status` já é texto livre, sem `CHECK` constraint —
-  confirmado nas migrations existentes). Os dados coletados até ali (nome,
-  contato, empresa, veículo, tipo, descrição) vão junto.
-- `lista_espera` não conta como ocupação: as funções `agendamento_ocupacao_dia`
-  e `agendamento_ocupacao_mes` já só somam `status in ('pendente','autorizado')`,
-  então nenhuma mudança nelas é necessária.
+> **Ajuste feito na fase de planejamento:** o trigger `trg_agendamento_externo_auto_pre_os`
+> (`supabase/migrations/20260920150000_oficina_pre_os_automatica_e_calendario.sql`)
+> dispara em **todo** `insert` em `agendamentos_externos` e tenta criar a Pré-OS
+> na hora (ou recusar, se a oficina estiver no limite) — não existe um jeito de
+> inserir uma linha "em espera" sem passar por essa lógica. Por isso a lista de
+> espera **não** usa `agendamentos_externos`; ela vive inteiramente em
+> `whatsapp_conversas.dados`, e só chamamos `agendamento_solicitar` (o mesmo RPC
+> do link público) quando um horário real for confirmado.
+
+- Quando o passo 7 não encontra nenhum horário livre, a conversa passa para a
+  etapa `lista_espera` e os dados coletados até ali (nome, contato, empresa,
+  veículo, tipo, descrição) continuam guardados em `whatsapp_conversas.dados`
+  — nenhuma linha nova em `agendamentos_externos` é criada ainda.
 - Uma Supabase Scheduled Function (`whatsapp-lista-espera`, a cada 15–30 min):
-  1. Lê os registros `status = 'lista_espera'` do tenant.
-  2. Para cada um, roda `agendamento_ocupacao_mes`/`agendamento_ocupacao_dia` a
+  1. Lê as sessões com `etapa = 'lista_espera'` do tenant em `whatsapp_conversas`.
+  2. Para cada uma, roda `agendamento_ocupacao_mes`/`agendamento_ocupacao_dia` a
      partir de hoje procurando o primeiro horário livre.
   3. Achou → manda WhatsApp via Evolution API oferecendo o horário e pedindo
      confirmação ("responda SIM para garantir a vaga às HH:MM do dia DD/MM").
-     Marca o registro como `aguardando_confirmacao_espera` com o horário
-     ofertado e um prazo (ex.: 2h) para responder.
-  4. Cliente responde SIM (tratado no mesmo webhook `whatsapp-agendamento`,
-     olhando se o telefone tem um registro em `aguardando_confirmacao_espera`)
-     → reconfere a vaga na hora (evita corrida entre dois clientes) e chama
-     `agendamento_solicitar`; se a vaga já foi tomada, informa e volta pra
-     lista de espera.
+     Atualiza a sessão para `etapa = 'aguardando_confirmacao_espera'` com o
+     horário ofertado (`dados.ofertaDia`/`dados.ofertaHora`) e um prazo (ex.: 2h).
+  4. Cliente responde SIM (tratado no mesmo webhook `whatsapp-agendamento`, que
+     lê a sessão e vê `etapa = 'aguardando_confirmacao_espera'`) → reconfere a
+     vaga na hora (evita corrida entre dois clientes) e só então chama
+     `agendamento_solicitar`, criando a linha real em `agendamentos_externos`
+     (que aí sim vira Pré-OS pelo trigger, como no fluxo normal); se a vaga já
+     foi tomada, informa e volta a sessão para `lista_espera`.
   5. Prazo vence sem resposta → volta para `lista_espera` e o job tenta o
      próximo horário livre na próxima rodada.
 
@@ -112,11 +118,7 @@ fale com (86) 99995-9427" — nunca trava a conversa sem saída.
   agora), `criado_em timestamptz default now()`, `atualizado_em timestamptz`.
   RLS: sem acesso anon/authenticated direto — só a Edge Function via service
   role.
-- **`agendamentos_externos.status`**: passa a aceitar também `'lista_espera'`
-  e `'aguardando_confirmacao_espera'` (sem migration de schema necessária, é
-  texto livre; só precisa os RPCs/telas que exibem status saberem rotular
-  esses dois valores de forma amigável, se aparecerem em algum painel
-  interno).
+- Nenhuma mudança em `agendamentos_externos` é necessária — ver ajuste acima.
 
 ## Fora de escopo (YAGNI por agora)
 
