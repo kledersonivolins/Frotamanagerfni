@@ -50,7 +50,12 @@ function gateway(): AgendamentoBotGateway {
     async listarEmpresas() {
       const { data, error } = await client.rpc('agendamento_listar_empresas', { p_tenant: TENANT })
       if (error) throw new Error(error.message)
-      return (data ?? []).map((e: { id: number; nome?: string; codigo?: string }) => ({ id: e.id, nome: e.nome || e.codigo || String(e.id) }))
+      // Apelido só para o menu do bot (não mexe no nome real da empresa no resto do sistema).
+      const APELIDOS: Record<string, string> = { 'FERRO LESTE': 'LOJAS' }
+      return (data ?? []).map((e: { id: number; nome?: string; codigo?: string }) => {
+        const nome = e.nome || e.codigo || String(e.id)
+        return { id: e.id, nome: APELIDOS[nome] ?? nome }
+      })
     },
     async listarVeiculos(empresaId) {
       const { data, error } = await client.rpc('agendamento_listar_veiculos', { p_tenant: TENANT })
