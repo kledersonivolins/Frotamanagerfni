@@ -30,7 +30,34 @@ test('extrairMensagemRecebida le uma mensagem de texto recebida', () => {
     data: { key: { remoteJid: '5586999990000@s.whatsapp.net', fromMe: false }, message: { conversation: 'Olá, quero agendar' } },
   }
   const r = extrairMensagemRecebida(payload)
-  assert.deepEqual(r, { telefone: '5586999990000', texto: 'Olá, quero agendar' })
+  assert.deepEqual(r, { telefone: '5586999990000', texto: 'Olá, quero agendar', id: '' })
+})
+
+test('extrairMensagemRecebida devolve o id da mensagem (data.key.id)', () => {
+  const payload = {
+    event: 'messages.upsert',
+    data: { key: { remoteJid: '5586999990000@s.whatsapp.net', fromMe: false, id: '3EB0ABC123' }, message: { conversation: 'oi' } },
+  }
+  assert.deepEqual(extrairMensagemRecebida(payload), { telefone: '5586999990000', texto: 'oi', id: '3EB0ABC123' })
+})
+
+test('extrairMensagemRecebida le extendedTextMessage (resposta citada / link)', () => {
+  const payload = {
+    event: 'messages.upsert',
+    data: {
+      key: { remoteJid: '5586999990000@s.whatsapp.net', fromMe: false, id: 'XYZ' },
+      message: { extendedTextMessage: { text: 'quero agendar', contextInfo: { stanzaId: 'ABC' } } },
+    },
+  }
+  assert.deepEqual(extrairMensagemRecebida(payload), { telefone: '5586999990000', texto: 'quero agendar', id: 'XYZ' })
+})
+
+test('extrairMensagemRecebida sem conversation nem extendedTextMessage ignora', () => {
+  const payload = {
+    event: 'messages.upsert',
+    data: { key: { remoteJid: '5586999990000@s.whatsapp.net', fromMe: false }, message: { imageMessage: {} } },
+  }
+  assert.equal(extrairMensagemRecebida(payload), null)
 })
 
 test('extrairMensagemRecebida ignora mensagem enviada pelo proprio bot', () => {

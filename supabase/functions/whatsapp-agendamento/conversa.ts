@@ -24,6 +24,8 @@ export interface DadosSessao {
   hora?: string
   ofertaDia?: string
   ofertaHora?: string
+  /** id (data.key.id) da última mensagem processada, para descartar reentregas do webhook. */
+  ultimaMensagemId?: string
 }
 
 export interface ContextoPasso {

@@ -20,7 +20,14 @@ export async function enviarMensagemWhatsApp(
   }
 }
 
-export function extrairMensagemRecebida(payload: unknown): { telefone: string; texto: string } | null {
+export interface MensagemRecebida {
+  telefone: string
+  texto: string
+  /** data.key.id do webhook; '' quando ausente. Usado para descartar reentregas. */
+  id: string
+}
+
+export function extrairMensagemRecebida(payload: unknown): MensagemRecebida | null {
   if (!payload || typeof payload !== 'object') return null
   const corpo = payload as Record<string, unknown>
   if (corpo.event !== 'messages.upsert') return null
@@ -32,9 +39,13 @@ export function extrairMensagemRecebida(payload: unknown): { telefone: string; t
   if (key?.fromMe === true) return null
 
   const mensagem = dados?.message as Record<string, unknown> | undefined
-  const texto = typeof mensagem?.conversation === 'string' ? mensagem.conversation : ''
+  const textoEstendido = mensagem?.extendedTextMessage as Record<string, unknown> | undefined
+  const texto = typeof mensagem?.conversation === 'string' && mensagem.conversation
+    ? mensagem.conversation
+    : typeof textoEstendido?.text === 'string' ? textoEstendido.text : ''
   if (!texto) return null
 
   const telefone = remoteJid.split('@')[0]
-  return { telefone, texto }
+  const id = typeof key?.id === 'string' ? key.id : ''
+  return { telefone, texto, id }
 }

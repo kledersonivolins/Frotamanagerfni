@@ -18,7 +18,7 @@ export interface AgendamentoBotGateway {
     tipo: string; descricao: string; inicioISO: string
   }): Promise<{ protocolo: string; status: string }>
   enviarMensagem(telefone: string, texto: string): Promise<void>
-  extrairMensagem(payload: unknown): { telefone: string; texto: string } | null
+  extrairMensagem(payload: unknown): { telefone: string; texto: string; id: string } | null
 }
 
 const headers = { 'Content-Type': 'application/json' }
@@ -103,6 +103,10 @@ export function createWhatsAppAgendamentoHandler(createGateway: (payload: unknow
 
     try {
       const sessaoAtual = await gateway.carregarSessao(mensagem.telefone)
+      // Reentrega do mesmo webhook (mesmo data.key.id): não reprocessa, evitando agendamento duplicado.
+      if (mensagem.id && mensagem.id === sessaoAtual?.dados?.ultimaMensagemId) {
+        return reply({ ok: true, duplicado: true })
+      }
       const etapaAtual: Etapa = sessaoAtual?.etapa ?? 'inicio'
       const dadosAtuais: DadosSessao = sessaoAtual?.dados ?? {}
 
@@ -113,7 +117,10 @@ export function createWhatsAppAgendamentoHandler(createGateway: (payload: unknow
       if (resultado.etapa === 'finalizado' || resultado.etapa === 'encerrado_humano') {
         await gateway.encerrarSessao(mensagem.telefone)
       } else {
-        await gateway.salvarSessao(mensagem.telefone, resultado.etapa, resultado.dados)
+        const dadosParaSalvar: DadosSessao = mensagem.id
+          ? { ...resultado.dados, ultimaMensagemId: mensagem.id }
+          : resultado.dados
+        await gateway.salvarSessao(mensagem.telefone, resultado.etapa, dadosParaSalvar)
       }
 
       for (const texto of resultado.respostas) await gateway.enviarMensagem(mensagem.telefone, texto)
