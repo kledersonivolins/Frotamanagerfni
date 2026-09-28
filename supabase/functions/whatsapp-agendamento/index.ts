@@ -76,7 +76,14 @@ function gateway(): AgendamentoBotGateway {
     async listarHorariosDoDia(diaISO) {
       const { data, error } = await client.rpc('agendamento_ocupacao_dia', { p_tenant: TENANT, p_data: diaISO })
       if (error) throw new Error(error.message)
-      return (data ?? []).map((h: { hora: number; vagas: number; capacidade: number }) => ({ hora: h.hora, vagas: h.vagas, capacidade: h.capacidade }))
+      const horarios = (data ?? []).map((h: { hora: number; vagas: number; capacidade: number }) => ({ hora: h.hora, vagas: h.vagas, capacidade: h.capacidade }))
+      const hoje = agoraFortaleza()
+      // Se o dia pedido é hoje, tira os horários que já passaram (a hora atual em Fortaleza).
+      if (diaISO === dataISO(hoje)) {
+        const horaAtual = hoje.getHours()
+        return horarios.filter(h => h.hora > horaAtual)
+      }
+      return horarios
     },
     async solicitarAgendamento(input) {
       const { data, error } = await client.rpc('agendamento_solicitar', {
