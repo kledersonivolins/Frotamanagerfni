@@ -1,6 +1,6 @@
 import {
   processarPasso, encontrarDia, finalizarComProtocolo, falhaAoConfirmar,
-  confirmarEsperaComSucesso, confirmarEsperaVagaPerdida,
+  confirmarEsperaComSucesso, confirmarEsperaVagaPerdida, TELEFONE_ATENDIMENTO_HUMANO,
   type Etapa, type DadosSessao, type Empresa, type Veiculo,
   type DiaComVaga, type HorarioComVaga, type ContextoPasso, type ResultadoPasso,
 } from './conversa.ts'
@@ -27,6 +27,8 @@ const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body)
 // Os horários são interpretados pelas RPCs em America/Fortaleza (UTC-3, sem horário de verão).
 // A Edge Function roda em UTC, então o offset precisa ir explícito no ISO.
 const OFFSET_FORTALEZA = '-03:00'
+
+const MENSAGEM_FALHA_GERAL = `Não consegui processar agora. Tente novamente em instantes ou fale com ${TELEFONE_ATENDIMENTO_HUMANO}.`
 
 async function montarContexto(
   gateway: AgendamentoBotGateway, etapa: Etapa, dados: DadosSessao, entradaUsuario: string,
@@ -99,22 +101,33 @@ export function createWhatsAppAgendamentoHandler(createGateway: (payload: unknow
     const mensagem = gateway.extrairMensagem(payload)
     if (!mensagem) return reply({ ok: true, ignorado: true })
 
-    const sessaoAtual = await gateway.carregarSessao(mensagem.telefone)
-    const etapaAtual: Etapa = sessaoAtual?.etapa ?? 'inicio'
-    const dadosAtuais: DadosSessao = sessaoAtual?.dados ?? {}
+    try {
+      const sessaoAtual = await gateway.carregarSessao(mensagem.telefone)
+      const etapaAtual: Etapa = sessaoAtual?.etapa ?? 'inicio'
+      const dadosAtuais: DadosSessao = sessaoAtual?.dados ?? {}
 
-    const contexto = await montarContexto(gateway, etapaAtual, dadosAtuais, mensagem.texto)
-    let resultado = processarPasso(etapaAtual, dadosAtuais, mensagem.texto, contexto)
-    resultado = await executarAcaoPendente(gateway, mensagem.telefone, resultado)
+      const contexto = await montarContexto(gateway, etapaAtual, dadosAtuais, mensagem.texto)
+      let resultado = processarPasso(etapaAtual, dadosAtuais, mensagem.texto, contexto)
+      resultado = await executarAcaoPendente(gateway, mensagem.telefone, resultado)
 
-    if (resultado.etapa === 'finalizado' || resultado.etapa === 'encerrado_humano') {
-      await gateway.encerrarSessao(mensagem.telefone)
-    } else {
-      await gateway.salvarSessao(mensagem.telefone, resultado.etapa, resultado.dados)
+      if (resultado.etapa === 'finalizado' || resultado.etapa === 'encerrado_humano') {
+        await gateway.encerrarSessao(mensagem.telefone)
+      } else {
+        await gateway.salvarSessao(mensagem.telefone, resultado.etapa, resultado.dados)
+      }
+
+      for (const texto of resultado.respostas) await gateway.enviarMensagem(mensagem.telefone, texto)
+
+      return reply({ ok: true })
+    } catch (erro) {
+      // Responde 200 mesmo em falha para a Evolution API não reenviar o webhook em loop.
+      console.error('whatsapp-agendamento: falha ao processar mensagem', erro)
+      try {
+        await gateway.enviarMensagem(mensagem.telefone, MENSAGEM_FALHA_GERAL)
+      } catch (erroEnvio) {
+        console.error('whatsapp-agendamento: falha ao avisar o cliente', erroEnvio)
+      }
+      return reply({ ok: false, erro: 'falha_ao_processar' })
     }
-
-    for (const texto of resultado.respostas) await gateway.enviarMensagem(mensagem.telefone, texto)
-
-    return reply({ ok: true })
   }
 }

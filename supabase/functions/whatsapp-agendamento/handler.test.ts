@@ -144,6 +144,30 @@ test('confirmar_espera envia inicioISO com offset de Fortaleza', async () => {
   assert.equal(inicioISO, '2026-10-05T09:00:00-03:00')
 })
 
+test('erro inesperado do gateway nao derruba o handler: responde 200 e pede desculpas ao cliente', async () => {
+  const enviadas: string[] = []
+  const handler = createWhatsAppAgendamentoHandler(() => fakeGateway({
+    carregarSessao: async () => ({ etapa: 'aguardando_empresa', dados: { nome: 'Maria' } }),
+    extrairMensagem: () => ({ telefone: '5586999990000', texto: '1' }),
+    listarEmpresas: async () => { throw new Error('RPC fora do ar') },
+    enviarMensagem: async (_t, texto) => { enviadas.push(texto) },
+  }))
+  const resposta = await handler(webhookRequest())
+  assert.equal(resposta.status, 200)
+  assert.equal(enviadas.length, 1)
+  assert.match(enviadas[0], /Não consegui processar agora/)
+  assert.match(enviadas[0], /99995-9427/)
+})
+
+test('erro no gateway e tambem no envio do aviso ainda responde 200', async () => {
+  const handler = createWhatsAppAgendamentoHandler(() => fakeGateway({
+    carregarSessao: async () => { throw new Error('banco fora do ar') },
+    enviarMensagem: async () => { throw new Error('evolution fora do ar') },
+  }))
+  const resposta = await handler(webhookRequest())
+  assert.equal(resposta.status, 200)
+})
+
 test('confirmacao com SIM mas RPC falha mantem sessao em confirmando', async () => {
   const salvas: Array<{ etapa: Etapa }> = []
   let encerrou = false

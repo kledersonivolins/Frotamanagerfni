@@ -93,4 +93,25 @@ function gateway(): AgendamentoBotGateway {
   }
 }
 
-Deno.serve(createWhatsAppAgendamentoHandler(gateway))
+// Comparação em tempo constante para não vazar o segredo por timing.
+function segredosIguais(a: string, b: string): boolean {
+  const ba = new TextEncoder().encode(a)
+  const bb = new TextEncoder().encode(b)
+  let diferenca = ba.length ^ bb.length
+  for (let i = 0; i < Math.max(ba.length, bb.length); i++) diferenca |= (ba[i] ?? 0) ^ (bb[i] ?? 0)
+  return diferenca === 0
+}
+
+const handler = createWhatsAppAgendamentoHandler(gateway)
+
+Deno.serve(async (request: Request): Promise<Response> => {
+  // Fail closed: sem WHATSAPP_WEBHOOK_SECRET configurado, nenhuma requisição é aceita.
+  const segredoEsperado = Deno.env.get('WHATSAPP_WEBHOOK_SECRET') ?? ''
+  const segredoRecebido = request.headers.get('X-Webhook-Secret') ?? ''
+  if (!segredoEsperado || !segredoRecebido || !segredosIguais(segredoRecebido, segredoEsperado)) {
+    return new Response(JSON.stringify({ error: 'Não autorizado.' }), {
+      status: 401, headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  return handler(request)
+})

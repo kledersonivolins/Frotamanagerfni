@@ -42,7 +42,7 @@ export interface ResultadoPasso {
 
 const TIPOS_MANUTENCAO = ['Preventiva', 'Corretiva', 'Revisão', 'Outro'] as const
 const LIMITE_TENTATIVAS_PLACA = 3
-const TELEFONE_ATENDIMENTO_HUMANO = '(86) 99995-9427'
+export const TELEFONE_ATENDIMENTO_HUMANO ='(86) 99995-9427'
 
 function listarEmpresasTexto(empresas: Empresa[]): string {
   return empresas.map((e, i) => `${i + 1}. ${e.nome}`).join('\n')

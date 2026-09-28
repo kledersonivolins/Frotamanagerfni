@@ -1820,8 +1820,14 @@ Se tiver a Supabase CLI instalada localmente:
 supabase secrets set --project-ref gocdyfhzqezpqyebixid \
   EVOLUTION_API_URL="https://<sua-instancia-evolution>" \
   EVOLUTION_API_KEY="<sua-chave>" \
-  EVOLUTION_INSTANCE="<nome-da-instancia>"
+  EVOLUTION_INSTANCE="<nome-da-instancia>" \
+  WHATSAPP_WEBHOOK_SECRET="<segredo-longo-aleatorio>"
 ```
+
+`WHATSAPP_WEBHOOK_SECRET` é obrigatório: a function `whatsapp-agendamento` recusa
+(HTTP 401) toda requisição cujo header `X-Webhook-Secret` não bata com ele — e, se
+o secret não estiver configurado, recusa **todas** as requisições (fail closed).
+Gerar um valor longo e aleatório (ex. `openssl rand -hex 32`).
 
 Sem CLI: usar Project Settings → Edge Functions → Secrets no painel do Supabase.
 `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já existem automaticamente para toda
@@ -1848,6 +1854,10 @@ pasta `whatsapp-lista-espera` também).
 Na instância Evolution API já em produção, configurar o webhook (evento
 `MESSAGES_UPSERT`) para a URL pública da function recém-deployada:
 `https://gocdyfhzqezpqyebixid.supabase.co/functions/v1/whatsapp-agendamento`.
+
+Na mesma configuração de webhook da instância, adicionar o header customizado
+`X-Webhook-Secret` com exatamente o mesmo valor de `WHATSAPP_WEBHOOK_SECRET`
+(Step 2). Sem esse header a function responde 401 e ignora a mensagem.
 
 - [ ] **Step 5: Testar manualmente pelo WhatsApp**
 
