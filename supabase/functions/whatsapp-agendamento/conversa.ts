@@ -246,6 +246,43 @@ function passoAguardandoHora(dados: DadosSessao, entrada: string, contexto: Cont
   }
 }
 
+function interpretarSimNao(entrada: string): boolean | undefined {
+  const texto = entrada.trim().toLowerCase()
+  if (['sim', 's', 'yes'].includes(texto)) return true
+  if (['nao', 'não', 'n', 'no'].includes(texto)) return false
+  return undefined
+}
+
+function passoConfirmando(dados: DadosSessao, entrada: string): ResultadoPasso {
+  const resposta = interpretarSimNao(entrada)
+  if (resposta === undefined) {
+    return { etapa: 'confirmando', dados, respostas: ['Não entendi. Responda SIM para confirmar ou NÃO para cancelar.'] }
+  }
+  if (!resposta) {
+    return { etapa: 'finalizado', dados, respostas: ['Tudo bem, agendamento cancelado. Se quiser recomeçar, é só mandar outra mensagem.'] }
+  }
+  return { etapa: 'confirmando', dados, respostas: [], acaoPendente: 'criar_agendamento' }
+}
+
+export function finalizarComProtocolo(dados: DadosSessao, protocolo: string, statusRetornado: string): ResultadoPasso {
+  const statusTexto = statusRetornado === 'autorizado'
+    ? 'Confirmado — vaga reservada e Pré-OS gerada.'
+    : 'Aguardando autorização.'
+  return {
+    etapa: 'finalizado',
+    dados,
+    respostas: [`Agendamento recebido! Protocolo: ${protocolo}.\n${statusTexto}`],
+  }
+}
+
+export function falhaAoConfirmar(dados: DadosSessao): ResultadoPasso {
+  return {
+    etapa: 'confirmando',
+    dados,
+    respostas: [`Não consegui confirmar agora. Tente novamente em instantes ou fale com ${TELEFONE_ATENDIMENTO_HUMANO}.`],
+  }
+}
+
 export function processarPasso(
   etapaAtual: Etapa,
   dados: DadosSessao,
@@ -269,6 +306,8 @@ export function processarPasso(
       return passoAguardandoDia(dados, entradaUsuario, contexto)
     case 'aguardando_hora':
       return passoAguardandoHora(dados, entradaUsuario, contexto)
+    case 'confirmando':
+      return passoConfirmando(dados, entradaUsuario)
     default:
       return { etapa: etapaAtual, dados, respostas: [] }
   }

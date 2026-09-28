@@ -175,3 +175,48 @@ test('aguardando_hora quando o dia acabou de lotar volta pra escolher outro dia'
   assert.equal(r.etapa, 'aguardando_dia')
   assert.match(r.respostas[0], /acabou de lotar/i)
 })
+
+import { finalizarComProtocolo, falhaAoConfirmar } from './conversa.ts'
+
+const dadosConfirmando = {
+  nome: 'Maria', empresaNome: 'Construtora BS', veiculoPlaca: 'ABC1234',
+  tipo: 'Corretiva', descricao: 'Barulho no motor', dia: '2026-10-01', hora: '08:00',
+}
+
+test('confirmando com SIM sinaliza acao pendente de criar agendamento', () => {
+  const r = processarPasso('confirmando', dadosConfirmando, 'sim', {})
+  assert.equal(r.etapa, 'confirmando')
+  assert.equal(r.acaoPendente, 'criar_agendamento')
+})
+
+test('confirmando com NAO cancela e finaliza', () => {
+  const r = processarPasso('confirmando', dadosConfirmando, 'nao', {})
+  assert.equal(r.etapa, 'finalizado')
+  assert.equal(r.acaoPendente, undefined)
+  assert.match(r.respostas[0], /cancelado/i)
+})
+
+test('confirmando com resposta ambigua repete a pergunta', () => {
+  const r = processarPasso('confirmando', dadosConfirmando, 'talvez', {})
+  assert.equal(r.etapa, 'confirmando')
+  assert.equal(r.acaoPendente, undefined)
+  assert.match(r.respostas[0], /SIM.*NÃO/s)
+})
+
+test('finalizarComProtocolo com status autorizado confirma vaga', () => {
+  const r = finalizarComProtocolo(dadosConfirmando, 'AG-123', 'autorizado')
+  assert.equal(r.etapa, 'finalizado')
+  assert.match(r.respostas[0], /AG-123/)
+  assert.match(r.respostas[0], /Confirmado/i)
+})
+
+test('finalizarComProtocolo com outro status avisa que aguarda autorizacao', () => {
+  const r = finalizarComProtocolo(dadosConfirmando, 'AG-124', 'pendente')
+  assert.match(r.respostas[0], /aguardando autorização/i)
+})
+
+test('falhaAoConfirmar mantem etapa confirmando e avisa erro', () => {
+  const r = falhaAoConfirmar(dadosConfirmando)
+  assert.equal(r.etapa, 'confirmando')
+  assert.match(r.respostas[0], /99995-9427/)
+})
