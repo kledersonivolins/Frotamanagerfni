@@ -46,3 +46,71 @@ test('aguardando_empresa com opção inválida repete a lista', () => {
   assert.equal(r.etapa, 'aguardando_empresa')
   assert.match(r.respostas[0], /não encontrei essa opção/i)
 })
+
+import type { Veiculo } from './conversa.ts'
+
+const veiculos: Veiculo[] = [
+  { id: 100, empresaId: 20, placa: 'ABC1234', modelo: 'Caminhão Munck' },
+  { id: 101, empresaId: 20, placa: 'DEF5A67', modelo: 'Caminhonete' },
+]
+
+test('aguardando_placa aceita placa com hífen e casa com o cadastro', () => {
+  const r = processarPasso(
+    'aguardando_placa',
+    { nome: 'Maria', empresaId: 20, empresaNome: 'Construtora BS', placaTentativas: 0 },
+    'ABC-1234',
+    { veiculosDaEmpresa: veiculos },
+  )
+  assert.equal(r.etapa, 'aguardando_tipo')
+  assert.equal(r.dados.veiculoId, 100)
+  assert.equal(r.dados.veiculoPlaca, 'ABC1234')
+})
+
+test('aguardando_placa aceita placa tudo junto minúscula', () => {
+  const r = processarPasso(
+    'aguardando_placa',
+    { empresaId: 20, placaTentativas: 0 },
+    'def5a67',
+    { veiculosDaEmpresa: veiculos },
+  )
+  assert.equal(r.dados.veiculoId, 101)
+})
+
+test('aguardando_placa não encontrada pede de novo e conta tentativa', () => {
+  const r = processarPasso(
+    'aguardando_placa',
+    { empresaId: 20, placaTentativas: 0 },
+    'ZZZ9999',
+    { veiculosDaEmpresa: veiculos },
+  )
+  assert.equal(r.etapa, 'aguardando_placa')
+  assert.equal(r.dados.placaTentativas, 1)
+  assert.match(r.respostas[0], /não encontrei/i)
+})
+
+test('aguardando_placa após 3 tentativas encaminha para atendimento humano', () => {
+  const r = processarPasso(
+    'aguardando_placa',
+    { empresaId: 20, placaTentativas: 2 },
+    'ZZZ9999',
+    { veiculosDaEmpresa: veiculos },
+  )
+  assert.equal(r.etapa, 'encerrado_humano')
+  assert.match(r.respostas[0], /99995-9427/)
+})
+
+test('aguardando_tipo com opção numerada avança para motivo', () => {
+  const r = processarPasso('aguardando_tipo', { veiculoId: 100 }, '2', {})
+  assert.equal(r.etapa, 'aguardando_motivo')
+  assert.equal(r.dados.tipo, 'Corretiva')
+})
+
+test('aguardando_tipo aceita o nome do tipo por texto', () => {
+  const r = processarPasso('aguardando_tipo', { veiculoId: 100 }, 'revisão', {})
+  assert.equal(r.dados.tipo, 'Revisão')
+})
+
+test('aguardando_tipo com opção inválida repete a pergunta', () => {
+  const r = processarPasso('aguardando_tipo', { veiculoId: 100 }, 'não sei', {})
+  assert.equal(r.etapa, 'aguardando_tipo')
+})

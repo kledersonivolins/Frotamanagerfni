@@ -1,3 +1,5 @@
+import { normalizarPlaca, placasCorrespondem } from './placa.ts'
+
 export type Etapa =
   | 'inicio' | 'aguardando_nome' | 'aguardando_empresa' | 'aguardando_placa'
   | 'aguardando_tipo' | 'aguardando_motivo' | 'aguardando_dia' | 'aguardando_hora'
@@ -38,6 +40,10 @@ export interface ResultadoPasso {
   acaoPendente?: 'criar_agendamento' | 'confirmar_espera'
 }
 
+const TIPOS_MANUTENCAO = ['Preventiva', 'Corretiva', 'Revisão', 'Outro'] as const
+const LIMITE_TENTATIVAS_PLACA = 3
+const TELEFONE_ATENDIMENTO_HUMANO = '(86) 99995-9427'
+
 function listarEmpresasTexto(empresas: Empresa[]): string {
   return empresas.map((e, i) => `${i + 1}. ${e.nome}`).join('\n')
 }
@@ -50,6 +56,20 @@ function encontrarEmpresa(entrada: string, empresas: Empresa[]): Empresa | undef
   }
   const alvo = texto.toLowerCase()
   return empresas.find(e => e.nome.toLowerCase() === alvo)
+}
+
+function listarTiposTexto(): string {
+  return TIPOS_MANUTENCAO.map((t, i) => `${i + 1}. ${t}`).join('\n')
+}
+
+function encontrarTipo(entrada: string): string | undefined {
+  const texto = entrada.trim()
+  const porNumero = Number(texto)
+  if (Number.isInteger(porNumero) && porNumero >= 1 && porNumero <= TIPOS_MANUTENCAO.length) {
+    return TIPOS_MANUTENCAO[porNumero - 1]
+  }
+  const alvo = texto.toLowerCase()
+  return TIPOS_MANUTENCAO.find(t => t.toLowerCase() === alvo)
 }
 
 function passoInicio(): ResultadoPasso {
@@ -90,6 +110,43 @@ function passoAguardandoEmpresa(dados: DadosSessao, entrada: string, contexto: C
   }
 }
 
+function passoAguardandoPlaca(dados: DadosSessao, entrada: string, contexto: ContextoPasso): ResultadoPasso {
+  const veiculos = contexto.veiculosDaEmpresa ?? []
+  const veiculo = veiculos.find(v => placasCorrespondem(v.placa, entrada))
+  if (veiculo) {
+    return {
+      etapa: 'aguardando_tipo',
+      dados: { ...dados, veiculoId: veiculo.id, veiculoPlaca: normalizarPlaca(veiculo.placa), placaTentativas: 0 },
+      respostas: [`Veículo encontrado: ${veiculo.placa} — ${veiculo.modelo}.\nQual o tipo de manutenção?\n${listarTiposTexto()}`],
+    }
+  }
+  const tentativas = (dados.placaTentativas ?? 0) + 1
+  if (tentativas >= LIMITE_TENTATIVAS_PLACA) {
+    return {
+      etapa: 'encerrado_humano',
+      dados: { ...dados, placaTentativas: tentativas },
+      respostas: [`Não consegui localizar essa placa no cadastro de ${dados.empresaNome ?? 'sua empresa'}. Vou te encaminhar para nosso atendimento: ${TELEFONE_ATENDIMENTO_HUMANO}.`],
+    }
+  }
+  return {
+    etapa: 'aguardando_placa',
+    dados: { ...dados, placaTentativas: tentativas },
+    respostas: [`Não encontrei essa placa no cadastro de ${dados.empresaNome ?? 'sua empresa'}. Confere e digita de novo (tentativa ${tentativas}/${LIMITE_TENTATIVAS_PLACA}).`],
+  }
+}
+
+function passoAguardandoTipo(dados: DadosSessao, entrada: string): ResultadoPasso {
+  const tipo = encontrarTipo(entrada)
+  if (!tipo) {
+    return { etapa: 'aguardando_tipo', dados, respostas: [`Não entendi. Escolha uma opção:\n${listarTiposTexto()}`] }
+  }
+  return {
+    etapa: 'aguardando_motivo',
+    dados: { ...dados, tipo },
+    respostas: ['Me conta rapidamente qual é o problema ou serviço necessário.'],
+  }
+}
+
 export function processarPasso(
   etapaAtual: Etapa,
   dados: DadosSessao,
@@ -103,6 +160,10 @@ export function processarPasso(
       return passoAguardandoNome(dados, entradaUsuario, contexto)
     case 'aguardando_empresa':
       return passoAguardandoEmpresa(dados, entradaUsuario, contexto)
+    case 'aguardando_placa':
+      return passoAguardandoPlaca(dados, entradaUsuario, contexto)
+    case 'aguardando_tipo':
+      return passoAguardandoTipo(dados, entradaUsuario)
     default:
       return { etapa: etapaAtual, dados, respostas: [] }
   }
