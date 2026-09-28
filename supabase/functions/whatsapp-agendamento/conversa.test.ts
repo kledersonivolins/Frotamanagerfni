@@ -114,3 +114,64 @@ test('aguardando_tipo com opção inválida repete a pergunta', () => {
   const r = processarPasso('aguardando_tipo', { veiculoId: 100 }, 'não sei', {})
   assert.equal(r.etapa, 'aguardando_tipo')
 })
+
+import type { DiaComVaga, HorarioComVaga } from './conversa.ts'
+
+const dias: DiaComVaga[] = [
+  { dia: '2026-10-01', vagasDia: 2 },
+  { dia: '2026-10-02', vagasDia: 1 },
+]
+const horarios: HorarioComVaga[] = [
+  { hora: 8, vagas: 2, capacidade: 3 },
+  { hora: 9, vagas: 0, capacidade: 3 },
+]
+
+test('aguardando_motivo com texto guarda a descricao e lista os dias', () => {
+  const r = processarPasso('aguardando_motivo', { tipo: 'Corretiva' }, 'Barulho no motor', { diasComVaga: dias })
+  assert.equal(r.etapa, 'aguardando_dia')
+  assert.equal(r.dados.descricao, 'Barulho no motor')
+  assert.match(r.respostas[0], /01\/10/)
+})
+
+test('aguardando_motivo vazio repete a pergunta', () => {
+  const r = processarPasso('aguardando_motivo', { tipo: 'Corretiva' }, '  ', { diasComVaga: dias })
+  assert.equal(r.etapa, 'aguardando_motivo')
+})
+
+test('aguardando_motivo sem nenhum dia com vaga vai direto pra lista de espera', () => {
+  const r = processarPasso('aguardando_motivo', { tipo: 'Corretiva' }, 'Revisao geral', { diasComVaga: [] })
+  assert.equal(r.etapa, 'lista_espera')
+  assert.match(r.respostas[0], /lista de espera/i)
+})
+
+test('aguardando_dia com numero valido lista horarios livres', () => {
+  const r = processarPasso('aguardando_dia', { descricao: 'x' }, '1', { diasComVaga: dias, horariosDoDia: horarios })
+  assert.equal(r.etapa, 'aguardando_hora')
+  assert.equal(r.dados.dia, '2026-10-01')
+  assert.match(r.respostas[0], /08:00/)
+  assert.doesNotMatch(r.respostas[0], /09:00/)
+})
+
+test('aguardando_dia com opcao invalida repete a lista', () => {
+  const r = processarPasso('aguardando_dia', {}, '9', { diasComVaga: dias })
+  assert.equal(r.etapa, 'aguardando_dia')
+})
+
+test('aguardando_hora com numero valido avanca para confirmacao', () => {
+  const r = processarPasso(
+    'aguardando_hora', { dia: '2026-10-01', descricao: 'x' }, '1',
+    { horariosDoDia: horarios },
+  )
+  assert.equal(r.etapa, 'confirmando')
+  assert.equal(r.dados.hora, '08:00')
+  assert.match(r.respostas[0], /SIM/)
+})
+
+test('aguardando_hora quando o dia acabou de lotar volta pra escolher outro dia', () => {
+  const r = processarPasso(
+    'aguardando_hora', { dia: '2026-10-01' }, '1',
+    { horariosDoDia: [], diasComVaga: dias },
+  )
+  assert.equal(r.etapa, 'aguardando_dia')
+  assert.match(r.respostas[0], /acabou de lotar/i)
+})

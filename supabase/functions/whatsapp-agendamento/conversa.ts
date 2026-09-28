@@ -147,6 +147,105 @@ function passoAguardandoTipo(dados: DadosSessao, entrada: string): ResultadoPass
   }
 }
 
+function formatarDataBR(iso: string): string {
+  const [ano, mes, dia] = iso.split('-')
+  return `${dia}/${mes}`
+}
+
+function listarDiasTexto(dias: DiaComVaga[]): string {
+  return dias.map((d, i) => `${i + 1}. ${formatarDataBR(d.dia)}`).join('\n')
+}
+
+function encontrarDia(entrada: string, dias: DiaComVaga[]): DiaComVaga | undefined {
+  const texto = entrada.trim()
+  const porNumero = Number(texto)
+  if (Number.isInteger(porNumero) && porNumero >= 1 && porNumero <= dias.length) {
+    return dias[porNumero - 1]
+  }
+  return dias.find(d => formatarDataBR(d.dia) === texto)
+}
+
+function formatarHora(hora: number): string {
+  return `${String(hora).padStart(2, '0')}:00`
+}
+
+function horariosLivres(horarios: HorarioComVaga[]): HorarioComVaga[] {
+  return horarios.filter(h => h.vagas > 0)
+}
+
+function listarHorariosTexto(horarios: HorarioComVaga[]): string {
+  return horariosLivres(horarios).map((h, i) => `${i + 1}. ${formatarHora(h.hora)}`).join('\n')
+}
+
+function encontrarHorario(entrada: string, horarios: HorarioComVaga[]): HorarioComVaga | undefined {
+  const livres = horariosLivres(horarios)
+  const texto = entrada.trim()
+  const porNumero = Number(texto)
+  if (Number.isInteger(porNumero) && porNumero >= 1 && porNumero <= livres.length) {
+    return livres[porNumero - 1]
+  }
+  return livres.find(h => formatarHora(h.hora) === texto)
+}
+
+function passoAguardandoMotivo(dados: DadosSessao, entrada: string, contexto: ContextoPasso): ResultadoPasso {
+  const descricao = entrada.trim()
+  if (!descricao) {
+    return { etapa: 'aguardando_motivo', dados, respostas: ['Não entendi, pode descrever o serviço?'] }
+  }
+  const dias = contexto.diasComVaga ?? []
+  const novoDados = { ...dados, descricao }
+  if (dias.length === 0) {
+    return {
+      etapa: 'lista_espera',
+      dados: novoDados,
+      respostas: ['No momento não há vaga disponível nos próximos dias. Coloquei seu pedido na lista de espera e aviso assim que abrir um horário.'],
+    }
+  }
+  return {
+    etapa: 'aguardando_dia',
+    dados: novoDados,
+    respostas: [`Escolha um dia (responda com o número):\n${listarDiasTexto(dias)}`],
+  }
+}
+
+function passoAguardandoDia(dados: DadosSessao, entrada: string, contexto: ContextoPasso): ResultadoPasso {
+  const dias = contexto.diasComVaga ?? []
+  const escolhido = encontrarDia(entrada, dias)
+  if (!escolhido) {
+    return { etapa: 'aguardando_dia', dados, respostas: [`Não encontrei essa data. Escolha um dia:\n${listarDiasTexto(dias)}`] }
+  }
+  const horarios = contexto.horariosDoDia ?? []
+  return {
+    etapa: 'aguardando_hora',
+    dados: { ...dados, dia: escolhido.dia },
+    respostas: [`Horários disponíveis em ${formatarDataBR(escolhido.dia)}:\n${listarHorariosTexto(horarios)}`],
+  }
+}
+
+function passoAguardandoHora(dados: DadosSessao, entrada: string, contexto: ContextoPasso): ResultadoPasso {
+  const horarios = contexto.horariosDoDia ?? []
+  const escolhido = encontrarHorario(entrada, horarios)
+  if (!escolhido) {
+    if (horariosLivres(horarios).length === 0) {
+      const dias = contexto.diasComVaga ?? []
+      return {
+        etapa: 'aguardando_dia',
+        dados,
+        respostas: [`Esse dia acabou de lotar. Escolha outro:\n${listarDiasTexto(dias)}`],
+      }
+    }
+    return { etapa: 'aguardando_hora', dados, respostas: [`Não encontrei esse horário. Escolha:\n${listarHorariosTexto(horarios)}`] }
+  }
+  const hora = formatarHora(escolhido.hora)
+  return {
+    etapa: 'confirmando',
+    dados: { ...dados, hora },
+    respostas: [
+      `Confirma o agendamento?\nData: ${dados.dia ? formatarDataBR(dados.dia) : '?'} às ${hora}\nEmpresa: ${dados.empresaNome ?? '?'}\nVeículo: ${dados.veiculoPlaca ?? '?'}\nTipo: ${dados.tipo ?? '?'}\nMotivo: ${dados.descricao ?? '?'}\nResponda SIM para confirmar ou NÃO para cancelar.`,
+    ],
+  }
+}
+
 export function processarPasso(
   etapaAtual: Etapa,
   dados: DadosSessao,
@@ -164,6 +263,12 @@ export function processarPasso(
       return passoAguardandoPlaca(dados, entradaUsuario, contexto)
     case 'aguardando_tipo':
       return passoAguardandoTipo(dados, entradaUsuario)
+    case 'aguardando_motivo':
+      return passoAguardandoMotivo(dados, entradaUsuario, contexto)
+    case 'aguardando_dia':
+      return passoAguardandoDia(dados, entradaUsuario, contexto)
+    case 'aguardando_hora':
+      return passoAguardandoHora(dados, entradaUsuario, contexto)
     default:
       return { etapa: etapaAtual, dados, respostas: [] }
   }
