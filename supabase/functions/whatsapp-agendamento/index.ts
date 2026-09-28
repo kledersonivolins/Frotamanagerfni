@@ -6,6 +6,15 @@ import type { DadosSessao, Etapa } from './conversa.ts'
 
 const TENANT = 'oficinafni'
 
+// A Edge Function roda em UTC; o "hoje" da oficina é em America/Fortaleza (UTC-3).
+function agoraFortaleza(): Date {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Fortaleza' }))
+}
+
+function dataISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function gateway(): AgendamentoBotGateway {
   const client = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -48,14 +57,15 @@ function gateway(): AgendamentoBotGateway {
         .map((v: { id: number; empresa_id: number; placa?: string; modelo?: string }) => ({ id: v.id, empresaId: v.empresa_id, placa: v.placa ?? '', modelo: v.modelo ?? '' }))
     },
     async listarDiasComVaga() {
-      const hoje = new Date()
+      const hoje = agoraFortaleza()
+      const hojeISO = dataISO(hoje)
       const dias: Array<{ dia: string; vagasDia: number }> = []
       for (const offsetMes of [0, 1]) {
         const ref = new Date(hoje.getFullYear(), hoje.getMonth() + offsetMes, 1)
         const { data, error } = await client.rpc('agendamento_ocupacao_mes', { p_tenant: TENANT, p_ano: ref.getFullYear(), p_mes: ref.getMonth() + 1 })
         if (error) throw new Error(error.message)
         for (const d of data ?? []) {
-          if (d.tem_vaga && d.dia >= hoje.toISOString().slice(0, 10)) dias.push({ dia: d.dia, vagasDia: d.vagas_dia })
+          if (d.tem_vaga && d.dia >= hojeISO) dias.push({ dia: d.dia, vagasDia: d.vagas_dia })
         }
       }
       return dias

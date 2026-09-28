@@ -1,5 +1,5 @@
 import {
-  processarPasso, finalizarComProtocolo, falhaAoConfirmar,
+  processarPasso, encontrarDia, finalizarComProtocolo, falhaAoConfirmar,
   confirmarEsperaComSucesso, confirmarEsperaVagaPerdida,
   type Etapa, type DadosSessao, type Empresa, type Veiculo,
   type DiaComVaga, type HorarioComVaga, type ContextoPasso, type ResultadoPasso,
@@ -24,7 +24,13 @@ export interface AgendamentoBotGateway {
 const headers = { 'Content-Type': 'application/json' }
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers })
 
-async function montarContexto(gateway: AgendamentoBotGateway, etapa: Etapa, dados: DadosSessao): Promise<ContextoPasso> {
+// Os horários são interpretados pelas RPCs em America/Fortaleza (UTC-3, sem horário de verão).
+// A Edge Function roda em UTC, então o offset precisa ir explícito no ISO.
+const OFFSET_FORTALEZA = '-03:00'
+
+async function montarContexto(
+  gateway: AgendamentoBotGateway, etapa: Etapa, dados: DadosSessao, entradaUsuario: string,
+): Promise<ContextoPasso> {
   switch (etapa) {
     case 'aguardando_nome':
     case 'aguardando_empresa':
@@ -32,8 +38,13 @@ async function montarContexto(gateway: AgendamentoBotGateway, etapa: Etapa, dado
     case 'aguardando_placa':
       return { veiculosDaEmpresa: dados.empresaId ? await gateway.listarVeiculos(dados.empresaId) : [] }
     case 'aguardando_motivo':
-    case 'aguardando_dia':
       return { diasComVaga: await gateway.listarDiasComVaga() }
+    case 'aguardando_dia': {
+      const diasComVaga = await gateway.listarDiasComVaga()
+      const escolhido = encontrarDia(entradaUsuario, diasComVaga)
+      if (!escolhido) return { diasComVaga }
+      return { diasComVaga, horariosDoDia: await gateway.listarHorariosDoDia(escolhido.dia) }
+    }
     case 'aguardando_hora':
       return {
         horariosDoDia: dados.dia ? await gateway.listarHorariosDoDia(dados.dia) : [],
@@ -51,7 +62,7 @@ async function executarAcaoPendente(gateway: AgendamentoBotGateway, telefone: st
     try {
       const r = await gateway.solicitarAgendamento({
         nome: d.nome ?? '', contato: telefone, empresaId: d.empresaId, veiculoId: d.veiculoId,
-        tipo: d.tipo, descricao: d.descricao, inicioISO: `${d.dia}T${d.hora}:00`,
+        tipo: d.tipo, descricao: d.descricao, inicioISO: `${d.dia}T${d.hora}:00${OFFSET_FORTALEZA}`,
       })
       return finalizarComProtocolo(d, r.protocolo, r.status)
     } catch {
@@ -68,7 +79,7 @@ async function executarAcaoPendente(gateway: AgendamentoBotGateway, telefone: st
     try {
       const r = await gateway.solicitarAgendamento({
         nome: d.nome ?? '', contato: telefone, empresaId: d.empresaId, veiculoId: d.veiculoId,
-        tipo: d.tipo, descricao: d.descricao, inicioISO: `${d.ofertaDia}T${d.ofertaHora}:00`,
+        tipo: d.tipo, descricao: d.descricao, inicioISO: `${d.ofertaDia}T${d.ofertaHora}:00${OFFSET_FORTALEZA}`,
       })
       return confirmarEsperaComSucesso(d, r.protocolo, r.status)
     } catch {
@@ -92,7 +103,7 @@ export function createWhatsAppAgendamentoHandler(createGateway: (payload: unknow
     const etapaAtual: Etapa = sessaoAtual?.etapa ?? 'inicio'
     const dadosAtuais: DadosSessao = sessaoAtual?.dados ?? {}
 
-    const contexto = await montarContexto(gateway, etapaAtual, dadosAtuais)
+    const contexto = await montarContexto(gateway, etapaAtual, dadosAtuais, mensagem.texto)
     let resultado = processarPasso(etapaAtual, dadosAtuais, mensagem.texto, contexto)
     resultado = await executarAcaoPendente(gateway, mensagem.telefone, resultado)
 

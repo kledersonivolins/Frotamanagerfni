@@ -6,6 +6,15 @@ import { enviarMensagemWhatsApp } from '../whatsapp-agendamento/evolution.ts'
 
 const TENANT = 'oficinafni'
 
+// A Edge Function roda em UTC; o "hoje" da oficina é em America/Fortaleza (UTC-3).
+function agoraFortaleza(): Date {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Fortaleza' }))
+}
+
+function dataISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function gateway(): ListaEsperaGateway {
   const client = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -26,13 +35,14 @@ function gateway(): ListaEsperaGateway {
       return (data ?? []).map(r => ({ telefone: r.telefone, dados: r.dados ?? {} }))
     },
     async primeiroHorarioLivre() {
-      const hoje = new Date()
+      const hoje = agoraFortaleza()
+      const hojeISO = dataISO(hoje)
       for (const offsetMes of [0, 1]) {
         const ref = new Date(hoje.getFullYear(), hoje.getMonth() + offsetMes, 1)
         const { data: dias, error } = await client.rpc('agendamento_ocupacao_mes', { p_tenant: TENANT, p_ano: ref.getFullYear(), p_mes: ref.getMonth() + 1 })
         if (error) throw new Error(error.message)
         for (const d of dias ?? []) {
-          if (!d.tem_vaga || d.dia < hoje.toISOString().slice(0, 10)) continue
+          if (!d.tem_vaga || d.dia < hojeISO) continue
           const { data: horas, error: erroHoras } = await client.rpc('agendamento_ocupacao_dia', { p_tenant: TENANT, p_data: d.dia })
           if (erroHoras) throw new Error(erroHoras.message)
           const livre = (horas ?? []).find((h: { vagas: number }) => h.vagas > 0)

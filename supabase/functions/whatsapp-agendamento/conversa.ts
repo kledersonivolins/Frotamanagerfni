@@ -156,7 +156,7 @@ function listarDiasTexto(dias: DiaComVaga[]): string {
   return dias.map((d, i) => `${i + 1}. ${formatarDataBR(d.dia)}`).join('\n')
 }
 
-function encontrarDia(entrada: string, dias: DiaComVaga[]): DiaComVaga | undefined {
+export function encontrarDia(entrada: string, dias: DiaComVaga[]): DiaComVaga | undefined {
   const texto = entrada.trim()
   const porNumero = Number(texto)
   if (Number.isInteger(porNumero) && porNumero >= 1 && porNumero <= dias.length) {
