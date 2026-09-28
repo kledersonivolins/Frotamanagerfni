@@ -283,6 +283,45 @@ export function falhaAoConfirmar(dados: DadosSessao): ResultadoPasso {
   }
 }
 
+function passoListaEspera(dados: DadosSessao): ResultadoPasso {
+  return {
+    etapa: 'lista_espera',
+    dados,
+    respostas: ['Você continua na nossa lista de espera. Assim que abrir um horário, eu aviso por aqui.'],
+  }
+}
+
+export function ofertarVaga(dados: DadosSessao, dia: string, hora: string): ResultadoPasso {
+  return {
+    etapa: 'aguardando_confirmacao_espera',
+    dados: { ...dados, ofertaDia: dia, ofertaHora: hora },
+    respostas: [`Abriu uma vaga em ${formatarDataBR(dia)} às ${hora}! Responda SIM para garantir ou NÃO para continuar esperando.`],
+  }
+}
+
+function passoAguardandoConfirmacaoEspera(dados: DadosSessao, entrada: string): ResultadoPasso {
+  const resposta = interpretarSimNao(entrada)
+  if (resposta === undefined) {
+    return { etapa: 'aguardando_confirmacao_espera', dados, respostas: ['Não entendi. Responda SIM para garantir a vaga ou NÃO para continuar esperando.'] }
+  }
+  if (!resposta) {
+    return { etapa: 'lista_espera', dados, respostas: ['Sem problemas, você continua na lista de espera.'] }
+  }
+  return { etapa: 'aguardando_confirmacao_espera', dados, respostas: [], acaoPendente: 'confirmar_espera' }
+}
+
+export function confirmarEsperaComSucesso(dados: DadosSessao, protocolo: string, statusRetornado: string): ResultadoPasso {
+  return finalizarComProtocolo(dados, protocolo, statusRetornado)
+}
+
+export function confirmarEsperaVagaPerdida(dados: DadosSessao): ResultadoPasso {
+  return {
+    etapa: 'lista_espera',
+    dados,
+    respostas: ['Esse horário já foi ocupado por outra pessoa. Você continua na lista de espera, aviso no próximo que abrir.'],
+  }
+}
+
 export function processarPasso(
   etapaAtual: Etapa,
   dados: DadosSessao,
@@ -308,6 +347,10 @@ export function processarPasso(
       return passoAguardandoHora(dados, entradaUsuario, contexto)
     case 'confirmando':
       return passoConfirmando(dados, entradaUsuario)
+    case 'lista_espera':
+      return passoListaEspera(dados)
+    case 'aguardando_confirmacao_espera':
+      return passoAguardandoConfirmacaoEspera(dados, entradaUsuario)
     default:
       return { etapa: etapaAtual, dados, respostas: [] }
   }

@@ -220,3 +220,49 @@ test('falhaAoConfirmar mantem etapa confirmando e avisa erro', () => {
   assert.equal(r.etapa, 'confirmando')
   assert.match(r.respostas[0], /99995-9427/)
 })
+
+import { ofertarVaga, confirmarEsperaComSucesso, confirmarEsperaVagaPerdida } from './conversa.ts'
+
+test('lista_espera so lembra o cliente, sem avancar etapa', () => {
+  const r = processarPasso('lista_espera', { nome: 'Maria' }, 'e ai, alguma novidade?', {})
+  assert.equal(r.etapa, 'lista_espera')
+  assert.match(r.respostas[0], /lista de espera/i)
+})
+
+test('ofertarVaga muda etapa e guarda a oferta', () => {
+  const r = ofertarVaga({ nome: 'Maria' }, '2026-10-05', '09:00')
+  assert.equal(r.etapa, 'aguardando_confirmacao_espera')
+  assert.equal(r.dados.ofertaDia, '2026-10-05')
+  assert.equal(r.dados.ofertaHora, '09:00')
+  assert.match(r.respostas[0], /09:00/)
+})
+
+test('aguardando_confirmacao_espera com SIM sinaliza acao pendente', () => {
+  const r = processarPasso(
+    'aguardando_confirmacao_espera',
+    { nome: 'Maria', ofertaDia: '2026-10-05', ofertaHora: '09:00' },
+    'sim', {},
+  )
+  assert.equal(r.acaoPendente, 'confirmar_espera')
+})
+
+test('aguardando_confirmacao_espera com NAO volta pra lista de espera', () => {
+  const r = processarPasso(
+    'aguardando_confirmacao_espera',
+    { nome: 'Maria', ofertaDia: '2026-10-05', ofertaHora: '09:00' },
+    'nao', {},
+  )
+  assert.equal(r.etapa, 'lista_espera')
+})
+
+test('confirmarEsperaComSucesso finaliza com protocolo', () => {
+  const r = confirmarEsperaComSucesso({ nome: 'Maria' }, 'AG-500', 'autorizado')
+  assert.equal(r.etapa, 'finalizado')
+  assert.match(r.respostas[0], /AG-500/)
+})
+
+test('confirmarEsperaVagaPerdida volta pra lista de espera avisando', () => {
+  const r = confirmarEsperaVagaPerdida({ nome: 'Maria' })
+  assert.equal(r.etapa, 'lista_espera')
+  assert.match(r.respostas[0], /já foi ocupado/i)
+})
