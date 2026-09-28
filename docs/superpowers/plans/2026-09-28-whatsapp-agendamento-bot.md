@@ -1835,19 +1835,32 @@ Edge Function do projeto, não precisam ser configurados manualmente.
 
 - [ ] **Step 3: Deploy das duas functions**
 
+Por padrão o Supabase exige um JWT válido do próprio Supabase Auth em toda
+requisição a uma Edge Function — e a Evolution API nunca vai enviar um. Sem
+desligar essa verificação, o webhook recebe 401 do próprio gateway do Supabase
+**antes** do código da function (e do checagem do `X-Webhook-Secret` do Step 2)
+rodar. Por isso `whatsapp-agendamento` precisa ser deployada com
+`--no-verify-jwt` — é o `X-Webhook-Secret` que passa a ser a autenticação real
+dessa function, não o JWT do Supabase.
+
 Com CLI:
 
 ```bash
-supabase functions deploy whatsapp-agendamento --project-ref gocdyfhzqezpqyebixid
+supabase functions deploy whatsapp-agendamento --project-ref gocdyfhzqezpqyebixid --no-verify-jwt
 supabase functions deploy whatsapp-lista-espera --project-ref gocdyfhzqezpqyebixid
 ```
+
+(`whatsapp-lista-espera` não recebe tráfego externo — só é chamada pelo
+`pg_cron` do Step 6 com a service role key — então mantém a verificação padrão.)
 
 Sem CLI: painel Supabase → Edge Functions → criar cada function colando o
 conteúdo de `index.ts`, `handler.ts`, `conversa.ts`, `placa.ts` e `evolution.ts`
 (a `whatsapp-lista-espera` também precisa de `../whatsapp-agendamento/conversa.ts`
 e `../whatsapp-agendamento/evolution.ts` — se o editor do painel não permitir
 imports relativos entre functions, copiar esses dois arquivos para dentro da
-pasta `whatsapp-lista-espera` também).
+pasta `whatsapp-lista-espera` também). Pelo painel, a opção equivalente ao
+`--no-verify-jwt` fica em Edge Functions → `whatsapp-agendamento` →
+Settings → "Enforce JWT Verification" → desligar.
 
 - [ ] **Step 4: Apontar o webhook da Evolution API**
 
