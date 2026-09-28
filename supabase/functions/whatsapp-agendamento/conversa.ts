@@ -291,12 +291,15 @@ export function finalizarComProtocolo(
   }
 }
 
-export function falhaAoConfirmar(dados: DadosSessao): ResultadoPasso {
-  return {
-    etapa: 'confirmando',
-    dados,
-    respostas: [`Não consegui confirmar agora. Tente novamente em instantes ou fale com ${TELEFONE_ATENDIMENTO_HUMANO}.`],
-  }
+export function falhaAoConfirmar(dados: DadosSessao, motivo?: string): ResultadoPasso {
+  // Mantém etapa 'confirmando' mesmo com motivo: se for uma regra de negócio permanente
+  // (ex. OS já aberta), o cliente pode responder NÃO pra cancelar e recomeçar; se for uma
+  // falha transitória, pode tentar SIM de novo. Mostra o motivo real quando disponível,
+  // em vez do texto genérico.
+  const texto = motivo
+    ? `Não consegui confirmar o agendamento: ${motivo}\nResponda NÃO para cancelar e recomeçar com outro veículo/horário, ou fale com ${TELEFONE_ATENDIMENTO_HUMANO}.`
+    : `Não consegui confirmar agora. Tente novamente em instantes ou fale com ${TELEFONE_ATENDIMENTO_HUMANO}.`
+  return { etapa: 'confirmando', dados, respostas: [texto] }
 }
 
 function passoListaEspera(dados: DadosSessao): ResultadoPasso {

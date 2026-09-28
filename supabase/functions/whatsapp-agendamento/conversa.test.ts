@@ -237,6 +237,13 @@ test('falhaAoConfirmar mantem etapa confirmando e avisa erro', () => {
   assert.match(r.respostas[0], /99995-9427/)
 })
 
+test('falhaAoConfirmar com motivo mantem confirmando e mostra o motivo ao cliente', () => {
+  const r = falhaAoConfirmar(dadosConfirmando, 'Há uma ordem de serviço aberta para este veículo.')
+  assert.equal(r.etapa, 'confirmando')
+  assert.match(r.respostas[0], /Há uma ordem de serviço aberta para este veículo\./)
+  assert.match(r.respostas[0], /99995-9427/)
+})
+
 import { ofertarVaga, confirmarEsperaComSucesso, confirmarEsperaVagaPerdida } from './conversa.ts'
 
 test('lista_espera so lembra o cliente, sem avancar etapa', () => {
