@@ -3667,6 +3667,15 @@ async function sbSalvar(tabela, registro){
         showToast('📦 Sem conexão: "'+tabela+'" salvo localmente e será enviado quando a internet voltar.','warning');
         return true;
       }
+      // Erro de regra de negócio (raise exception no banco, ex: P0001) é determinístico —
+      // tentar de novo com o mesmo registro vai falhar igual todas as vezes. Mostra na hora,
+      // sem esperar ~15s de backoff pra dizer a mesma coisa.
+      if(err?.code === 'P0001'){
+        _sbSetStatus('error','Erro ao salvar: '+err.message);
+        console.error('sbSalvar bloqueado por regra de negócio:', tabela, err);
+        showToast('⚠️ '+err.message, 'danger');
+        return false;
+      }
       retries++;
       if(retries >= maxRetries) {
         _sbSetStatus('error','Erro ao salvar: '+err.message);
