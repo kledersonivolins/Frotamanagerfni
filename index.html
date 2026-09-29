@@ -14563,6 +14563,8 @@ async function aprovarPreOS(i){
   if(os.historico_fluxo && typeof os.historico_fluxo==='string'){ try{ os.historico_fluxo=JSON.parse(os.historico_fluxo); }catch(e){ os.historico_fluxo=[]; } }
   if(!Array.isArray(os.historico_fluxo)) os.historico_fluxo=[];
   const _statusAnt = os.status;
+  const _tipoAnt = os.tipo_abertura;
+  const _historicoAnt = os.historico_fluxo.slice();
   os.historico_fluxo.push({
     data_hora: new Date().toLocaleString('pt-BR'),
     usuario: currentUser?.username || currentUser?.nome || '—',
@@ -14572,8 +14574,16 @@ async function aprovarPreOS(i){
   });
   os.tipo_abertura = 'OS';
   os.status = 'aberta';
+  const ok = await sbSalvar('ordens_servico', os);
+  if(!ok){
+    // sbSalvar já mostrou o motivo real do erro — desfaz a mutação local pra não
+    // fingir sucesso enquanto o banco continua com a Pré-OS pendente.
+    os.status = _statusAnt;
+    os.tipo_abertura = _tipoAnt;
+    os.historico_fluxo = _historicoAnt;
+    return;
+  }
   logAudit('editar','ordens_servico','Pré-OS #'+os.numero+' aprovada e convertida em OS');
-  await sbSalvar('ordens_servico', os);
   loadPage('os');
   showToast(`Pré-OS #${os.numero} aprovada! Agora é uma OS oficial.`,'success');
 }
