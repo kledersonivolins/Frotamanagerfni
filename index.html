@@ -3667,6 +3667,15 @@ async function sbSalvar(tabela, registro){
         showToast('📦 Sem conexão: "'+tabela+'" salvo localmente e será enviado quando a internet voltar.','warning');
         return true;
       }
+      // Erro de regra de negócio (raise exception no banco, ex: P0001) é determinístico —
+      // tentar de novo com o mesmo registro vai falhar igual todas as vezes. Mostra na hora,
+      // sem esperar ~15s de backoff pra dizer a mesma coisa.
+      if(err?.code === 'P0001'){
+        _sbSetStatus('error','Erro ao salvar: '+err.message);
+        console.error('sbSalvar bloqueado por regra de negócio:', tabela, err);
+        showToast('⚠️ '+err.message, 'danger');
+        return false;
+      }
       retries++;
       if(retries >= maxRetries) {
         _sbSetStatus('error','Erro ao salvar: '+err.message);
@@ -5825,13 +5834,12 @@ async function aprovarAgendamentoExterno(id){
   const eq=(db.equipamentos||[]).find(e=>String(e.id)===String(a.veiculo_id));
   if(!eq){showToast('Veículo do agendamento não foi encontrado.','danger');return;}
   const numeros=(db.ordens_servico||[]).map(o=>parseInt(o.numero,10)).filter(Number.isFinite); const n=String((Math.max(0,...numeros)+1)).padStart(4,'0');
-  const mecanico=_proximoMecanicoDaFila(a.data||a.horario_inicio);
-  const os={id:uid(),numero:n,equipamento_id:eq.id,empresa_id:a.empresa_id||eq.empresa_id||null,tipo:a.tipo_servico||'Manutenção',tipo_abertura:'Pre-OS',status:'pre_os',origem:'agendamento_externo',data_abertura:today_static(),data_previsao:a.data||null,solicitante:a.nome_solicitante||null,oficina:'Agendamento externo',descricao:a.descricao||'',custo:0,responsavel:mecanico?mecanico.nome:null,obs:'Protocolo externo: '+(a.protocolo||'')+(mecanico?' | Mecânico da fila: '+mecanico.nome:'')};
+  const os={id:uid(),numero:n,equipamento_id:eq.id,empresa_id:a.empresa_id||eq.empresa_id||null,tipo:a.tipo_servico||'Manutenção',tipo_abertura:'Pre-OS',status:'pre_os',origem:'agendamento_externo',data_abertura:today_static(),data_previsao:a.data||null,solicitante:a.nome_solicitante||null,oficina:'Agendamento externo',descricao:a.descricao||'',custo:0,responsavel:null,obs:'Protocolo externo: '+(a.protocolo||'')};
   if(!await sbSalvar('ordens_servico',os))return;
-  const atualizado={...a,status:'autorizado',pre_os_id:os.id,mecanico_id:mecanico?mecanico.id:null,mecanico_nome:mecanico?mecanico.nome:null,autorizado_por:currentUser?.username||currentUser?.nome||'',autorizado_em:new Date().toISOString()};
-  if(!await _agExtAtualizar(id,{status:'autorizado',pre_os_id:os.id,mecanico_id:atualizado.mecanico_id,mecanico_nome:atualizado.mecanico_nome,autorizado_por:atualizado.autorizado_por,autorizado_em:atualizado.autorizado_em}))return;
+  const atualizado={...a,status:'autorizado',pre_os_id:os.id,mecanico_id:null,mecanico_nome:null,autorizado_por:currentUser?.username||currentUser?.nome||'',autorizado_em:new Date().toISOString()};
+  if(!await _agExtAtualizar(id,{status:'autorizado',pre_os_id:os.id,mecanico_id:null,mecanico_nome:null,autorizado_por:atualizado.autorizado_por,autorizado_em:atualizado.autorizado_em}))return;
   const i=db.agendamentos_externos.findIndex(x=>String(x.id)===String(id)); if(i>=0)db.agendamentos_externos[i]=atualizado;
-  showToast('Pré-OS '+n+(mecanico?' atribuída a '+mecanico.nome:' criada')+'.','success'); loadPage('agendamentos_externos');
+  showToast('Pré-OS '+n+' criada.','success'); loadPage('agendamentos_externos');
 }
 async function recusarAgendamentoExterno(id){
   const a=(db.agendamentos_externos||[]).find(x=>String(x.id)===String(id)); if(!a||a.status!=='pendente')return;
