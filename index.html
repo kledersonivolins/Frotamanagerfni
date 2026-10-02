@@ -12724,8 +12724,10 @@ function _renderOSLinha(os){
   const prevRow=os.data_previsao?('<div style="font-size:10px;color:var(--text2)">Prev: '+fmtDt(os.data_previsao)+'</div>'):'';
   const itensInfo=(os.itens||[]).length>0?((os.itens||[]).length+' item(s) · '):'';
   const isPre=_isPreOS(os);
-  const btnEditar=nivel('operador')&&statusCanon!=='concluida'&&statusCanon!=='cancelada'
-    ?'<button type="button" class="ic-btn" onclick="editarItensOS('+i+')" title="Editar itens"><i class="fas fa-edit"></i></button>':'';
+  // OS encerrada: só Admin edita (mesma regra de editarItensOS).
+  const osEncerrada=statusCanon==='concluida'||statusCanon==='cancelada';
+  const btnEditar=nivel('operador')&&(!osEncerrada||nivel('admin'))
+    ?'<button type="button" class="ic-btn" onclick="editarItensOS('+i+')" title="Editar OS"><i class="fas fa-edit"></i></button>':'';
   const btnAprovar=nivel('operador')&&isPre&&statusCanon!=='cancelada'&&statusCanon!=='concluida'
     ?'<button type="button" class="ic-btn gr" onclick="aprovarPreOS('+i+')" title="Aprovar Pré-OS e converter em OS"><i class="fas fa-check-circle"></i></button>':'';
   const btnStatus=nivel('operador')&&!isPre
@@ -13970,8 +13972,36 @@ function editarItensOS(i){
       </div>
     </div>
     <div class="frow">
+      <div class="fg"><label>Equipamento</label>
+        <select class="fs" id="edt_eq">${(()=>{
+          const eqs=(db.equipamentos||[]).filter(e=>!e.excluido||String(e.id)===String(os.equipamento_id)).slice().sort((a,b)=>(a.placa||'').localeCompare(b.placa||''));
+          return eqs.map(e=>`<option value="${e.id}" ${String(e.id)===String(os.equipamento_id)?'selected':''}>${esc(e.placa||'')} — ${esc(e.modelo||'')}</option>`).join('');
+        })()}</select>
+      </div>
+      <div class="fg"><label>Data Abertura</label><input class="fi" type="date" id="edt_ab" value="${String(os.data_abertura||'').slice(0,10)}"></div>
+      <div class="fg"><label>Data Conclusão</label><input class="fi" type="date" id="edt_dc" value="${String(os.data_saida||os.data_conclusao||os.data_fechamento||'').slice(0,10)}"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Centro de Custo</label>
+        <select class="fs" id="edt_cc"><option value="">— Selecione —</option>${(db.centros_custo||[]).filter(c=>c.ativo!==false||String(c.id)===String(os.centro_custo_id)).map(c=>`<option value="${c.id}" ${String(c.id)===String(os.centro_custo_id)?'selected':''}>${esc(c.nome||'')}${c.codigo?' ('+esc(c.codigo)+')':''}</option>`).join('')}</select>
+      </div>
+      <div class="fg"><label>Obra (opcional)</label>
+        <select class="fs" id="edt_obra"><option value="">— Sem obra —</option>${(db.obras||[]).filter(o=>o.status==='ativa'||String(o.id)===String(os.obra_id)).map(o=>`<option value="${o.id}" ${String(o.id)===String(os.obra_id)?'selected':''}>${esc(o.nome||'')}${o.codigo?' — '+esc(o.codigo):''}</option>`).join('')}</select>
+      </div>
+      <div class="fg"><label>Solicitante</label><input class="fi" id="edt_sol" value="${esc(os.solicitante||'')}"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Sistema</label>
+        <select class="fs" id="edt_sistema"><option value="">Selecione...</option>${['Motor','Transmissão','CX. Câmbio','Diferencial','Sistema Hidráulico','Freio','Suspensão','Elétrico','Ar-condicionado','Pneus/Rodado','Estrutura/Carroceria','Implemento','Outros'].map(s=>`<option ${os.sistema===s?'selected':''}>${s}</option>`).join('')}</select>
+      </div>
+      <div class="fg"><label>Local / Componente</label><input class="fi" id="edt_local_comp" value="${esc(os.local_comp||'')}"></div>
+      <div class="fg"><label>Agente Causador</label>
+        <select class="fs" id="edt_agente"><option value="">Selecione...</option>${['Manutenção Programada','Quebra','Acidente','Desgaste natural','Falha operacional','Vandalismo','Outros'].map(s=>`<option ${os.agente===s?'selected':''}>${s}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="frow">
       <div class="fg"><label>Oficina / Local</label><input class="fi" id="edt_oficina" value="${os.oficina||''}"></div>
-      <div class="fg"><label>Hodômetro / Horímetro</label><input class="fi" type="number" id="edt_hod" value="${os.hodometro||0}"></div>
+      <div class="fg"><label>Hodômetro / Horímetro</label><input class="fi" type="number" step="0.1" id="edt_hod" value="${os.hodometro||0}"></div>
       ${_htmlSelectEmpresaEdicaoOS(os.empresa_id)}
     </div>
     <div class="fg"><label>Descrição / Diagnóstico</label>
@@ -14197,7 +14227,36 @@ function salvarEdicaoOS(i){
     os.empresa_id = parseInt(empSel.value) || empSel.value;
   }
   os.responsavel = document.getElementById('edt_mecanico')?.value || null;
+  const eqNovo = document.getElementById('edt_eq')?.value;
+  if(eqNovo && String(eqNovo)!==String(os.equipamento_id)){
+    audit.equipamento_antes = os.equipamento_id;
+    audit.equipamento_depois = eqNovo;
+    os.equipamento_id = parseInt(eqNovo);
+  }
+  const dtAb = document.getElementById('edt_ab')?.value;
+  if(dtAb) os.data_abertura = dtAb;
+  const dtConc = document.getElementById('edt_dc')?.value || '';
+  if(dtConc){
+    os.data_conclusao = dtConc;
+    if(os.status==='concluida'){ os.data_fechamento = dtConc; os.data_saida = dtConc; }
+  } else if(os.status!=='concluida'){
+    os.data_conclusao = null;
+  }
+  const ccSel = document.getElementById('edt_cc')?.value;
+  if(ccSel) os.centro_custo_id = parseInt(ccSel);
+  const obraSel = document.getElementById('edt_obra');
+  if(obraSel) os.obra_id = parseInt(obraSel.value)||null;
+  if(document.getElementById('edt_sol')) os.solicitante = document.getElementById('edt_sol').value;
+  if(document.getElementById('edt_sistema')) os.sistema = document.getElementById('edt_sistema').value;
+  if(document.getElementById('edt_local_comp')) os.local_comp = document.getElementById('edt_local_comp').value;
+  if(document.getElementById('edt_agente')) os.agente = document.getElementById('edt_agente').value;
   os.hodometro   = parseFloat(document.getElementById('edt_hod').value)||0;
+  // Mantém km_abertura / horimetro_abertura coerentes com o tipo de medida do equipamento
+  if(os.hodometro){
+    const tipoMedEdt = (eqTipoMedida(os.equipamento_id)||'horas').toLowerCase();
+    if(tipoMedEdt==='km'){ os.km_abertura = os.hodometro; os.horimetro_abertura = null; }
+    else { os.horimetro_abertura = os.hodometro; os.km_abertura = null; }
+  }
   os.descricao   = document.getElementById('edt_desc').value;
   os.obs         = document.getElementById('edt_obs').value;
   os.custo       = parseFloat(document.getElementById('edt_cu').value)||0;
@@ -33908,6 +33967,31 @@ function imprimirOS(i){
     </div>
   </div>`;
 
+  // Histórico de intervenções anteriores — vai para a folha 2 junto com a última intervenção,
+  // para que a folha 1 (OS + assinaturas) caiba em uma A4.
+  const historicoIntervHtml = (()=>{
+    const manus=(db.manutencoes||[]).filter(m=>m.equipamento_id===os.equipamento_id).slice().reverse().slice(0,6);
+    if(!manus.length) return '';
+    return `<div class="section">
+    <div class="sec-hdr" style="background:#4527a0">▌ Histórico de Intervenções Anteriores (últimas ${manus.length})</div>
+    <div class="sec-body" style="padding:0">
+      <table>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Serviço Executado</th><th>KM / Horas</th><th>Responsável</th><th>OS#</th></tr></thead>
+        <tbody>
+        ${manus.map(m=>`<tr>
+          <td>${fmtDt(m.data)}</td>
+          <td>${m.tipo}</td>
+          <td>${m.servico}</td>
+          <td>${fmt(m.hodometro)} ${m.tipo_medida}</td>
+          <td>${m.responsavel||'—'}</td>
+          <td>${m.os_id?`#${db.ordens_servico.find(o=>o.id===m.os_id)?.numero||'—'}`:'-'}</td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+  })();
+
   const w = window.open('','_blank','width=900,height=700');
   w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
   <meta charset="UTF-8">
@@ -33939,12 +34023,15 @@ function imprimirOS(i){
     table{width:100%;border-collapse:collapse}
     th{background:#e3f0ff;padding:6px 8px;font-size:9px;font-weight:700;text-transform:uppercase;border:1px solid #90caf9;text-align:left}
     td{padding:7px 8px;border:1px solid #ddd;font-size:10px;vertical-align:middle}
-    .assinaturas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:16px}
+    .assinaturas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:16px;break-inside:avoid;page-break-inside:avoid}
     .assin{text-align:center}
     .assin-line{border-top:1.5px solid #333;margin-top:36px}
     .assin-lbl{font-size:9px;font-weight:700;margin-top:4px}
     .assin-sub{font-size:8px;color:#777;margin-top:2px}
     .rodape{margin-top:14px;padding-top:6px;border-top:1px solid #ddd;display:flex;justify-content:space-between;font-size:8px;color:#999}
+    /* Folha 1 com largura fixa da área útil da A4 (210mm - 2x10mm) para que a medição
+       na tela seja igual à impressão; o script no fim reduz a escala se não couber. */
+    #pg1,#pg2{width:190mm;max-width:100%}
     .btn-print{background:#3A3F42;color:#fff;border:none;padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer;margin-right:8px}
     .btn-close{background:#666;color:#fff;border:none;padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer}
     .no-print{margin-bottom:16px}
@@ -33958,6 +34045,7 @@ function imprimirOS(i){
     <button class="btn-close" onclick="window.close()">✕ Fechar</button>
   </div>
 
+  <div id="pg1">
   <!-- CABEÇALHO -->
   <div class="hdr">
     <div class="hdr-row">
@@ -34023,8 +34111,6 @@ function imprimirOS(i){
     </div>
   </div>
 
-  ${ultimaIntervHtml}
-
   <!-- DIAGNÓSTICO -->
   <div class="section">
     <div class="sec-hdr" style="background:#4a148c">▌ Diagnóstico e Descrição dos Serviços</div>
@@ -34048,44 +34134,18 @@ function imprimirOS(i){
       <table>
         <thead><tr><th style="width:30px">Nº</th><th style="width:70px">Tipo</th><th>Descrição do Item / Serviço</th><th style="width:80px">Referência</th><th style="width:50px">Qtd</th><th style="width:40px">Un</th><th>Observações</th></tr></thead>
         <tbody>
-        ${(os.itens&&os.itens.length>0)?
-          os.itens.map((it,ii)=>`<tr><td>${ii+1}</td><td style="font-size:9px">${it.tipo||'peca'}</td><td><strong>${esc(it.descricao||"")}</strong></td><td>${it.referencia||'—'}</td><td>${it.quantidade||1}</td><td>${it.unidade||'un'}</td><td>${it.obs||''}</td></tr>`).join('')+
-          `<tr><td>${os.itens.length+1}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-           <tr><td>${os.itens.length+2}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
-          :
-          `<tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-           <tr><td>2</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-           <tr><td>3</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-           <tr><td>4</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-           <tr><td>5</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`}
+        ${(()=>{
+          // Total de linhas = o informado no prompt (itens + em branco), nunca menos que os itens.
+          const itensOS = os.itens||[];
+          const total = Math.max(_linhasImprimir, itensOS.length);
+          let rows = itensOS.map((it,ii)=>`<tr><td>${ii+1}</td><td style="font-size:9px">${it.tipo||'peca'}</td><td><strong>${esc(it.descricao||"")}</strong></td><td>${it.referencia||'—'}</td><td>${it.quantidade||1}</td><td>${it.unidade||'un'}</td><td>${it.obs||''}</td></tr>`).join('');
+          for(let n=itensOS.length+1; n<=total; n++) rows += `<tr><td>${n}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+          return rows;
+        })()}
         </tbody>
       </table>
     </div>
   </div>
-
-  <!-- HISTÓRICO DE INTERVENÇÕES ANTERIORES -->
-  ${(()=>{
-    const manus=db.manutencoes.filter(m=>m.equipamento_id===os.equipamento_id).slice().reverse().slice(0,6);
-    if(!manus.length) return '';
-    return `<div class="section">
-    <div class="sec-hdr" style="background:#4527a0">▌ Histórico de Intervenções Anteriores (últimas ${manus.length})</div>
-    <div class="sec-body" style="padding:0">
-      <table>
-        <thead><tr><th>Data</th><th>Tipo</th><th>Serviço Executado</th><th>KM / Horas</th><th>Responsável</th><th>OS#</th></tr></thead>
-        <tbody>
-        ${manus.map(m=>`<tr>
-          <td>${fmtDt(m.data)}</td>
-          <td>${m.tipo}</td>
-          <td>${m.servico}</td>
-          <td>${fmt(m.hodometro)} ${m.tipo_medida}</td>
-          <td>${m.responsavel||'—'}</td>
-          <td>${m.os_id?`#${db.ordens_servico.find(o=>o.id===m.os_id)?.numero||'—'}`:'-'}</td>
-        </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-  </div>`;
-  })()}
 
   <!-- EXECUÇÃO -->
   <div class="section">
@@ -34118,6 +34178,7 @@ function imprimirOS(i){
     <span>FrotaManager — Sistema de Gestão de Frota</span>
     <span>${tipoLabel} #${os.numero} | Equipamento: ${eq?.placa||'—'} — ${eq?.modelo||'—'} | Emissão: ${hoje} ${hora}</span>
   </div>
+  </div><!-- /pg1 -->
 
   ${(()=>{
     // ── PÁGINA 2 — RESUMO OPERACIONAL ──
@@ -34129,7 +34190,8 @@ function imprimirOS(i){
     return `
   <div style="page-break-before:always"></div>
 
-  <div class="hdr" style="margin-top:12mm">
+  <div id="pg2">
+  <div class="hdr">
     <div class="hdr-row">
       <div>
         <div class="os-title">Resumo da OS</div>
@@ -34153,6 +34215,9 @@ function imprimirOS(i){
       </div>
     </div>
   </div>
+
+  ${ultimaIntervHtml}
+  ${historicoIntervHtml}
 
   <div class="section">
     <div class="sec-hdr" style="background:#4a148c">▌ Diagnóstico do Engenheiro</div>
@@ -34185,8 +34250,18 @@ function imprimirOS(i){
   <div class="rodape">
     <span>FrotaManager — Sistema de Gestão de Frota</span>
     <span>${tipoLabel} #${os.numero} — Página de Resumo | Emissão: ${hoje} ${hora}</span>
-  </div>`;
+  </div>
+  </div><!-- /pg2 -->`;
   })()}
+  <script>
+  // Garante cada folha (1: OS + assinaturas; 2: resumo) em uma única A4: se passar da
+  // altura útil (297mm - 2x8mm de margem), reduz a escala proporcionalmente.
+  ['pg1','pg2'].forEach(function(id){
+    var p=document.getElementById(id); if(!p) return;
+    var maxPx=281*96/25.4, h=p.offsetHeight;
+    if(h>maxPx) p.style.zoom=(maxPx/h*0.97).toFixed(3);
+  });
+  <\/script>
   </body></html>`);
   w.document.close();
   setTimeout(()=>w.print(),400);
