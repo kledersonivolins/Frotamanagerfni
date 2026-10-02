@@ -12591,6 +12591,27 @@ function _isPreOS(o){
 function _isOSExcluida(o){
   return !!(o && (o.excluido === true || o.excluido === 'true' || o.excluido === 1 || o.excluido === '1'));
 }
+// Reincidência: veículo com mais de OS_LIMITE_ANO OS no ano corrente (por data de abertura).
+// Não contam Pré-OS, canceladas nem excluídas.
+const OS_LIMITE_ANO = 5;
+function _osContagemAnoPorEquip(){
+  const ano = String(new Date().getFullYear());
+  const cont = new Map();
+  (db.ordens_servico||[]).forEach(o=>{
+    if(!o || _isOSExcluida(o) || _isPreOS(o)) return;
+    if(String(o.status||'').toLowerCase()==='cancelada') return;
+    if(String(o.data_abertura||'').slice(0,4)!==ano) return;
+    const k = String(o.equipamento_id);
+    cont.set(k, (cont.get(k)||0)+1);
+  });
+  return cont;
+}
+function _osBadgeReincidencia(eqId){
+  const cont = window._osContAnoCache || _osContagemAnoPorEquip();
+  const n = cont.get(String(eqId)) || 0;
+  if(n <= OS_LIMITE_ANO) return '';
+  return '<div style="margin-top:3px"><span class="badge" style="font-size:9px;background:#c62828;color:#fff" title="Mais de '+OS_LIMITE_ANO+' OS em '+new Date().getFullYear()+' — verificar causa raiz"><i class="fas fa-exclamation-triangle"></i> '+n+' OS em '+new Date().getFullYear()+'</span></div>';
+}
 function _osVisiveis(){
   let os = _osDaEmpresa().filter(o=>!_isOSExcluida(o));
   // Filtrar por veículos permitidos do usuário
@@ -12740,7 +12761,7 @@ function _renderOSLinha(os){
     +'<td style="padding:8px 10px"><div style="font-weight:800">#'+os.numero+'</div>'
     +'<div style="font-size:10px;color:var(--text2);margin-top:2px">'+autoTag+nomeAuto+(os.solicitante?'· '+os.solicitante:'')+'</div></td>'
     +'<td style="padding:8px 10px"><span class="badge bp" style="font-size:9px">'+os.tipo+'</span></td>'
-    +'<td style="padding:8px 10px"><div style="font-weight:600;font-size:12px">'+eqDesc(os.equipamento_id)+'</div></td>'
+    +'<td style="padding:8px 10px"><div style="font-weight:600;font-size:12px">'+eqDesc(os.equipamento_id)+'</div>'+_osBadgeReincidencia(os.equipamento_id)+'</td>'
     +'<td style="padding:8px 10px;font-size:12px;white-space:nowrap"><div>'+fmtDt(os.data_abertura)+'</div>'+prevRow+'</td>'
     +'<td style="padding:8px 10px;font-size:12px">'
     +'<div style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(os.descricao||'—')+'</div>'
@@ -12807,7 +12828,24 @@ function renderOS(){
   const osOrdenado=_sortLista(osBase,'_sortOS');
   const osAbertas=osBase.filter(o=>_isOSAbertaOperacional(o)).length;
   const preOsAbertas=osBase.filter(o=>_isPreOS(o)&&!['concluida','concluída','cancelada','encerrada'].includes(String(o.status||'').toLowerCase())).length;
+  window._osContAnoCache = _osContagemAnoPorEquip();
+  // Só alerta veículos que o usuário enxerga nesta tela
+  const _eqsVisiveis = new Set(osBase.map(o=>String(o.equipamento_id)));
+  const _reincidentes = [...window._osContAnoCache.entries()]
+    .filter(([id,n])=>n>OS_LIMITE_ANO && _eqsVisiveis.has(id))
+    .sort((a,b)=>b[1]-a[1]);
+  const _alertaReincidencia = _reincidentes.length ? `
+  <div class="alert" style="background:#ffebee;border:1.5px solid #c62828;color:#b71c1c;margin-bottom:10px">
+    <i class="fas fa-exclamation-triangle"></i>
+    <strong>${_reincidentes.length} veículo${_reincidentes.length>1?'s':''} com mais de ${OS_LIMITE_ANO} OS em ${new Date().getFullYear()}:</strong>
+    ${_reincidentes.map(([id,n])=>{
+      const eq=(db.equipamentos||[]).find(e=>String(e.id)===id);
+      const placa=eq?.placa||id;
+      return `<a href="javascript:void(0)" style="color:#b71c1c;font-weight:700;margin-left:6px;text-decoration:underline" title="Filtrar OS deste veículo" onclick="window._osFiltQ='${esc(placa).replace(/'/g,'')}';window._osFilt='';window._osTipoFilt='';loadPage('os')">${esc(placa)} (${n})</a>`;
+    }).join('')}
+  </div>` : '';
   return `
+  ${_alertaReincidencia}
   <div class="grid-stats" style="grid-template-columns:repeat(5,1fr)">
     <div class="stat"><label>Total OS</label><div class="val">${osBase.length}</div></div>
     <div class="stat or"><label>Abertas</label><div class="val">${osBase.filter(o=>o.status==='aberta').length}</div></div>
