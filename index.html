@@ -12755,13 +12755,15 @@ function _renderOSLinha(os){
     ?'<button type="button" class="ic-btn gr" onclick="editStatusOS('+i+')" title="Alterar status"><i class="fas fa-clipboard-check"></i></button>':'';
   const btnReabrir=nivel('operador')&&(statusCanon==='concluida'||statusCanon==='cancelada')
     ?'<button type="button" class="ic-btn" style="color:var(--info)" onclick="reabrirOS('+i+')" title="Reabrir OS"><i class="fas fa-redo"></i></button>':'';
+  const btnRetorno=nivel('operador')&&statusCanon==='concluida'&&!isPre
+    ?'<button type="button" class="ic-btn" style="color:#e65100" onclick="abrirRetornoOS('+i+')" title="Veículo retornou por este serviço — gerar OS de retorno vinculada"><i class="fas fa-undo"></i></button>':'';
   const btnDel=podeExcluirRegistros()
     ?'<button type="button" class="ic-btn rd" onclick="_confirmarExcluir(\'Excluir OS #'+os.numero+'?\',function(){delOS('+i+')})" title="Excluir OS"><i class="fas fa-trash"></i></button>':'';
   return '<tr style="cursor:pointer" onclick="verOS('+i+')">'
     +'<td style="padding:8px 10px"><div style="font-weight:800">#'+os.numero+'</div>'
     +'<div style="font-size:10px;color:var(--text2);margin-top:2px">'+autoTag+nomeAuto+(os.solicitante?'· '+os.solicitante:'')+'</div></td>'
     +'<td style="padding:8px 10px"><span class="badge bp" style="font-size:9px">'+os.tipo+'</span></td>'
-    +'<td style="padding:8px 10px"><div style="font-weight:600;font-size:12px">'+eqDesc(os.equipamento_id)+'</div>'+_osBadgeReincidencia(os.equipamento_id)+'</td>'
+    +'<td style="padding:8px 10px"><div style="font-weight:600;font-size:12px">'+eqDesc(os.equipamento_id)+'</div>'+_osBadgeReincidencia(os.equipamento_id)+_osBadgeRetorno(os)+'</td>'
     +'<td style="padding:8px 10px;font-size:12px;white-space:nowrap"><div>'+fmtDt(os.data_abertura)+'</div>'+prevRow+'</td>'
     +'<td style="padding:8px 10px;font-size:12px">'
     +'<div style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(os.descricao||'—')+'</div>'
@@ -12771,8 +12773,46 @@ function _renderOSLinha(os){
     +'<div style="display:inline-flex;gap:3px;align-items:center">'
     +'<button type="button" class="ic-btn" onclick="verOS('+i+')" title="Ver detalhes"><i class="fas fa-eye"></i></button>'
     +'<button type="button" class="ic-btn" onclick="imprimirOS('+i+')" title="Imprimir OS"><i class="fas fa-print"></i></button>'
-    +btnEditar+btnAprovar+btnStatus+btnReabrir+btnDel
+    +btnEditar+btnAprovar+btnStatus+btnReabrir+btnRetorno+btnDel
     +'</div></td></tr>';
+}
+// Retorno de OS — indicadores visuais na lista.
+// Mostra, na OS original, que ela gerou um retorno; e, na OS nova, de qual OS ela é retorno.
+function _osBadgeRetorno(os){
+  let html = '';
+  if(os.retorno_de_os_id){
+    const orig = (db.ordens_servico||[]).find(o=>String(o.id)===String(os.retorno_de_os_id));
+    if(orig){
+      const oi = db.ordens_servico.findIndex(o=>o.id===orig.id);
+      html += '<div style="margin-top:3px"><span class="badge" style="font-size:9px;background:#e65100;color:#fff;cursor:pointer" onclick="event.stopPropagation();verOS('+oi+')" title="Esta OS é um retorno da OS #'+esc(orig.numero)+'"><i class="fas fa-undo"></i> Retorno da OS #'+esc(orig.numero)+'</span></div>';
+    }
+  }
+  const retornos = (db.ordens_servico||[]).filter(o=>o.retorno_de_os_id!=null && String(o.retorno_de_os_id)===String(os.id));
+  if(retornos.length){
+    const ri = db.ordens_servico.findIndex(o=>o.id===retornos[0].id);
+    const label = retornos.length>1 ? retornos.length+' retornos' : 'Retornou: OS #'+esc(retornos[0].numero);
+    html += '<div style="margin-top:3px"><span class="badge" style="font-size:9px;background:#c62828;color:#fff;cursor:pointer" onclick="event.stopPropagation();verOS('+ri+')" title="O veículo retornou por causa deste serviço"><i class="fas fa-exclamation-triangle"></i> '+label+'</span></div>';
+  }
+  return html;
+}
+// Abre a Nova OS já vinculada à OS anterior (veículo retornou pelo mesmo problema).
+function abrirRetornoOS(i){
+  const os = db.ordens_servico[i];
+  if(!os) return;
+  openModalOS('OS', {
+    equipamento_id: os.equipamento_id,
+    centro_custo_id: os.centro_custo_id,
+    obra_id: os.obra_id,
+    tipo: 'Corretiva',
+    tipo_manutencao: 'corretiva_abrupta',
+    motivo: 'Retorno da OS #'+os.numero,
+    oficina: os.oficina,
+    solicitante: os.solicitante,
+    mecanico_os: os.mecanico_os,
+    ajudante_os: os.ajudante_os,
+    retorno_de_os_id: os.id,
+    retorno_de_os_numero: os.numero,
+  });
 }
 
 
@@ -13075,7 +13115,8 @@ function openModalOS(tipo='OS', preenchido=null){
   window._osDiasTemp = Array.isArray(preenchido?.diario_execucao) ? preenchido.diario_execucao.slice() : [];
   const optsCC = db.centros_custo.filter(c=>c.ativo!==false).map(c=>`<option value="${c.id}" ${preenchido?.centro_custo_id==c.id?'selected':''}>${esc(c.nome||"")}${c.codigo?' ('+c.codigo+')':''}</option>`).join('');
   const optsObra = db.obras.filter(o=>o.status==='ativa').map(o=>`<option value="${o.id}" ${preenchido?.obra_id==o.id?'selected':''}>${esc(o.nome||"")}${o.codigo?' — '+o.codigo:''}</option>`).join('');
-  openModal(`<i class="fas fa-clipboard-list" style="color:var(--purple)"></i> ${tipo==='Pre-OS'?'Nova Pré-OS':'Nova OS'} #${n}`,`
+  const _tituloRetorno = preenchido?.retorno_de_os_id ? ` <span style="color:#e65100">(Retorno da OS #${esc(String(preenchido.retorno_de_os_numero||''))})</span>` : '';
+  openModal(`<i class="fas fa-clipboard-list" style="color:var(--purple)"></i> ${tipo==='Pre-OS'?'Nova Pré-OS':'Nova OS'} #${n}${_tituloRetorno}`,`
   <div class="tabs">
     <button class="tab active" onclick="switchTab(event,'os-tab-dados')"><i class="fas fa-info-circle"></i> Dados da OS</button>
     <button class="tab" onclick="switchTab(event,'os-tab-itens')"><i class="fas fa-box"></i> Itens / Peças <span id="os_itens_count" class="ncount">0</span></button>
@@ -13085,6 +13126,10 @@ function openModalOS(tipo='OS', preenchido=null){
   </div>
 
   <div id="os-tab-dados" class="tab-c active">
+    <input type="hidden" id="os_retorno_de_id" value="${preenchido?.retorno_de_os_id||''}">
+    ${preenchido?.retorno_de_os_id ? `<div class="al-w alert" style="margin-bottom:14px;background:#fff3e0;border-color:#e65100;color:#e65100">
+      <i class="fas fa-undo"></i> <strong>Retorno da OS #${esc(String(preenchido.retorno_de_os_numero||''))}</strong> — esta nova OS ficará vinculada à anterior. Descreva abaixo o problema que motivou o retorno.
+    </div>` : ''}
     ${_htmlSelectEmpresaLancamento(null) ? `<div class="frow">${_htmlSelectEmpresaLancamento(null)}</div>` : ''}
     <div class="frow">
       <div class="fg"><label>Equipamento *</label><select class="fs" id="os_eq" onchange="_onOSEquipamentoChange(this);calcularRemonta()"><option value="">Selecione...</option>${optsEq}</select></div>
@@ -13205,8 +13250,8 @@ function openModalOS(tipo='OS', preenchido=null){
       </div>
     </div>
     <div class="frow">
-      <div class="fg"><label>Oficina / Local de Manutenção</label><input class="fi" id="os_oficina" placeholder="Nome da oficina ou local"></div>
-      <div class="fg"><label>Solicitante</label><input class="fi" id="os_sol" placeholder="Nome"></div>
+      <div class="fg"><label>Oficina / Local de Manutenção</label><input class="fi" id="os_oficina" placeholder="Nome da oficina ou local" value="${esc(preenchido?.oficina||'')}"></div>
+      <div class="fg"><label>Solicitante</label><input class="fi" id="os_sol" placeholder="Nome" value="${esc(preenchido?.solicitante||'')}"></div>
     </div>
     <div class="fg"><label>Descrição do Problema / Diagnóstico *</label><textarea class="fta" id="os_desc" placeholder="Descreva o problema, diagnóstico e serviços a executar..." style="min-height:80px">${preenchido?.descricao||''}</textarea></div>
     <div class="fg"><label>Observações Técnicas</label><textarea class="fta" id="os_ob" placeholder="Observações adicionais..."></textarea></div>
@@ -13786,6 +13831,7 @@ async function salvarOS(){
     remonta_perc: remontaPerc,
     remonta_status: remontaClass ? remontaClass.status : null,
     remonta_obs: remontaObs,
+    retorno_de_os_id: parseInt(document.getElementById('os_retorno_de_id')?.value) || null,
     itens };
   // Preencher km_abertura / horimetro_abertura com base no tipo de medida do equipamento
   (function(){
@@ -13825,7 +13871,8 @@ ALTER TABLE ordens_servico
   ADD COLUMN IF NOT EXISTS km_abertura numeric,
   ADD COLUMN IF NOT EXISTS horimetro_abertura numeric,
   ADD COLUMN IF NOT EXISTS km_fechamento numeric,
-  ADD COLUMN IF NOT EXISTS horimetro_fechamento numeric;
+  ADD COLUMN IF NOT EXISTS horimetro_fechamento numeric,
+  ADD COLUMN IF NOT EXISTS retorno_de_os_id bigint;
 
 ALTER TABLE equipamentos
   ADD COLUMN IF NOT EXISTS km_atual numeric,
@@ -13839,6 +13886,7 @@ ALTER TABLE equipamentos
           delete fallback.custo_vinculado_ativo; delete fallback.origem_custo;
           delete fallback.km_abertura; delete fallback.horimetro_abertura;
           delete fallback.km_fechamento; delete fallback.horimetro_fechamento;
+          delete fallback.retorno_de_os_id;
           await sbSalvar('ordens_servico', fallback);
         }
       } catch(e){}
@@ -13850,6 +13898,25 @@ function verOS(i){
   const sb={aberta:'bi',em_andamento:'bw',concluida:'bs',cancelada:'bd'};
   const autoTag=os.origem==='automatica'?'<span class="badge bt" style="margin-left:6px;font-size:10px">🤖 Gerada automaticamente</span>':'';
   openModal(`<i class="fas fa-clipboard-check" style="color:var(--purple)"></i> OS #${os.numero} — Detalhes ${autoTag}`,`
+  ${os.retorno_de_os_id ? (()=>{
+    const orig = (db.ordens_servico||[]).find(o=>String(o.id)===String(os.retorno_de_os_id));
+    if(!orig) return '';
+    const oi = db.ordens_servico.findIndex(o=>o.id===orig.id);
+    return `<div class="al-w alert" style="margin-bottom:12px;background:#fff3e0;border-color:#e65100;color:#e65100;cursor:pointer" onclick="closeModal();verOS(${oi})">
+      <i class="fas fa-undo"></i> Esta OS é um <strong>retorno da OS #${esc(orig.numero)}</strong> — clique para abrir a OS original.
+    </div>`;
+  })() : ''}
+  ${(()=>{
+    const retornos = (db.ordens_servico||[]).filter(o=>o.retorno_de_os_id!=null && String(o.retorno_de_os_id)===String(os.id));
+    if(!retornos.length) return '';
+    return `<div class="al-w alert" style="margin-bottom:12px;background:#fdecea;border-color:var(--danger);color:var(--danger)">
+      <i class="fas fa-exclamation-triangle"></i> <strong>O veículo retornou${retornos.length>1?' '+retornos.length+' vezes':''} por causa deste serviço:</strong>
+      ${retornos.map(r=>{
+        const ri = db.ordens_servico.findIndex(o=>o.id===r.id);
+        return `<div style="margin-top:4px;cursor:pointer;text-decoration:underline" onclick="closeModal();verOS(${ri})">OS #${esc(r.numero)} (${fmtDt(r.data_abertura)||'—'}) — ${esc((r.descricao||'').slice(0,80))}</div>`;
+      }).join('')}
+    </div>`;
+  })()}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
     ${[['Equipamento',eqDesc(os.equipamento_id)],['Tipo',os.tipo],['Abertura',fmtDt(os.data_abertura)],['Hora Início',os.hora_inicio||'—'],['Hora Fim',os.hora_fim||os.hora_fim_prevista||'—'],['Previsão',fmtDt(os.data_previsao)||'—'],['Solicitante',os.solicitante||'—'],['Custo',`R$ ${Number(os.custo||0).toFixed(2)}`],['KM Abertura',(os.km_abertura>0?fmt(os.km_abertura)+' km':os.hodometro>0&&(db.equipamentos||[]).find(e=>e.id==os.equipamento_id)?.tipo_medida==='km'?fmt(os.hodometro)+' km':'—')],['Horímetro Abertura',(os.horimetro_abertura>0?fmt(os.horimetro_abertura)+' h':os.hodometro>0&&(db.equipamentos||[]).find(e=>e.id==os.equipamento_id)?.tipo_medida!=='km'?fmt(os.hodometro)+' h':'—')],['KM Fechamento',(os.km_fechamento>0?fmt(os.km_fechamento)+' km':'—')],['Horímetro Fechamento',(os.horimetro_fechamento>0?fmt(os.horimetro_fechamento)+' h':'—')],
       ['Centro de Custo', os.centro_custo_id ? (db.centros_custo.find(c=>c.id==os.centro_custo_id)?.nome||'—') : '—'],
