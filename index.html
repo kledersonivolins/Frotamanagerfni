@@ -6631,6 +6631,17 @@ function _htmlSelectEmpresaLancamento(empresaIdSelecionada){
   return `<div class="fg"><label>Empresa *</label><select class="fs" id="lancamento_empresa_id" onchange="_osOnChangeEmpresa(this)"><option value="">Selecione a empresa...</option>${opts}</select></div>`;
 }
 
+// Select de empresa no modal de edição da OS — permite corrigir a empresa depois de salva.
+// Inclui a empresa atual da OS mesmo que não esteja entre as permitidas, para não perdê-la.
+function _htmlSelectEmpresaEdicaoOS(empresaIdAtual){
+  const empresas = _getEmpresasDoUsuario().slice();
+  const atual = (db.empresas||[]).find(e=>String(e.id)===String(empresaIdAtual||''));
+  if(atual && !empresas.some(e=>String(e.id)===String(atual.id))) empresas.push(atual);
+  if(empresas.length <= 1 && atual) return '';
+  const opts = empresas.map(emp=>`<option value="${emp.id}" ${String(emp.id)===String(empresaIdAtual||'')?'selected':''}>${esc(emp.nome||'')}${emp.codigo?` (${esc(emp.codigo)})`:''}</option>`).join('');
+  return `<div class="fg"><label>Empresa</label><select class="fs" id="edt_empresa_id"><option value="">Selecione a empresa...</option>${opts}</select></div>`;
+}
+
 function eqTipoMedida(eqId){
   const e = (Array.isArray(db?.equipamentos)?db.equipamentos:[]).find(x=>x.id==eqId);
   return e?.tipo_medida||'horas';
@@ -13961,6 +13972,7 @@ function editarItensOS(i){
     <div class="frow">
       <div class="fg"><label>Oficina / Local</label><input class="fi" id="edt_oficina" value="${os.oficina||''}"></div>
       <div class="fg"><label>Hodômetro / Horímetro</label><input class="fi" type="number" id="edt_hod" value="${os.hodometro||0}"></div>
+      ${_htmlSelectEmpresaEdicaoOS(os.empresa_id)}
     </div>
     <div class="fg"><label>Descrição / Diagnóstico</label>
       <textarea class="fta" id="edt_desc" style="min-height:80px">${os.descricao||''}</textarea>
@@ -14178,6 +14190,12 @@ function salvarEdicaoOS(i){
   os.hora_inicio = document.getElementById('edt_hi')?.value||'';
   os.hora_fim    = document.getElementById('edt_hf')?.value||'';
   os.oficina     = document.getElementById('edt_oficina').value;
+  const empSel = document.getElementById('edt_empresa_id');
+  if(empSel && empSel.value && String(empSel.value)!==String(os.empresa_id||'')){
+    audit.empresa_antes = os.empresa_id||null;
+    audit.empresa_depois = empSel.value;
+    os.empresa_id = parseInt(empSel.value) || empSel.value;
+  }
   os.responsavel = document.getElementById('edt_mecanico')?.value || null;
   os.hodometro   = parseFloat(document.getElementById('edt_hod').value)||0;
   os.descricao   = document.getElementById('edt_desc').value;
