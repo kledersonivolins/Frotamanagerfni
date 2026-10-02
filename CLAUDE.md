@@ -35,8 +35,8 @@ Dentro de template strings que geram HTML com `<script>`, escreva `<\/script>`.
 ## Deploy
 
 - Push na `main` publica. Commits em português, prefixo `feat:` / `fix:` / `docs:`.
-- Site Netlify do projeto: `frotamanager.netlify.app` (confirmar se é este repo ou o repo
-  `frotamanager` que publica nele).
+- Produção: **industriafni.netlify.app** (site Netlify `industriafni`, publica a `main`
+  deste repo). `frotamanager.netlify.app` é de outro repo (`frotamanager`).
 
 ## Banco (Supabase)
 
