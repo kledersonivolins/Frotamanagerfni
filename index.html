@@ -34156,8 +34156,9 @@ function imprimirOS(i){
   <div class="hdr">
     <div class="hdr-row">
       <div>
-        <div class="os-title">${tipoLabel}</div>
+        <div class="os-title">${tipoLabel}${os.retorno_de_os_id ? " <span style=\"color:#e65100;font-size:14px\">(RETORNO)</span>" : ""}</div>
         <div class="os-sub">Sistema de Gestão de Frota — FrotaManager</div>
+        ${os.retorno_de_os_id ? (()=>{ const orig=(db.ordens_servico||[]).find(o=>String(o.id)===String(os.retorno_de_os_id)); return orig ? `<div style="margin-top:4px;font-size:11px;font-weight:800;color:#e65100"><i class="fas fa-undo"></i> RETORNO DA OS #${orig.numero} (${fmtDt(orig.data_abertura)||"—"})</div>` : ""; })() : ""}
       </div>
       <div class="emit">
         <div><strong>Nº:</strong> <span style="font-size:14px;font-weight:800;color:#3A3F42">#${os.numero}</span></div>
