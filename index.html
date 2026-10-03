@@ -607,33 +607,6 @@ tbody tr:hover{background:var(--hover)}
 .ic-btn{width:30px;height:30px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;background:var(--bg);color:var(--primary);border:none;cursor:pointer;transition:.2s}
 .ic-btn:hover{background:var(--primary);color:#fff}
 
-/* ── MODO ESCURO ── */
-body.dark-mode {
-  --bg: #0f1117;
-  --card: #1a1d27;
-  --border: #2d3148;
-  --text: #e8eaf6;
-  --text2: #7986cb;
-  --primary: #5c6bc0;
-  --primary-dark: #3949ab;
-  --primary-light: #1a1d4e;
-  --secondary: #ffa726;
-  --success: #66bb6a;
-  --danger: #ef5350;
-  --warning: #ffa726;
-  --info: #29b6f6;
-  --purple: #ab47bc;
-  --teal: #26c6da;
-}
-body.dark-mode .topbar { background:#1a1d27; }
-body.dark-mode .sidebar { background:#171A1D !important; }
-body.dark-mode .login-box { background:#1a1d27; }
-body.dark-mode .fi, body.dark-mode .fs, body.dark-mode .fta { background:#0f1117; color:var(--text); }
-body.dark-mode .modal { background:#1a1d27; }
-body.dark-mode .mh { background:#1a1d27; }
-body.dark-mode table { color:var(--text); }
-body.dark-mode thead tr { background:#171A1D; }
-body.dark-mode tbody tr:hover { background:#1e2235; }
 
 .alertas-panel{position:fixed;top:56px;right:16px;width:360px;max-height:80vh;background:var(--card);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.18);z-index:9998;overflow:hidden;display:none;border:1px solid var(--border);animation:modalIn .2s ease}
 .alertas-panel.open{display:flex;flex-direction:column}
@@ -1738,7 +1711,6 @@ tbody tr:hover{background:#f0f7ff!important}
   animation:skShimmer 1.4s ease-in-out infinite;
   border-radius:6px;
 }
-body.dark-mode .sk-block{background:linear-gradient(90deg,#1e2235 25%,#2a2f4a 50%,#1e2235 75%);background-size:600px 100%}
 .sk-stat{height:82px;border-radius:var(--radius-lg)}
 .sk-row{height:42px;margin-bottom:8px;border-radius:6px}
 .sk-row-sm{height:26px;margin-bottom:6px;border-radius:5px}
@@ -1782,8 +1754,8 @@ body.dark-mode .sk-block{background:linear-gradient(90deg,#1e2235 25%,#2a2f4a 50
 
 /* Ripple de botão */
 @keyframes rippleOut{
-  0%{transform:scale(0);opacity:.35}
-  100%{transform:scale(2.5);opacity:0}
+  0%{transform:scale(.6);opacity:.3}
+  100%{transform:scale(1.6);opacity:0}
 }
 .btn{position:relative;overflow:hidden}
 .btn::after{
@@ -1852,6 +1824,83 @@ body.dark-mode .sk-block{background:linear-gradient(90deg,#1e2235 25%,#2a2f4a 50
 
 /* Focus ring azul */
 :focus-visible{outline:2px solid #2563eb!important;outline-offset:2px}
+
+/* ═══ SIDEBAR CLARA — substitui o menu preto ═══ */
+.sidebar-premium,.sidebar{
+  background:#ffffff!important;
+  border-right:1px solid #e2e8f0!important;
+  box-shadow:1px 0 0 #e2e8f0,4px 0 24px rgba(15,23,42,.04)!important;
+}
+.premium-brand{border-bottom-color:#e2e8f0!important}
+.brand-title{color:#0f172a!important}
+.brand-subtitle{color:#64748b!important}
+.premium-search i{color:#94a3b8!important}
+.premium-search input{background:#f1f5f9!important;border-color:#e2e8f0!important;color:#0f172a!important}
+.premium-search input::placeholder{color:#94a3b8!important}
+.pm-module{background:#f8fafc!important;border-color:#e2e8f0!important}
+.pm-module-head{color:#1e293b!important}
+.pm-module-head:hover{background:#f1f5f9!important}
+.pm-module-count{background:#e2e8f0!important;color:#475569!important}
+.pm-module-chevron{color:#94a3b8!important}
+.pm-module.open .pm-module-chevron{color:#2563eb!important}
+.nav-link{color:#475569!important}
+.nav-link:hover{background:#eff6ff!important;color:#1d4ed8!important}
+.nav-link:not(.active):hover{background:#eff6ff!important}
+.nav-link:hover .fas{color:#2563eb!important}
+.nav-link .fas{color:#94a3b8!important}
+.nav-link.active{background:#dbeafe!important;border-color:#bfdbfe!important;color:#1d4ed8!important;box-shadow:none!important}
+.nav-link.active .fas{color:#2563eb!important}
+.pm-logout{color:#b91c1c!important;background:#fef2f2!important}
+.premium-footer{background:#ffffff!important;border-top:1px solid #e2e8f0!important;backdrop-filter:none!important}
+.premium-user{color:#0f172a!important}
+.user-avatar{background:#eff6ff!important;color:#2563eb!important}
+.premium-user span{color:#64748b!important}
+.premium-password{background:#f8fafc!important;border-color:#e2e8f0!important;color:#334155!important}
+.premium-password:hover{background:#eff6ff!important;color:#1d4ed8!important}
+.sb-version{color:#94a3b8!important}
+
+/* ═══ LOGIN CLARO ═══ */
+.login-screen{background:linear-gradient(135deg,#f8fafc 0%,#eaf1fb 100%)!important}
+.login-screen::before{background:radial-gradient(ellipse 55% 65% at 65% 48%,rgba(37,99,235,.08),transparent),radial-gradient(ellipse 35% 45% at 12% 85%,rgba(37,99,235,.05),transparent)!important}
+.login-screen::after{background:linear-gradient(to bottom,transparent,rgba(15,23,42,.08) 25%,rgba(15,23,42,.08) 75%,transparent)!important}
+.login-orb{opacity:.25!important}
+.lh-brand{color:#64748b!important}
+.lh-brand-icon{background:#dbeafe!important;color:#2563eb!important}
+.login-hero h2{color:#0f172a!important}
+.login-hero h2 em{color:#94a3b8!important}
+.login-hero>div>p{color:#475569!important}
+.lh-features{border-top-color:#e2e8f0!important}
+.lh-features li{color:#475569!important}
+.lh-feat-icon{background:#dbeafe!important;color:#2563eb!important}
+.login-card{box-shadow:0 1px 3px rgba(15,23,42,.06),0 12px 40px rgba(15,23,42,.08)!important;border:1px solid #e2e8f0!important}
+@media(max-width:860px){.login-screen{background:linear-gradient(135deg,#f8fafc 0%,#eaf1fb 100%)!important}}
+
+/* ═══ BOTÕES — animação precisa ═══
+   - transição só nas propriedades que mudam (nada de transition:all)
+   - press rápido (100ms) e soltar suave (160ms): lento onde o usuário decide, rápido onde o sistema responde
+   - hover só em ponteiro fino (no toque o hover "gruda" depois do tap) */
+.btn,.ic-btn,.btn-hamburger{
+  transition:transform .16s cubic-bezier(.23,1,.32,1),background-color .16s ease-out,color .16s ease-out,
+             border-color .16s ease-out,box-shadow .16s ease-out,filter .16s ease-out,opacity .16s ease-out!important;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn:active:not(:disabled){transform:scale(.97)!important;transition-duration:.1s!important}
+.ic-btn:active:not(:disabled){transform:scale(.92)!important;transition-duration:.1s!important}
+.btn:disabled,.btn[disabled],.ic-btn:disabled{opacity:.5;cursor:not-allowed;filter:saturate(.6)}
+.btn:focus-visible,.ic-btn:focus-visible{outline:2px solid #2563eb;outline-offset:2px;transition:outline-offset .12s ease-out!important}
+.btn i,.btn .fas{transition:transform .16s cubic-bezier(.23,1,.32,1)}
+@media (hover:hover) and (pointer:fine){
+  .btn-p:hover:not(:disabled),.btn-primary:hover:not(:disabled){box-shadow:0 6px 18px rgba(37,99,235,.32)!important;transform:translateY(-1px)!important}
+  .btn-p:active:not(:disabled),.btn-primary:active:not(:disabled){transform:scale(.97)!important;box-shadow:0 1px 3px rgba(37,99,235,.25)!important}
+}
+@media (hover:none){
+  .btn-p:hover,.btn-primary:hover,.btn-main:hover{box-shadow:0 1px 3px rgba(37,99,235,.25)!important;filter:none!important;transform:none!important}
+}
+@media (prefers-reduced-motion:reduce){
+  .btn,.ic-btn{transition:background-color .12s ease-out,color .12s ease-out,border-color .12s ease-out!important}
+  .btn:active:not(:disabled),.ic-btn:active:not(:disabled){transform:none!important}
+  .btn::after{animation:none!important}
+}
 
 /* Reduzido — respeitar preferência */
 @media(prefers-reduced-motion:reduce){
@@ -2252,11 +2301,6 @@ body.dark-mode .sk-block{background:linear-gradient(90deg,#1e2235 25%,#2a2f4a 50
         </button>
         <button class="btn btn-sm btn-d" id="btnZerarTudo" onclick="zerarTudoConfirmar()" title="Zerar todos os dados" style="display:none">
           <i class="fas fa-trash-alt"></i> Zerar Tudo
-        </button>
-        <button id="dark-toggle" onclick="toggleDarkMode()" title="Alternar modo escuro"
-          style="background:transparent;border:none;cursor:pointer;padding:6px 8px;border-radius:8px;font-size:18px;line-height:1;opacity:.75;transition:.2s"
-          onmouseover="this.style.opacity=1" onmouseout="this.style.opacity='.75'">
-          🌙
         </button>
         <button onclick="abrirBuscaGlobal()" title="Busca global (Ctrl+K)"
           style="background:transparent;border:none;cursor:pointer;padding:6px 8px;border-radius:8px;color:inherit;opacity:.75;transition:.2s;font-size:16px"
@@ -32929,22 +32973,10 @@ function imprimirChecklistLista(){
 }
 
 
-// ══════════════════════════════════════
-// MODO ESCURO
-// ══════════════════════════════════════
-function toggleDarkMode(){
-  const dark = document.body.classList.toggle('dark-mode');
-  localStorage.setItem('darkMode', dark?'1':'0');
-  const btn = document.getElementById('dark-toggle');
-  if(btn) btn.textContent = dark ? '☀️' : '🌙';
-}
-// Restaurar ao carregar
+// Modo escuro removido: limpa preferência antiga para ninguém ficar com a classe salva
 (function(){
-  if(localStorage.getItem('darkMode')==='1'){
-    document.body.classList.add('dark-mode');
-    const btn = document.getElementById('dark-toggle');
-    if(btn) btn.textContent='☀️';
-  }
+  try{ localStorage.removeItem('darkMode'); }catch(e){}
+  document.body.classList.remove('dark-mode');
 })();
 
 // ── MENU MOBILE ──
