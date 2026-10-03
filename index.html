@@ -1482,13 +1482,13 @@ html,body{background:linear-gradient(180deg,#F7F6F3 0%,#EFEDE8 100%)!important;c
 }
 .stat,.kpi,.metric-card{
   background:linear-gradient(180deg,#FFFFFF 0%,#FBFAF7 100%)!important;
-  border:1px solid #E1DED6!important;
-  border-top:4px solid var(--primary)!important;
+  border-right:1px solid #E1DED6!important;border-bottom:1px solid #E1DED6!important;border-left:1px solid #E1DED6!important;
+  border-top-width:3px!important;border-top-style:solid!important;border-top-color:var(--primary);
   border-radius:18px!important;
   box-shadow:0 10px 26px rgba(15,23,42,.07)!important;
 }
 .stat label,.kpi label{color:#52657A!important;font-weight:900!important;letter-spacing:.85px!important;}
-.stat .val,.kpi .val{color:#2F3437!important;font-weight:950!important;letter-spacing:-.6px!important;}
+.stat .val,.kpi .val{color:#2F3437;font-weight:950!important;letter-spacing:-.6px!important;}
 button,.btn{
   border-radius:12px!important;
   font-weight:800!important;
@@ -1653,15 +1653,24 @@ html,body,.layout,.content,.main{
 
 /* ── Stats / KPIs — azul no valor, borda top discreta ── */
 .stat,.kpi,.metric-card{
-  border-top:3px solid #2563eb!important;
+  border-top-width:3px!important;border-top-color:#2563eb;
   background:#ffffff!important;
   box-shadow:0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04)!important;
 }
 .stat .val,.kpi .val{
-  color:#2563eb!important;
+  color:#2563eb;
   font-weight:800!important;
   letter-spacing:-.5px!important;
+  font-variant-numeric:tabular-nums;
 }
+/* Variantes semânticas e cores inline: cor e borda-topo NÃO usam !important, para que
+   .stat.gr/.rd/.or e style="color:..." inline valham (antes tudo ficava azul) */
+.stat.gr{border-top-color:var(--success)}.stat.gr .val{color:var(--success)}
+.stat.rd{border-top-color:var(--danger)}.stat.rd .val{color:var(--danger)}
+.stat.or{border-top-color:var(--accent)}.stat.or .val{color:#d97706}
+.stat.pu{border-top-color:var(--purple)}.stat.pu .val{color:var(--purple)}
+.stat.in{border-top-color:var(--info)}.stat.in .val{color:var(--info)}
+.stat label{letter-spacing:.6px!important;font-size:10px!important}
 .card-title{color:#0f172a!important;border-bottom-color:#f1f5f9!important}
 
 /* ── Botão principal — azul sólido ── */
@@ -1802,21 +1811,18 @@ body.dark-mode .sk-block{background:linear-gradient(90deg,#1e2235 25%,#2a2f4a 50
 .stat{position:relative;overflow:hidden}
 
 /* Cards e stats — entrada escalonada */
-.card,.stat{animation:slideUpFade .32s cubic-bezier(.34,1.1,.64,1) both}
+.card,.stat{animation:slideUpFade .22s cubic-bezier(.23,1,.32,1) both}
 .stat:nth-child(1),.card:nth-child(1){animation-delay:0ms}
-.stat:nth-child(2),.card:nth-child(2){animation-delay:50ms}
-.stat:nth-child(3),.card:nth-child(3){animation-delay:100ms}
-.stat:nth-child(4),.card:nth-child(4){animation-delay:150ms}
-.stat:nth-child(5),.card:nth-child(5){animation-delay:200ms}
-.stat:nth-child(6),.card:nth-child(6){animation-delay:250ms}
-.stat:nth-child(7),.card:nth-child(7){animation-delay:300ms}
-.stat:nth-child(8),.card:nth-child(8){animation-delay:350ms}
+.stat:nth-child(2),.card:nth-child(2){animation-delay:30ms}
+.stat:nth-child(3),.card:nth-child(3){animation-delay:60ms}
+.stat:nth-child(4),.card:nth-child(4){animation-delay:90ms}
+.stat:nth-child(n+5),.card:nth-child(n+5){animation-delay:120ms}
 
 /* Topbar */
 .topbar{animation:slideDownFade .2s ease both}
 
 /* Botões — feedback preciso */
-.btn:active:not(:disabled){transform:scale(.96)!important;transition:transform .08s ease!important}
+.btn:active:not(:disabled){transform:scale(.97)!important;transition:transform .1s ease-out!important}
 .ic-btn:active{transform:scale(.88)!important;transition:transform .08s ease!important}
 
 /* KPI pulsante */
@@ -1825,28 +1831,20 @@ body.dark-mode .sk-block{background:linear-gradient(90deg,#1e2235 25%,#2a2f4a 50
 /* Bounce no valor */
 .val-bounce{animation:valBounce .35s cubic-bezier(.34,1.56,.64,1) forwards}
 
-/* Linhas de tabela — stagger rápido */
-tbody tr{animation:rowFadeIn .18s ease both}
-tbody tr:nth-child(1){animation-delay:0ms}
-tbody tr:nth-child(2){animation-delay:22ms}
-tbody tr:nth-child(3){animation-delay:44ms}
-tbody tr:nth-child(4){animation-delay:66ms}
-tbody tr:nth-child(5){animation-delay:88ms}
-tbody tr:nth-child(6){animation-delay:110ms}
-tbody tr:nth-child(7){animation-delay:132ms}
-tbody tr:nth-child(8){animation-delay:154ms}
-tbody tr:nth-child(9){animation-delay:176ms}
-tbody tr:nth-child(10){animation-delay:198ms}
+/* Linhas de tabela — sem animação: uso diário constante, cada re-render atrasava a leitura */
 
-/* Nav hover — suave */
-.nav-link{transition:all .16s cubic-bezier(.4,0,.2,1)!important}
-.nav-link:not(.active):hover{transform:translateX(3px);background:rgba(255,255,255,.05)!important}
+/* Nav hover — menu usado centenas de vezes/dia: só cor, sem deslocamento */
+.nav-link{transition:background-color .12s ease,color .12s ease!important}
+.nav-link:not(.active):hover{background:rgba(255,255,255,.05)!important}
 
 /* Modal */
 .modal{animation:modalIn .22s cubic-bezier(.34,1.1,.64,1)!important}
 
 /* Stat hover — elevação + shine */
-.stat:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(37,99,235,.12)!important}
+@media (hover:hover) and (pointer:fine){
+  .stat:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(37,99,235,.12)!important}
+}
+.stat{transition:transform .18s cubic-bezier(.23,1,.32,1),box-shadow .18s ease-out}
 
 /* Scrollbar discreta */
 ::-webkit-scrollbar-thumb{background:#cbd5e1!important;border-radius:6px}
@@ -8403,9 +8401,9 @@ function renderDashboard(){
   <!-- ROW 3: COMBUSTÍVEL + ALMOXARIFADO -->
   <div style="margin-bottom:8px;font-size:10px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px">Combustível & Estoque</div>
   <div class="grid-stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
-    <div class="stat" style="border-top-color:${corTanque};cursor:pointer" onclick="loadPage('tanque')">
+    <div class="stat ${pctTanque<=20?'rd':pctTanque<=40?'or':'gr'}" style="cursor:pointer" onclick="loadPage('tanque')">
       <label>Saldo no Tanque</label>
-      <div class="val" style="color:${corTanque}">${dadosTanque.saldo.toFixed(0)}L</div>
+      <div class="val">${dadosTanque.saldo.toFixed(0)}L</div>
       <small style="font-size:10px;color:var(--text2)">${pctTanque.toFixed(0)}% da cap.</small>
     </div>
     <div class="stat bl" style="cursor:pointer" onclick="loadPage('combustivel')">
