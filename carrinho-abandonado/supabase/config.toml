@@ -1,0 +1,10 @@
+# As três funções têm autenticação própria (origem permitida / segredo / token),
+# por isso não exigem o JWT do Supabase.
+[functions.cart-sync]
+verify_jwt = false
+
+[functions.cart-recover]
+verify_jwt = false
+
+[functions.cart-optout]
+verify_jwt = false

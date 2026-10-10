@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FORJA. — Nutrição Esportiva & Performance</title>
+<meta name="description" content="FORJA. Suplementos, acessórios e roupas fitness com rótulos transparentes. Frete grátis acima de R$ 299, até 12x sem juros.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="FORJA. — Nutrição Esportiva & Performance">
+<meta property="og:description" content="Sua evolução começa aqui. Suplementos com fórmula transparente e dosagens declaradas.">
+<meta property="og:image" content="https://picsum.photos/seed/forja-hero7/1200/630.jpg">
+<meta name="robots" content="index,follow">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%230C0C0D'/><text x='7' y='24' font-family='Arial Black' font-size='22' fill='%23C8F62E'>F</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0C0C0D; --sf:#131315; --sf2:#1A1A1D; --ln:#26262A; --ln2:#333338;
+  --tx:#F1F0EA; --mut:#8B8B85; --ac:#C8F62E; --acTxt:#C8F62E; --acInk:#0C0C0D;
+  --disp:'Big Shoulders Display',sans-serif; --mono:'Space Mono',monospace; --body:'Archivo',sans-serif;
+  --r:2px; --nav-h:64px;
+}
+[data-theme="light"]{
+  --bg:#F4F2EC; --sf:#FFFFFF; --sf2:#ECEAE1; --ln:#D9D6CB; --ln2:#C4C1B4;
+  --tx:#141412; --mut:#6E6D63; --acTxt:#5F7E00;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{display:block;max-width:100%}
+button{font-family:inherit;cursor:pointer;color:inherit}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--tx)}
+a{color:inherit;text-decoration:none}
+::selection{background:var(--ac);color:var(--acInk)}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+body.modal-open{overflow:hidden}
+.mono{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.disp{font-family:var(--disp);text-transform:uppercase;line-height:.92;letter-spacing:.01em}
+.tx-ac{color:var(--acTxt)}
+.outline-t{-webkit-text-stroke:1.5px var(--tx);color:transparent}
+.wrap{max-width:1320px;margin:0 auto;padding:0 clamp(16px,4vw,48px)}
+.sec{padding:clamp(56px,8vw,110px) 0}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:34px;flex-wrap:wrap}
+.sec-head h2{font-family:var(--disp);font-size:clamp(38px,5.5vw,72px);font-weight:800;text-transform:uppercase;line-height:.9}
+.sec-head .mono{color:var(--mut);margin-bottom:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:1px solid var(--tx);background:transparent;color:var(--tx);padding:14px 26px;font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase;border-radius:var(--r);transition:background .22s,color .22s,border-color .22s,transform .12s}
+.btn:hover{background:var(--tx);color:var(--bg)}
+.btn:active{transform:scale(.97)}
+.btn-ac{background:var(--ac);border-color:var(--ac);color:var(--acInk)}
+.btn-ac:hover{background:var(--tx);border-color:var(--tx);color:var(--bg)}
+.btn-sm{padding:10px 16px;font-size:11px}
+.link-mono{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--acTxt);background:none;border:none;display:inline-flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid transparent;cursor:pointer}
+.link-mono:hover{border-bottom-color:var(--acTxt)}
+.rv{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+#topbar{background:var(--ac);color:var(--acInk);overflow:hidden;height:34px;display:flex;align-items:center}
+#topbar .mq{white-space:nowrap;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;animation:mq 26s linear infinite}
+#topbar span{padding:0 28px}
+@keyframes mq{to{transform:translateX(-50%)}}
+#header{position:sticky;top:0;z-index:60;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid var(--ln);transition:box-shadow .3s}
+#header.scrolled{box-shadow:0 8px 30px -12px rgba(0,0,0,.5)}
+.hbar{height:var(--nav-h);display:flex;align-items:center;gap:clamp(12px,2vw,28px)}
+.logo{font-family:var(--disp);font-weight:900;font-size:30px;letter-spacing:.02em;flex-shrink:0}
+.logo i{font-style:normal;color:var(--acTxt)}
+.hnav{display:flex;gap:22px;flex:1}
+.hnav button{background:none;border:none;font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);padding:6px 0;position:relative;transition:color .2s;cursor:pointer}
+.hnav button::after{content:'';position:absolute;left:0;bottom:0;width:0;height:2px;background:var(--ac);transition:width .25s}
+.hnav button:hover{color:var(--tx)}
+.hnav button:hover::after{width:100%}
+.hicons{display:flex;gap:6px;align-items:center;margin-left:auto}
+.icbtn{position:relative;width:40px;height:40px;display:grid;place-items:center;background:none;border:1px solid transparent;border-radius:var(--r);color:var(--tx);transition:border-color .2s,background .2s;cursor:pointer}
+.icbtn:hover{border-color:var(--ln2);background:var(--sf)}
+.icbtn svg{width:20px;height:20px}
+.icbtn .bdg{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:9px;background:var(--ac);color:var(--acInk);font-family:var(--mono);font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+#hamb{display:none}
+#searchWrap{position:relative}
+#searchInput{width:0;opacity:0;border:1px solid var(--ln2);background:var(--sf);border-radius:var(--r);height:38px;padding:0;transition:width .3s,opacity .3s,padding .3s;outline:none}
+#searchWrap.open #searchInput{width:210px;opacity:1;padding:0 12px}
+#searchDrop{position:absolute;top:46px;right:0;width:min(380px,90vw);background:var(--sf);border:1px solid var(--ln);border-radius:var(--r);box-shadow:0 30px 60px -20px rgba(0,0,0,.6);display:none;max-height:420px;overflow:auto}
+#searchDrop.open{display:block}
+.sr-item{display:flex;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--ln);cursor:pointer}
+.sr-item:hover{background:var(--sf2)}
+.sr-item .sr-v{width:44px;height:44px;flex-shrink:0}
+.sr-item b{font-size:13px;display:block;color:var(--tx)}
+.sr-item .mono{color:var(--mut)}
+.sr-empty{padding:18px;font-family:var(--mono);font-size:12px;color:var(--mut)}
+@media(max-width:900px){.hnav{display:none}#hamb{display:grid}}
+.drawer{position:fixed;top:0;bottom:0;width:min(360px,88vw);background:var(--sf);z-index:90;transition:transform .4s cubic-bezier(.25,.8,.25,1);display:flex;flex-direction:column}
+.drawer.right{right:0;transform:translateX(105%)}
+.drawer.left{left:0;transform:translateX(-105%)}
+.drawer.open{transform:none}
+.drawer-h{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--ln)}
+.drawer-h b{font-family:var(--disp);font-size:24px;text-transform:uppercase}
+.drawer-b{flex:1;overflow:auto;padding:8px 0}
+.navlink{display:flex;justify-content:space-between;align-items:center;width:100%;padding:15px 22px;background:none;border:none;border-bottom:1px solid var(--ln);font-family:var(--disp);font-size:24px;font-weight:800;text-transform:uppercase;text-align:left;color:var(--tx);transition:color .2s,padding-left .2s;cursor:pointer}
+.navlink:hover{color:var(--acTxt);padding-left:28px}
+.navlink .mono{color:var(--mut)}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;opacity:0;pointer-events:none;transition:opacity .35s;backdrop-filter:blur(2px)}
+#overlay.show{opacity:1;pointer-events:auto}
+#hero{border-bottom:1px solid var(--ln);position:relative;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:1.15fr .85fr;min-height:calc(100vh - var(--nav-h) - 34px);max-height:900px}
+.hero-txt{display:flex;flex-direction:column;justify-content:center;padding:clamp(32px,5vw,72px) clamp(16px,4vw,48px);gap:26px;position:relative}
+.hero-kicker{display:flex;align-items:center;gap:14px;color:var(--mut)}
+.hero-kicker::before{content:'';width:44px;height:1px;background:var(--ac)}
+#hero h1{font-size:clamp(56px,9.5vw,148px);font-weight:900}
+.hero-ctas{display:flex;gap:14px;flex-wrap:wrap}
+.hero-meta{display:flex;gap:clamp(18px,3vw,44px);flex-wrap:wrap;border-top:1px solid var(--ln);padding-top:20px;color:var(--mut)}
+.hero-meta b{display:block;color:var(--tx);font-family:var(--mono);font-size:13px}
+.hero-img{position:relative;border-left:1px solid var(--ln);overflow:hidden;min-height:420px}
+.hero-img img{position:absolute;inset:-8% 0;width:100%;height:116%;object-fit:cover;filter:grayscale(1) contrast(1.18) brightness(.72);will-change:transform}
+.hero-img::after{content:'';position:absolute;inset:0;background:color-mix(in srgb,var(--bg) 24%,transparent);box-shadow:inset 0 -120px 120px -80px var(--bg)}
+.hero-cap{position:absolute;left:22px;bottom:20px;z-index:2;color:#EDEDE6;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.hero-cap i{width:8px;height:8px;background:var(--ac);display:inline-block}
+.hero-num{position:absolute;right:22px;top:18px;font-family:var(--mono);font-size:11px;color:#EDEDE6;letter-spacing:.14em}
+.scroll-cue{position:absolute;bottom:20px;left:clamp(16px,4vw,48px);display:flex;align-items:center;gap:12px;color:var(--mut)}
+.scroll-cue i{display:block;width:1px;height:44px;background:var(--ln2);position:relative;overflow:hidden}
+.scroll-cue i::after{content:'';position:absolute;inset:0;background:var(--ac);animation:cue 1.8s ease-in-out infinite}
+@keyframes cue{0%{transform:translateY(-100%)}60%,100%{transform:translateY(100%)}}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr;min-height:auto}.hero-img{min-height:340px;border-left:0;border-top:1px solid var(--ln)}.hero-txt{padding-top:56px}.scroll-cue{display:none}}
+.mq2{border-bottom:1px solid var(--ln);overflow:hidden;padding:18px 0}
+.mq2 .mq{white-space:nowrap;display:inline-flex;animation:mq 30s linear infinite;font-family:var(--disp);font-weight:800;font-size:clamp(26px,3.4vw,44px);text-transform:uppercase}
+.mq2 em{font-style:normal;-webkit-text-stroke:1px var(--mut);color:transparent;padding:0 22px}
+.mq2 span{color:var(--acTxt);padding:0 22px}
+.grid-p{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));border-top:1px solid var(--ln);border-left:1px solid var(--ln)}
+.pcard{border-right:1px solid var(--ln);border-bottom:1px solid var(--ln);background:var(--bg);display:flex;flex-direction:column;position:relative;transition:background .25s}
+.pcard:hover{background:var(--sf)}
+.p-visual{position:relative;aspect-ratio:1/1.05;display:grid;place-items:center;cursor:pointer;overflow:hidden;background:radial-gradient(circle at 70% 20%, color-mix(in srgb,var(--tx) 4%,transparent), transparent 55%)}
+.p-visual .pv{transition:transform .45s cubic-bezier(.2,.7,.2,1)}
+.pcard:hover .pv{transform:translateY(-8px) rotate(-2deg)}
+.p-tag{position:absolute;top:12px;left:12px;z-index:2;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;padding:4px 8px;text-transform:uppercase}
+.tag-ac{background:var(--ac);color:var(--acInk)}
+.tag-ol{border:1px solid var(--ln2);color:var(--mut);background:var(--bg)}
+.p-rank{position:absolute;bottom:6px;left:12px;font-family:var(--disp);font-weight:900;font-size:56px;line-height:1;-webkit-text-stroke:1.5px var(--ln2);color:transparent;pointer-events:none}
+.p-fav{position:absolute;top:8px;right:8px;z-index:2}
+.p-body{padding:16px 16px 0;display:flex;flex-direction:column;gap:6px;flex:1}
+.p-cat{color:var(--mut)}
+.p-name{font-family:var(--disp);font-size:22px;font-weight:800;text-transform:uppercase;line-height:.95;cursor:pointer;transition:color .2s}
+.p-name:hover{color:var(--acTxt)}
+.p-sw{display:flex;gap:6px;margin-top:4px}
+.sw{width:16px;height:16px;border-radius:50%;border:1px solid var(--ln2);cursor:pointer;padding:0;transition:transform .15s}
+.sw.on{outline:2px solid var(--acTxt);outline-offset:2px}
+.sw:hover{transform:scale(1.2)}
+.p-foot{margin-top:auto;padding:14px 16px 16px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.p-price b{font-family:var(--mono);font-size:16px;font-weight:700;display:block}
+.p-price s{color:var(--mut);font-family:var(--mono);font-size:11px}
+.p-price .mono{color:var(--mut);font-size:10px}
+.p-add{border:1px solid var(--ln2);background:var(--bg);height:38px;padding:0 14px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-radius:var(--r);transition:background .2s,color .2s,border-color .2s}
+.pcard:hover .p-add{background:var(--ac);border-color:var(--ac);color:var(--acInk)}
+.p-add:active{transform:scale(.95)}
+.tub{position:relative;width:118px;height:164px;background:var(--tc,#3a3a3a);border-radius:8px 8px 13px 13px;margin:26px auto 6px;box-shadow:inset 16px 0 24px -14px rgba(0,0,0,.55),inset -16px 0 24px -14px rgba(0,0,0,.55),inset 0 -10px 14px -10px rgba(0,0,0,.4)}
+.tub::before{content:'';position:absolute;top:-9px;left:3%;right:3%;height:12px;background:color-mix(in srgb,var(--tc) 55%,#000);border-radius:4px 4px 0 0}
+.tub::after{content:'';position:absolute;top:6px;left:8%;right:8%;height:2px;background:rgba(0,0,0,.28)}
+.tub .lb{position:absolute;top:26%;left:7%;right:7%;background:#F4F1E7;color:#161613;text-align:center;padding:8px 4px 9px;border-radius:2px}
+.tub .lb b{display:block;font-family:var(--disp);font-weight:900;font-size:19px;letter-spacing:.03em;border-bottom:1px solid #161613;padding-bottom:2px;margin-bottom:3px}
+.tub .lb em{display:block;font-style:normal;font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;line-height:1.3}
+.tub .lb span{display:block;font-family:var(--mono);font-size:7.5px;margin-top:3px;letter-spacing:.08em;color:#5c5c52}
+.tub.s{width:88px;height:118px}.tub.s .lb b{font-size:15px}.tub.s .lb{padding:6px 3px}
+.tub.l{width:136px;height:194px}.tub.l .lb b{font-size:22px}
+.tub.xl{width:148px;height:222px}.tub.xl .lb b{font-size:23px}
+.tub-sh{width:62%;height:12px;margin:-3px auto 0;background:radial-gradient(ellipse,rgba(0,0,0,.4),transparent 70%)}
+[data-theme="light"] .tub-sh{background:radial-gradient(ellipse,rgba(0,0,0,.22),transparent 70%)}
+.tech{width:min(200px,70%);margin:20px auto 8px;color:var(--tx);position:relative}
+.tech svg{width:100%;height:auto;display:block}
+.tech .dim{font-family:var(--mono);font-size:9px;fill:var(--mut);letter-spacing:.08em}
+.corners::before,.corners::after{content:'+';position:absolute;font-family:var(--mono);font-size:13px;color:var(--ln2);z-index:1}
+.corners::before{top:8px;left:10px}.corners::after{bottom:8px;right:10px}
+.kit-strip{display:flex;align-items:flex-end;gap:2px;margin:26px auto 6px}
+.kit-strip .tub{margin:0}
+.carousel{display:flex;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);scrollbar-width:none}
+.carousel::-webkit-scrollbar{display:none}
+.carousel .pcard{min-width:min(300px,78vw);scroll-snap-align:start;border-right:1px solid var(--ln)}
+.car-nav{display:flex;gap:8px}
+.car-nav button{width:44px;height:44px;border:1px solid var(--ln2);background:var(--bg);border-radius:var(--r);display:grid;place-items:center;transition:background .2s,color .2s;cursor:pointer}
+.car-nav button:hover{background:var(--ac);border-color:var(--ac);color:var(--acInk)}
+.car-nav svg{width:18px;height:18px}
+#manifesto{border-bottom:1px solid var(--ln)}
+.man-grid{display:grid;grid-template-columns:.9fr 1.1fr;min-height:520px}
+.man-img{position:relative;border-right:1px solid var(--ln);overflow:hidden;min-height:340px}
+.man-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.15) brightness(.75)}
+.man-img::after{content:'';position:absolute;inset:0;box-shadow:inset 0 -120px 120px -90px var(--bg),inset 0 120px 120px -110px var(--bg)}
+.man-txt{padding:clamp(32px,5vw,72px);display:flex;flex-direction:column;justify-content:center;gap:22px}
+.man-txt h2{font-size:clamp(40px,5.5vw,84px);font-weight:900}
+.man-txt h2 em{font-style:normal;color:var(--acTxt)}
+.man-stats{display:flex;gap:0;border-top:1px solid var(--ln);margin-top:12px;flex-wrap:wrap}
+.man-stats div{padding:20px 34px 0 0;margin-right:34px}
+.man-stats b{font-family:var(--disp);font-size:44px;font-weight:900;display:block;line-height:1}
+.man-stats span{color:var(--mut)}
+@media(max-width:900px){.man-grid{grid-template-columns:1fr}.man-img{border-right:0;border-bottom:1px solid var(--ln)}}
+#drops .drop-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:1px;background:var(--ln);border:1px solid var(--ln)}
+.drop-big{background:var(--sf);padding:clamp(24px,3vw,44px);display:flex;flex-direction:column;gap:16px}
+.drop-side{display:grid;grid-template-rows:1fr 1fr}
+.drop-mini{background:var(--sf);padding:20px 24px;display:flex;align-items:center;gap:18px;border-bottom:1px solid var(--ln)}
+.drop-mini:last-child{border-bottom:0}
+.drop-mini .pv{width:96px;flex-shrink:0}
+.drop-big .pv{align-self:center}
+.drop-mini h4{font-family:var(--disp);font-size:20px;font-weight:800;text-transform:uppercase}
+#count{display:flex;gap:10px}
+#count div{background:var(--bg);border:1px solid var(--ln2);padding:8px 12px;min-width:64px;text-align:center}
+#count b{font-family:var(--mono);font-size:22px;display:block}
+#count span{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--mut);text-transform:uppercase}
+.drop-price b{font-family:var(--mono);font-size:26px}
+.drop-price s{color:var(--mut);font-family:var(--mono)}
+@media(max-width:900px){#drops .drop-grid{grid-template-columns:1fr}.drop-side{grid-template-rows:auto auto}}
+.filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.chip{border:1px solid var(--ln2);background:var(--bg);color:var(--mut);border-radius:99px;padding:8px 16px;font-size:12px;font-weight:600;letter-spacing:.04em;transition:all .2s;cursor:pointer}
+.chip:hover{color:var(--tx);border-color:var(--tx)}
+.chip.on{background:var(--tx);border-color:var(--tx);color:var(--bg)}
+.filter-right{margin-left:auto;display:flex;gap:10px;align-items:center}
+.filter-right select{background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);height:36px;padding:0 10px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx)}
+#catCount{color:var(--mut);margin:10px 0 18px}
+#cats{border-top:1px solid var(--ln);border-bottom:1px solid var(--ln)}
+.cat-row{display:flex;align-items:baseline;justify-content:space-between;gap:20px;padding:clamp(14px,2vw,22px) clamp(16px,4vw,48px);border-bottom:1px solid var(--ln);cursor:pointer;transition:background .25s}
+.cat-row:last-child{border-bottom:0}
+.cat-row:hover{background:var(--sf)}
+.cat-row h3{font-family:var(--disp);font-size:clamp(28px,4.6vw,64px);font-weight:800;text-transform:uppercase;line-height:1;transition:transform .3s cubic-bezier(.2,.7,.2,1),color .3s}
+.cat-row:hover h3{transform:translateX(18px);color:var(--acTxt)}
+.cat-row .mono{color:var(--mut);flex-shrink:0}
+#floatImg{position:fixed;z-index:40;width:230px;height:290px;pointer-events:none;opacity:0;transition:opacity .25s;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.55)}
+#floatImg img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.2) brightness(.8)}
+#floatImg .mono{position:absolute;bottom:10px;left:10px;color:#EDEDE6}
+.rev-wrap{display:grid;grid-template-columns:1.4fr .6fr;gap:clamp(28px,5vw,70px);align-items:start}
+.rev-quote blockquote{font-family:var(--disp);font-size:clamp(26px,3.6vw,48px);font-weight:800;text-transform:uppercase;line-height:1.02;min-height:3.4em}
+.rev-quote .mono{color:var(--mut);margin-top:18px;display:block}
+.rev-bars .rb{margin-bottom:14px}
+.rev-bars .rb .bar{height:6px;background:var(--sf2);margin-top:5px}
+.rev-bars .rb .bar i{display:block;height:100%;background:var(--ac)}
+.rev-bars .rb .mono{display:flex;justify-content:space-between;color:var(--mut)}
+.rev-score b{font-family:var(--disp);font-size:88px;font-weight:900;line-height:1}
+@media(max-width:900px){.rev-wrap{grid-template-columns:1fr}}
+#kit .kit-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--ln)}
+.kit-left{padding:clamp(24px,4vw,56px);display:flex;flex-direction:column;gap:18px;justify-content:center}
+.kit-left h3{font-size:clamp(36px,4.5vw,64px);font-weight:900}
+.kit-list{border-top:1px solid var(--ln)}
+.kit-list li{list-style:none;display:flex;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid var(--ln);font-size:14px}
+.kit-list .mono{color:var(--mut)}
+.kit-visual{background:var(--sf);display:grid;place-items:center;padding:40px;border-left:1px solid var(--ln);min-height:380px}
+@media(max-width:900px){#kit .kit-grid{grid-template-columns:1fr}.kit-visual{border-left:0;border-top:1px solid var(--ln)}}
+.blog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1px;background:var(--ln);border:1px solid var(--ln)}
+.bcard{background:var(--bg);display:flex;flex-direction:column;cursor:pointer;transition:background .25s}
+.bcard:hover{background:var(--sf)}
+.bcard img{width:100%;aspect-ratio:16/9;object-fit:cover;filter:grayscale(1) contrast(1.15) brightness(.8)}
+.bcard .bi{padding:18px;display:flex;flex-direction:column;gap:8px}
+.bcard h3{font-family:var(--disp);font-size:24px;font-weight:800;text-transform:uppercase;line-height:1}
+.bcard:hover h3{color:var(--acTxt)}
+#news .news-in{max-width:680px;margin:0 auto;text-align:center;display:flex;flex-direction:column;gap:18px}
+#news h2{font-size:clamp(34px,4.5vw,60px);font-weight:900}
+.news-form{display:flex;border:1px solid var(--ln2);border-radius:var(--r);overflow:hidden}
+.news-form input{flex:1;background:var(--sf);border:0;padding:16px 18px;outline:none;min-width:0}
+.news-form button{border:0}
+footer{border-top:1px solid var(--ln);background:var(--sf)}
+.foot-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:40px;padding:clamp(40px,6vw,72px) 0}
+.foot-grid h5{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:16px}
+.foot-grid ul{list-style:none}
+.foot-grid li{margin-bottom:10px}
+.foot-grid a,.foot-grid button{background:none;border:none;padding:0;font-size:14px;color:var(--tx);opacity:.85;transition:color .2s,opacity .2s;text-align:left;cursor:pointer}
+.foot-grid a:hover,.foot-grid button:hover{color:var(--acTxt);opacity:1}
+.foot-brand p{color:var(--mut);font-size:13px;max-width:340px;margin-top:14px}
+.foot-legal{border-top:1px solid var(--ln);padding:22px 0;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--mut)}
+.demo-flag{border:1px solid var(--ln2);color:var(--mut);padding:3px 10px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+@media(max-width:900px){.foot-grid{grid-template-columns:1fr 1fr}}
+.cart-items{flex:1;overflow:auto;padding:0 20px}
+.ci{display:flex;gap:14px;padding:18px 0;border-bottom:1px solid var(--ln)}
+.ci .pv{width:74px;flex-shrink:0;background:var(--sf2);border-radius:var(--r);display:grid;place-items:center;padding:6px 0}
+.ci b{font-size:13px;display:block;font-family:var(--disp);font-size:17px;text-transform:uppercase;letter-spacing:.02em;color:var(--tx)}
+.ci .mono{color:var(--mut);font-size:10px}
+.ci-right{margin-left:auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.ci-right b{font-family:var(--mono);font-size:14px}
+.step-ctrl{display:inline-flex;align-items:center;border:1px solid var(--ln2);border-radius:var(--r)}
+.step-ctrl button{width:26px;height:26px;background:none;border:0;font-size:15px;line-height:1;color:var(--tx);cursor:pointer}
+.step-ctrl button:hover{color:var(--acTxt)}
+.step-ctrl span{font-family:var(--mono);font-size:12px;min-width:26px;text-align:center}
+.ci-rm{background:none;border:none;color:var(--mut);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:0;cursor:pointer}
+.ci-rm:hover{color:#E25B5B}
+.drawer-f{border-top:1px solid var(--ln);padding:18px 20px;display:flex;flex-direction:column;gap:12px;background:var(--sf)}
+.shipbar .bar{height:5px;background:var(--sf2);margin-top:6px}
+.shipbar .bar i{display:block;height:100%;background:var(--ac);transition:width .5s cubic-bezier(.2,.7,.2,1)}
+.tot-row{display:flex;justify-content:space-between;font-size:13px;color:var(--mut)}
+.tot-row.grand{color:var(--tx);font-size:16px}
+.tot-row.grand b{font-family:var(--mono);font-size:20px}
+.coupon-row{display:flex;gap:8px}
+.coupon-row input{flex:1;background:var(--bg);border:1px solid var(--ln2);border-radius:var(--r);height:38px;padding:0 12px;text-transform:uppercase;font-family:var(--mono);font-size:12px;outline:none}
+.coupon-ok{font-family:var(--mono);font-size:11px;color:var(--acTxt);display:flex;justify-content:space-between;align-items:center}
+.coupon-ok button{background:none;border:none;color:var(--mut);text-decoration:underline;font-family:var(--mono);font-size:10px;cursor:pointer}
+.empty-state{padding:60px 24px;text-align:center;color:var(--mut);display:flex;flex-direction:column;gap:14px;align-items:center}
+.empty-state svg{width:38px;height:38px;opacity:.5}
+.modal{position:fixed;inset:0;z-index:100;display:none}
+.modal.open{display:block}
+.modal .m-bg{position:absolute;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}
+.m-panel{position:absolute;background:var(--bg);border:1px solid var(--ln);border-radius:var(--r);box-shadow:0 40px 90px -30px rgba(0,0,0,.8);display:flex;flex-direction:column;max-height:94vh}
+.m-panel.center{top:50%;left:50%;transform:translate(-50%,-50%);width:min(520px,94vw)}
+.m-panel.wide{top:50%;left:50%;transform:translate(-50%,-50%);width:min(1060px,96vw)}
+.m-head{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--ln);flex-shrink:0}
+.m-head b{font-family:var(--disp);font-size:26px;font-weight:800;text-transform:uppercase}
+.m-body{overflow:auto;flex:1}
+.m-close{background:none;border:1px solid transparent;width:36px;height:36px;display:grid;place-items:center;border-radius:var(--r);color:var(--mut);cursor:pointer}
+.m-close:hover{color:var(--tx);border-color:var(--ln2)}
+.pdp{display:grid;grid-template-columns:1.05fr 1fr;min-height:0}
+.pdp-visual{border-right:1px solid var(--ln);background:var(--sf);display:grid;place-items:center;padding:40px;position:relative;min-height:440px}
+.pdp-info{padding:clamp(22px,3vw,40px);display:flex;flex-direction:column;gap:14px;overflow:auto}
+.pdp-info h2{font-family:var(--disp);font-size:clamp(30px,3.4vw,46px);font-weight:800;text-transform:uppercase;line-height:.95}
+.stars{color:var(--acTxt);letter-spacing:2px;font-size:13px}
+.pdp-price{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.pdp-price b{font-family:var(--mono);font-size:30px}
+.pdp-price s{color:var(--mut);font-family:var(--mono)}
+.pdp-price .mono{color:var(--mut)}
+.opt-label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-bottom:6px;display:block}
+.sw-lg{width:30px;height:30px;border-radius:50%;border:1px solid var(--ln2);cursor:pointer}
+.sw-lg.on{outline:2px solid var(--acTxt);outline-offset:3px}
+.wpill{border:1px solid var(--ln2);background:var(--bg);border-radius:var(--r);padding:9px 14px;font-family:var(--mono);font-size:12px;cursor:pointer;color:var(--tx)}
+.wpill.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.pdp-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.pdp-actions .btn-ac{grid-column:1/-1;padding:16px}
+.pdp-tabs{border-top:1px solid var(--ln);margin-top:10px}
+.tab-btns{display:flex;flex-wrap:wrap}
+.tab-btns button{background:none;border:none;border-bottom:2px solid transparent;padding:13px 16px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);cursor:pointer}
+.tab-btns button.on{color:var(--tx);border-bottom-color:var(--ac)}
+.tab-pane{padding:16px 2px;font-size:13.5px;color:color-mix(in srgb,var(--tx) 82%,var(--mut))}
+.tab-pane p{margin-bottom:10px}
+.nut-tb{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+.nut-tb td{border:1px solid var(--ln);padding:7px 10px}
+.nut-tb td:last-child{text-align:right;color:var(--mut)}
+.warn{border:1px solid var(--ln2);border-left:3px solid var(--ac);padding:12px 14px;font-size:12px;color:var(--mut);background:var(--sf)}
+.cep-row{display:flex;gap:8px;margin:10px 0}
+.cep-row input{flex:1;max-width:180px;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);height:40px;padding:0 12px;font-family:var(--mono);outline:none}
+.ship-opt{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--ln);padding:12px 14px;margin-bottom:8px;font-size:13px;cursor:pointer}
+.ship-opt .mono{color:var(--acTxt)}
+@media(max-width:860px){.pdp{grid-template-columns:1fr}.pdp-visual{border-right:0;border-bottom:1px solid var(--ln);min-height:340px}}
+.ck-steps{display:flex;gap:0;border-bottom:1px solid var(--ln)}
+.ck-steps div{flex:1;padding:13px 8px;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);border-bottom:2px solid transparent}
+.ck-steps div.on{color:var(--tx);border-bottom-color:var(--ac)}
+.ck-body{padding:24px;display:flex;flex-direction:column;gap:16px}
+.ck-body h4{font-family:var(--disp);font-size:24px;text-transform:uppercase}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.frow1{display:grid;grid-template-columns:1fr;gap:12px}
+.fld label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-bottom:5px}
+.fld input,.fld select,.fld textarea{width:100%;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);height:42px;padding:0 12px;outline:none;transition:border-color .2s}
+.fld input:focus,.fld select:focus{border-color:var(--acTxt)}
+.fld .err{border-color:#E25B5B!important}
+.fld small{color:#E25B5B;font-size:11px;display:block;margin-top:4px;min-height:14px}
+.pay-opt{display:flex;align-items:center;gap:14px;border:1px solid var(--ln2);border-radius:var(--r);padding:16px;cursor:pointer;transition:border-color .2s,background .2s}
+.pay-opt.on{border-color:var(--ac);background:var(--sf)}
+.pay-opt b{font-size:14px}
+.pay-opt .mono{color:var(--mut);display:block}
+.pay-opt .radio{width:16px;height:16px;border-radius:50%;border:1px solid var(--ln2);flex-shrink:0;display:grid;place-items:center}
+.pay-opt.on .radio{border-color:var(--ac)}
+.pay-opt.on .radio::after{content:'';width:8px;height:8px;border-radius:50%;background:var(--ac)}
+.ck-foot{display:flex;justify-content:space-between;gap:12px;padding:16px 24px;border-top:1px solid var(--ln)}
+.rev-line{display:flex;justify-content:space-between;border-bottom:1px solid var(--ln);padding:9px 0;font-size:13px}
+.rev-line .mono{color:var(--mut)}
+.pix-code{background:var(--sf);border:1px dashed var(--ln2);border-radius:var(--r);padding:12px;font-family:var(--mono);font-size:11px;word-break:break-all;color:var(--mut)}
+.success{text-align:center;padding:50px 24px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.success .ok-ring{width:64px;height:64px;border-radius:50%;border:2px solid var(--ac);display:grid;place-items:center;color:var(--acTxt)}
+.success .ok-ring svg{width:28px;height:28px}
+.acc-tabs{display:flex;border-bottom:1px solid var(--ln);overflow-x:auto}
+.acc-tabs button{flex:1;background:none;border:none;padding:13px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.acc-tabs button.on{color:var(--tx);border-bottom-color:var(--ac)}
+.acc-body{padding:22px;display:flex;flex-direction:column;gap:14px}
+.order-card{border:1px solid var(--ln);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.order-card .oh{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center}
+.status-pill{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--ln2);padding:3px 8px;border-radius:99px;color:var(--mut)}
+.status-pill.ok{border-color:var(--ac);color:var(--acTxt)}
+#chatFab{position:fixed;right:22px;bottom:22px;z-index:70;width:56px;height:56px;border-radius:50%;background:var(--ac);color:var(--acInk);border:0;display:grid;place-items:center;box-shadow:0 14px 34px -8px rgba(0,0,0,.5);transition:transform .2s;cursor:pointer}
+#chatFab:hover{transform:scale(1.07)}
+#chatFab svg{width:24px;height:24px}
+#waFab{position:fixed;right:90px;bottom:22px;z-index:70;width:44px;height:44px;border-radius:50%;background:#25D366;color:#fff;border:0;display:grid;place-items:center;box-shadow:0 12px 28px -8px rgba(0,0,0,.5);transition:transform .2s;cursor:pointer}
+#waFab:hover{transform:scale(1.08)}
+#chatPanel{position:fixed;right:22px;bottom:90px;z-index:70;width:min(370px,92vw);height:min(540px,72vh);background:var(--bg);border:1px solid var(--ln);border-radius:var(--r);box-shadow:0 40px 80px -30px rgba(0,0,0,.7);display:none;flex-direction:column;overflow:hidden}
+#chatPanel.open{display:flex;animation:chatIn .35s cubic-bezier(.2,.7,.2,1)}
+@keyframes chatIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.chat-h{background:var(--sf);border-bottom:1px solid var(--ln);padding:14px 16px;display:flex;align-items:center;gap:12px}
+.chat-h .dot{width:8px;height:8px;border-radius:50%;background:var(--ac)}
+.chat-h b{font-family:var(--disp);font-size:18px;text-transform:uppercase}
+.chat-h .mono{color:var(--mut)}
+#chatLog{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:82%;padding:10px 13px;font-size:13px;line-height:1.5;border-radius:var(--r)}
+.msg.bot{background:var(--sf);border:1px solid var(--ln);align-self:flex-start}
+.msg.me{background:var(--ac);color:var(--acInk);align-self:flex-end}
+.msg .m-prod{display:flex;gap:10px;align-items:center;margin-top:8px;border-top:1px solid var(--ln);padding-top:8px;cursor:pointer}
+.msg .m-prod .pv{width:40px}
+.msg .m-prod b{font-size:12px;display:block;font-family:var(--disp);text-transform:uppercase}
+.chat-quick{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px}
+.chat-quick button{border:1px solid var(--ln2);background:var(--bg);border-radius:99px;padding:6px 12px;font-size:11px;color:var(--mut);transition:all .2s;cursor:pointer}
+.chat-quick button:hover{border-color:var(--acTxt);color:var(--tx)}
+.chat-in{display:flex;border-top:1px solid var(--ln)}
+.chat-in input{flex:1;background:var(--sf);border:0;padding:14px 16px;outline:none}
+.chat-in button{width:52px;background:var(--ac);color:var(--acInk);border:0;display:grid;place-items:center;cursor:pointer}
+.typing{display:inline-flex;gap:4px;padding:4px 0}
+.typing i{width:5px;height:5px;border-radius:50%;background:var(--mut);animation:tp 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes tp{0%,100%{opacity:.3;transform:none}50%{opacity:1;transform:translateY(-3px)}}
+#toasts{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none}
+.toast{background:var(--tx);color:var(--bg);border-radius:var(--r);padding:13px 20px;font-size:13px;font-weight:600;display:flex;gap:16px;align-items:center;box-shadow:0 20px 40px -12px rgba(0,0,0,.5);pointer-events:auto;animation:tIn .3s cubic-bezier(.2,.7,.2,1)}
+.toast button{background:var(--ac);color:var(--acInk);border:0;border-radius:var(--r);padding:6px 12px;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
+@keyframes tIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+#lgpd{position:fixed;left:16px;bottom:16px;z-index:150;max-width:420px;background:var(--sf);border:1px solid var(--ln);border-radius:var(--r);padding:18px;display:none;flex-direction:column;gap:12px;box-shadow:0 30px 60px -20px rgba(0,0,0,.55)}
+#lgpd.show{display:flex}
+#admin{position:fixed;inset:0;z-index:110;background:var(--bg);display:none;grid-template-columns:230px 1fr}
+#admin.open{display:grid}
+.adm-side{border-right:1px solid var(--ln);background:var(--sf);padding:22px 0;display:flex;flex-direction:column}
+.adm-side .logo{font-size:26px;padding:0 22px;margin-bottom:26px}
+.adm-side button.at{background:none;border:none;text-align:left;padding:13px 22px;font-size:13px;font-weight:600;letter-spacing:.04em;color:var(--mut);border-left:2px solid transparent;transition:all .2s;cursor:pointer}
+.adm-side button.at:hover{color:var(--tx)}
+.adm-side button.at.on{color:var(--tx);border-left-color:var(--ac);background:var(--bg)}
+.adm-side .sp{flex:1}
+.adm-main{overflow:auto;padding:clamp(20px,3vw,44px)}
+.adm-main h2{font-family:var(--disp);font-size:40px;text-transform:uppercase;font-weight:800;margin-bottom:24px}
+.adm-fld{margin-bottom:18px;max-width:520px}
+.adm-fld label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+.adm-fld input{width:100%;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);height:42px;padding:0 12px;outline:none}
+.adm-fld input[type=color]{height:52px;padding:6px;cursor:pointer}
+.adm-tb{width:100%;border-collapse:collapse;font-size:13px}
+.adm-tb th{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);text-align:left;padding:10px;border-bottom:1px solid var(--ln2)}
+.adm-tb td{border-bottom:1px solid var(--ln);padding:8px 10px}
+.adm-tb input{width:110px;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);height:32px;padding:0 8px;font-family:var(--mono);font-size:12px;outline:none}
+.adm-note{border:1px dashed var(--ln2);padding:14px 16px;color:var(--mut);font-size:13px;border-radius:var(--r);max-width:560px}
+@media(max-width:760px){#admin{grid-template-columns:1fr;grid-template-rows:auto 1fr}.adm-side{flex-direction:row;align-items:center;padding:12px;border-right:0;border-bottom:1px solid var(--ln);overflow-x:auto}.adm-side .logo{margin:0 16px 0 0;padding:0}.adm-side .sp{min-width:10px}.adm-side button.at{white-space:nowrap;border-left:0;border-bottom:2px solid transparent;padding:10px 12px}}
+@media(max-width:560px){
+  .frow{grid-template-columns:1fr}
+  .pdp-actions{grid-template-columns:1fr}
+  .grid-p{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+  .tub{transform:scale(.92)}
+}
+</style>
+</head>
+<body>
+
+<div id="topbar"><div class="mq" id="topMq"></div></div>
+
+<header id="header">
+  <div class="wrap hbar">
+    <button class="icbtn" id="hamb" aria-label="Menu"></button>
+    <a class="logo" href="#" id="brandLogo" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;">FORJA<i>.</i></a>
+    <nav class="hnav" id="hnav"></nav>
+    <div class="hicons">
+      <div id="searchWrap">
+        <input id="searchInput" placeholder="Buscar produtos..." aria-label="Buscar produtos">
+        <button class="icbtn" id="searchBtn" aria-label="Pesquisar"></button>
+        <div id="searchDrop"></div>
+      </div>
+      <button class="icbtn" id="themeBtn" onclick="toggleTheme()" aria-label="Alternar tema"></button>
+      <button class="icbtn" onclick="openFavs()" aria-label="Favoritos"><span id="favBadge"></span></button>
+      <button class="icbtn" onclick="openAcc()" aria-label="Minha conta"><span id="accBadge"></span></button>
+      <button class="icbtn" onclick="openCart()" aria-label="Carrinho"><span id="cartBadge"></span></button>
+    </div>
+  </div>
+</header>
+
+<aside class="drawer left" id="navDrawer" aria-label="Menu de categorias">
+  <div class="drawer-h"><b>Categorias</b><button class="m-close" onclick="closeNav()" aria-label="Fechar"></button></div>
+  <div class="drawer-b" id="navLinks"></div>
+</aside>
+
+<main>
+  <section id="hero">
+    <div class="hero-grid">
+      <div class="hero-txt">
+        <div class="hero-kicker mono"><span id="heroKicker">Nutrição esportiva — Brasil</span></div>
+        <h1 class="disp" id="heroH1">Sua evolução<br><span class="outline-t">começa</span><br><span class="tx-ac">aqui.</span></h1>
+        <div class="hero-ctas">
+          <button class="btn btn-ac" onclick="goCat('')">Comprar agora</button>
+          <button class="btn" onclick="goCat('Whey Protein')">Explorar suplementos</button>
+          <button class="btn" onclick="document.getElementById('drops').scrollIntoView({behavior:'smooth'})">Conhecer ofertas</button>
+        </div>
+        <div class="hero-meta mono">
+          <div><b>FRETE GRÁTIS</b>pedidos acima de R$ 299</div>
+          <div><b>ATÉ 12X</b>sem juros no cartão</div>
+          <div><b>TROCA FÁCIL</b>até 30 dias</div>
+        </div>
+      </div>
+      <div class="hero-img">
+        <img src="https://picsum.photos/seed/forja-hero7/1100/1400.jpg" alt="Atleta treinando" id="heroImg">
+        <span class="hero-num mono">FIG. 01 — TREINO</span>
+        <span class="hero-cap mono"><i></i>Sessão 05h42 · São Paulo · Sem desculpas</span>
+      </div>
+    </div>
+    <div class="scroll-cue mono"><i></i><span>Role para explorar</span></div>
+  </section>
+
+  <div class="mq2"><div class="mq" id="mq2in"></div></div>
+
+  <section class="sec" id="best">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <div><div class="mono">Ranking da semana</div><h2>Mais vendidos</h2></div>
+        <div class="car-nav">
+          <button onclick="carScroll(-1)" aria-label="Anterior"></button>
+          <button onclick="carScroll(1)" aria-label="Próximo"></button>
+        </div>
+      </div>
+      <div class="carousel rv" id="bestCar"></div>
+    </div>
+  </section>
+
+  <section id="manifesto">
+    <div class="man-grid">
+      <div class="man-img rv"><img src="https://picsum.photos/seed/forja-man3/900/1100.jpg" alt="Ambiente de treino"></div>
+      <div class="man-txt rv">
+        <div class="mono" style="color:var(--mut)">Manifesto</div>
+        <h2 class="disp">Feito para quem <em>treina sério</em> e lê o rótulo.</h2>
+        <p style="color:var(--mut);max-width:520px">Cada lote é rastreado do fornecedor ao seu shaker. Fórmulas transparentes, dosagens declaradas na embalagem e zero promessa mágica: o resultado é construído por você, nós só fornecemos a matéria-prima.</p>
+        <div class="man-stats">
+          <div><b>47</b><span class="mono">Produtos catalogados</span></div>
+          <div><b>12k+</b><span class="mono">Pedidos entregues</span></div>
+          <div><b>4.9</b><span class="mono">Nota média</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="drops">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <div><div class="mono">Termina à meia-noite</div><h2>Ofertas especiais</h2></div>
+        <div id="count"></div>
+      </div>
+      <div class="drop-grid rv" id="dropGrid"></div>
+    </div>
+  </section>
+
+  <section class="sec" id="catalogo" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <div><div class="mono">Catálogo completo</div><h2>Produtos</h2></div>
+      </div>
+      <div class="filter-bar rv" id="chipBar"></div>
+      <div class="filter-bar rv">
+        <span id="catCount" class="mono"></span>
+        <div class="filter-right">
+          <select id="sortSel" onchange="renderCatalog()" aria-label="Ordenar por">
+            <option value="rel">Mais relevantes</option>
+            <option value="sold">Mais vendidos</option>
+            <option value="asc">Menor preço</option>
+            <option value="desc">Maior preço</option>
+            <option value="rate">Melhor avaliados</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-p rv" id="catGrid"></div>
+    </div>
+  </section>
+
+  <section id="cats">
+    <div class="sec-head wrap rv" style="margin-bottom:0;padding-top:clamp(56px,8vw,110px)"><div><div class="mono">Navegue por linha</div><h2>Categorias</h2></div></div>
+    <div id="catList" style="margin-top:34px"></div>
+  </section>
+  <div id="floatImg"><img alt=""><span class="mono"></span></div>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head rv"><div><div class="mono">Quem treina com a gente</div><h2>Avaliações verificadas</h2></div></div>
+      <div class="rev-wrap rv">
+        <div class="rev-quote">
+          <div class="stars" id="revStars"></div>
+          <blockquote id="revText"></blockquote>
+          <span class="mono" id="revAuthor"></span>
+          <div class="rev-nav">
+            <div class="car-nav">
+              <button onclick="revGo(-1)" aria-label="Anterior"></button>
+              <button onclick="revGo(1)" aria-label="Próximo"></button>
+            </div>
+          </div>
+        </div>
+        <div class="rev-score">
+          <b>4.9</b>
+          <div class="rev-bars" style="margin-top:20px" id="revBars"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="kit">
+    <div class="wrap">
+      <div class="sec-head rv"><div><div class="mono">Combo com desconto</div><h2>Kit Iniciante</h2></div></div>
+      <div class="kit-grid rv">
+        <div class="kit-left">
+          <p class="mono" style="color:var(--mut)">Whey + Creatina + Shaker</p>
+          <h3 class="disp">Tudo o que você precisa para começar.</h3>
+          <ul class="kit-list">
+            <li><span>Whey Protein Concentrado 1kg — Chocolate</span><span class="mono">R$ 129,90</span></li>
+            <li><span>Creatina Monohidratada 250g</span><span class="mono">R$ 99,90</span></li>
+            <li><span>Shaker 700ml</span><span class="mono">R$ 34,90</span></li>
+          </ul>
+          <div class="pdp-price">
+            <b>R$ 249,90</b><s>R$ 264,70</s><span class="mono">Economize R$ 14,80</span>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-ac" onclick="addKit()">Adicionar kit ao carrinho</button>
+            <button class="btn" onclick="openPDP('whey-conc')">Ver o whey</button>
+          </div>
+        </div>
+        <div class="kit-visual" id="kitVisual"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="blog" style="border-top:1px solid var(--ln)">
+    <div class="wrap">
+      <div class="sec-head rv"><div><div class="mono">Conteúdo sem enrolação</div><h2>Blog Forja</h2></div></div>
+      <div class="blog-grid rv" id="blogGrid"></div>
+    </div>
+  </section>
+
+  <section class="sec" id="news" style="border-top:1px solid var(--ln)">
+    <div class="wrap news-in rv">
+      <div class="mono" style="color:var(--mut)">Recompensas de inscrição</div>
+      <h2 class="disp">Cupom de <span class="tx-ac">15% OFF</span> na primeira compra.</h2>
+      <p style="color:var(--mut)">Conteúdo real sobre treino e nutrição, no máximo uma vez por semana. Sem spam.</p>
+      <form class="news-form" onsubmit="return subNews(event)">
+        <input type="email" id="newsEmail" placeholder="seu@email.com" aria-label="E-mail" required>
+        <button class="btn btn-ac" type="submit">Quero meu cupom</button>
+      </form>
+      <span class="mono" id="newsOk" style="color:var(--acTxt);display:none">Inscrição confirmada — use o cupom PRIMEIRA15 no carrinho.</span>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="logo">FORJA<i>.</i></a>
+        <p>Suplementos, acessórios e roupas para quem leva o treino a sério. Fórmulas transparentes, rótulos honestos, atendimento de gente.</p>
+        <div class="mono" style="margin-top:16px;color:var(--mut)">CNPJ 00.000.000/0001-00 · substitua pelos dados da sua empresa antes de publicar.</div>
+      </div>
+      <div><h5>Loja</h5><ul id="footShop"></ul></div>
+      <div><h5>Ajuda</h5>
+        <ul>
+          <li><button onclick="openInfo('trocas')">Trocas e devoluções</button></li>
+          <li><button onclick="openInfo('frete')">Frete e prazos</button></li>
+          <li><button onclick="openInfo('priv')">Privacidade e LGPD</button></li>
+          <li><button onclick="openInfo('termos')">Termos de uso</button></li>
+          <li><button onclick="toggleChat()">Falar com o assistente</button></li>
+        </ul>
+      </div>
+      <div><h5>Contato</h5>
+        <ul>
+          <li><button onclick="toast('Link configurável no painel administrativo.')">Instagram</button></li>
+          <li><button onclick="toast('Link configurável no painel administrativo.')">WhatsApp Business</button></li>
+          <li><button onclick="toast('Link configurável no painel administrativo.')">YouTube</button></li>
+          <li><button onclick="openAdmin()" style="color:var(--acTxt)">Painel administrativo</button></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-legal mono">
+      <span>© 2025 FORJA. Todos os direitos reservados.</span>
+      <span class="demo-flag">v1.3 · código-fonte completo · demonstração — nenhuma cobrança é processada</span>
+    </div>
+  </div>
+</footer>
+
+<div id="overlay" onclick="closeAllOverlays()"></div>
+
+<aside class="drawer right" id="cartDrawer" aria-label="Carrinho de compras">
+  <div class="drawer-h"><b>Carrinho</b><span class="mono" id="cartCountLbl"></span><button class="m-close" onclick="closeAllOverlays()" aria-label="Fechar"></button></div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="drawer-f" id="cartFoot"></div>
+</aside>
+
+<aside class="drawer right" id="favDrawer" aria-label="Favoritos">
+  <div class="drawer-h"><b>Favoritos</b><span class="mono" id="favCountLbl"></span><button class="m-close" onclick="closeAllOverlays()" aria-label="Fechar"></button></div>
+  <div class="cart-items" id="favItems"></div>
+</aside>
+
+<div class="modal" id="pdpModal">
+  <div class="m-bg" onclick="closeAllOverlays()"></div>
+  <div class="m-panel wide">
+    <div class="m-head"><b id="pdpCrumb"></b><button class="m-close" onclick="closeAllOverlays()" aria-label="Fechar"></button></div>
+    <div class="m-body"><div class="pdp">
+      <div class="pdp-visual" id="pdpVisual"></div>
+      <div class="pdp-info" id="pdpInfo"></div>
+    </div></div>
+  </div>
+</div>
+
+<div class="modal" id="ckModal">
+  <div class="m-bg" onclick="closeAllOverlays()"></div>
+  <div class="m-panel center" style="width:min(620px,96vw)">
+    <div class="m-head"><b>Checkout</b><button class="m-close" onclick="closeAllOverlays()" aria-label="Fechar"></button></div>
+    <div class="ck-steps" id="ckSteps"></div>
+    <div class="m-body"><div class="ck-body" id="ckBody"></div></div>
+    <div class="ck-foot" id="ckFoot"></div>
+  </div>
+</div>
+
+<div class="modal" id="accModal">
+  <div class="m-bg" onclick="closeAllOverlays()"></div>
+  <div class="m-panel center">
+    <div class="m-head"><b>Minha conta</b><button class="m-close" onclick="closeAllOverlays()" aria-label="Fechar"></button></div>
+    <div class="acc-tabs" id="accTabs"></div>
+    <div class="m-body"><div class="acc-body" id="accBody"></div></div>
+  </div>
+</div>
+
+<div class="modal" id="infoModal">
+  <div class="m-bg" onclick="closeAllOverlays()"></div>
+  <div class="m-panel center">
+    <div class="m-head"><b id="infoTitle"></b><button class="m-close" onclick="closeAllOverlays()" aria-label="Fechar"></button></div>
+    <div class="m-body"><div style="padding:22px;display:flex;flex-direction:column;gap:12px;font-size:13.5px;color:color-mix(in srgb,var(--tx) 82%,var(--mut))" id="infoBody"></div></div>
+  </div>
+</div>
+
+<button id="waFab" aria-label="WhatsApp" onclick="window.open('https://wa.me/?text='+encodeURIComponent('Olá! Vim pelo site da '+cfg.brand+'.'),'_blank')"></button>
+<button id="chatFab" onclick="toggleChat()" aria-label="Abrir assistente"></button>
+<div id="chatPanel" role="dialog" aria-label="Assistente virtual">
+  <div class="chat-h"><span class="dot"></span><div><b>FORJA Assist</b><span class="mono">Base de conhecimento local</span></div>
+    <button class="m-close" onclick="toggleChat()" aria-label="Fechar" style="margin-left:auto"></button></div>
+  <div id="chatLog"></div>
+  <div class="chat-quick" id="chatQuick"></div>
+  <div class="chat-in">
+    <input id="chatInput" placeholder="Pergunte sobre produtos, frete..." onkeydown="if(event.key==='Enter')chatSend()">
+    <button onclick="chatSend()" aria-label="Enviar"></button>
+  </div>
+</div>
+
+<div id="lgpd" role="dialog" aria-label="Consentimento de cookies">
+  <b style="font-family:var(--disp);font-size:20px;text-transform:uppercase">Seus dados, sua decisão</b>
+  <p style="font-size:13px;color:var(--mut)">Usamos cookies essenciais para o carrinho e a sessão funcionarem. Com seu consentimento, habilitamos também cookies de marketing (pixels, audiências). Consulte a <a class="link-mono" onclick="openInfo('priv')">Política de Privacidade</a>.</p>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-sm btn-ac" onclick="lgpdSet('all')">Aceitar todos</button>
+    <button class="btn btn-sm" onclick="lgpdSet('essential')">Apenas essenciais</button>
+  </div>
+</div>
+
+<div id="admin">
+  <div class="adm-side">
+    <span class="logo">FORJA<i>.</i> <span class="mono" style="font-size:10px;color:var(--mut)">admin</span></span>
+    <button class="at on" onclick="admTab('id',this)">Identidade</button>
+    <button class="at" onclick="admTab('db',this)">Dashboard</button>
+    <button class="at" onclick="admTab('pr',this)">Produtos</button>
+    <button class="at" onclick="admTab('or',this)">Pedidos</button>
+    <button class="at" onclick="admTab('cp',this)">Cupons</button>
+    <button class="at" onclick="admTab('ab',this)">Sobre</button>
+    <span class="sp"></span>
+    <button class="at" onclick="closeAdmin()">← Voltar à loja</button>
+  </div>
+  <div class="adm-main" id="admMain"></div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+/* =================================================================
+   FORJA. — v1.3 build final (arquivo único, demonstração)
+   Persistência real via localStorage. Integrações de servidor
+   NÃO são simuladas como ativas — produção exige credenciais.
+   ================================================================= */
+const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+const BRL=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const store={get:(k,d)=>{try{const v=localStorage.getItem('forja_'+k);return v?JSON.parse(v):d}catch(e){return d}},set:(k,v)=>localStorage.setItem('forja_'+k,JSON.stringify(v))};
+
+/* ---------- Recuperação de carrinho abandonado ----------
+   Só envia dados de clientes cadastrados que marcaram o consentimento de WhatsApp.
+   O envio da mensagem (20 min depois) é feito pelo servidor, não por esta página.
+   Preencha endpoint após publicar a função cart-sync (veja carrinho-abandonado/README.md).
+   Enquanto endpoint estiver vazio, nada é enviado. */
+const RECOVERY={endpoint:''};
+function recoveryPhone(raw){
+  let d=String(raw||'').replace(/\D/g,'').replace(/^0+/,'');
+  if(d.length===10||d.length===11)d='55'+d;
+  if(d.length!==13||d.slice(0,2)!=='55'||d[4]!=='9')return null;
+  const ddd=+d.slice(2,4);return ddd>=11&&ddd<=99?d:null;}
+function recoverySid(){let s=store.get('sid',null);
+  if(!s){s=(crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16)}));store.set('sid',s);}
+  return s;}
+function recoveryPost(body){
+  if(!RECOVERY.endpoint)return;
+  try{fetch(RECOVERY.endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({session_id:recoverySid()},body)),keepalive:true}).catch(()=>{});}catch(e){}}
+let recoveryTimer=null,recoverySig='';
+function recoverySync(){
+  if(!RECOVERY.endpoint||typeof user==='undefined'||!user||!user.wa||!user.phone)return;
+  const sig=JSON.stringify(cart)+'|'+user.email;
+  if(sig===recoverySig)return;recoverySig=sig;
+  clearTimeout(recoveryTimer);
+  recoveryTimer=setTimeout(()=>{
+    if(!cart.length){recoveryPost({action:'clear'});return;}
+    recoveryPost({action:'upsert',consent:true,name:user.name,email:user.email,phone:user.phone,
+      items:cart.map(it=>{const p=getP(it.id);return p?{name:p.name,variant:p.flavors[it.f].n+' · '+p.weights[it.w].n,qty:it.q,price:Math.round(p.price*p.weights[it.w].m*100)/100}:null}).filter(Boolean)});
+  },1500);}
+function recoveryMark(action){clearTimeout(recoveryTimer);recoverySig='';recoveryPost({action});}
+
+const I={
+  cart:'<path d="M4 6h2l2.2 11h10.3l2.2-8H7"/><circle cx="10" cy="20" r="1.4"/><circle cx="17.5" cy="20" r="1.4"/>',
+  heart:'<path d="M12 20s-7.5-4.6-9.3-9C1.5 7.7 3.5 5 6.4 5c2 0 3.6 1.2 5.6 3.4C14 6.2 15.6 5 17.6 5c2.9 0 4.9 2.7 3.7 6-1.8 4.4-9.3 9-9.3 9z"/>',
+  user:'<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.4-3.6 4.2-5.2 7.5-5.2s6.1 1.6 7.5 5.2"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/>',
+  moon:'<path d="M20 13.5A8 8 0 1 1 10.5 4 6.5 6.5 0 0 0 20 13.5z"/>',
+  search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>',
+  menu:'<path d="M3 6h18M3 12h18M3 18h18"/>',
+  x:'<path d="M5 5l14 14M19 5L5 19"/>',
+  left:'<path d="M14.5 5.5L8 12l6.5 6.5"/>',
+  right:'<path d="M9.5 5.5L16 12l-6.5 6.5"/>',
+  chat:'<path d="M4 5.5h16v10.5H9L4 20V5.5z"/><path d="M8 9.5h8M8 12.5h5"/>',
+  send:'<path d="M4 12l16-7-4.5 16-4-6.5L4 12z"/>',
+  check:'<path d="M4.5 12.5l5 5L19.5 7"/>',
+  box:'<path d="M4 8l8-4 8 4v9l-8 4-8-4V8z"/><path d="M4 8l8 4 8-4M12 12v9"/>',
+  wa:'<path d="M4 20l1.3-3.8A8 8 0 1 1 8.3 19L4 20z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l.9-1.8-2-1-.9.7a4.4 4.4 0 0 1-1.4-1.4l.7-.9-1-2L9 9.5z"/>',
+  shaker:'<path d="M38 34h44v62a8 8 0 0 1-8 8H46a8 8 0 0 1-8-8V34z"/><path d="M42 34v-8h36v8"/><path d="M50 26v-6h20v6"/><circle cx="60" cy="66" r="12"/><path d="M52 66h16M60 58v16"/>'
+};
+const ic=(n,s=20)=>'<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+I[n]+'</svg>';
+
+const PRODUCTS=[
+ {id:'whey-conc',name:'Whey Protein Concentrado',cat:'Whey Protein',kind:'tub',size:'l',sku:'FJ-WPC-1000',price:129.90,old:159.90,rank:1,tag:'-19%',stock:64,rating:4.8,reviews:412,sold:2140,
+  flavors:[{n:'Chocolate',c:'#4A3223'},{n:'Baunilha',c:'#E3D6B4'},{n:'Morango',c:'#D98F8F'},{n:'Cookies',c:'#6B533A'}],
+  weights:[{n:'1 kg',m:1}],desc:'Concentrado de proteína do soro do leite, 24 g de proteína por porção de 30 g. Dissolução rápida e perfil de aminoácidos completo.',nut:[['Porção','30 g (1 dose)'],['Proteínas','24 g'],['Carboidratos','3,2 g'],['Gorduras totais','1,8 g'],['Valor energético','119 kcal']],uso:'Adicione 1 dose (30 g) em 200 ml de água ou bebida de sua preferência. Consuma 1 a 2 porções ao dia, conforme orientação de nutricionista.',alerg:'Contém derivados de leite e soja. Pode conter traços de ovo e cereais com glúten.'},
+ {id:'whey-iso',name:'Whey Protein Isolado',cat:'Whey Protein',kind:'tub',size:'l',sku:'FJ-WPI-900',price:189.90,old:null,rank:2,tag:'Novo',stock:38,rating:4.9,reviews:214,sold:1180,
+  flavors:[{n:'Baunilha',c:'#E9DFC8'},{n:'Chocolate',c:'#4A3223'},{n:'Frutas vermelhas',c:'#B84A63'}],
+  weights:[{n:'450 g',m:.58},{n:'900 g',m:1}],desc:'Isolado por microfiltração, com 27 g de proteína por porção e teor reduzido de lactose. Indicado para fases de definição.',nut:[['Porção','30 g'],['Proteínas','27 g'],['Carboidratos','1,4 g'],['Gorduras totais','0,6 g'],['Sódio','48 mg']],uso:'Misture 1 dose em 200 ml de água imediatamente após o treino ou entre as refeições.',alerg:'Contém derivados de leite. Livre de glúten.'},
+ {id:'creatina',name:'Creatina Monohidratada',cat:'Creatina',kind:'tub',size:'s',sku:'FJ-CRE-250',price:99.90,old:119.90,rank:3,tag:'-17%',stock:120,rating:4.9,reviews:386,sold:3410,
+  flavors:[{n:'Sem sabor',c:'#EDEAE0'},{n:'Limão',c:'#B8D94A'}],
+  weights:[{n:'250 g',m:1},{n:'500 g',m:1.8}],desc:'Creatina monohidratada micronizada, 3 g por dose. O suplemento com maior respaldo científico para força e potência.',nut:[['Porção','3 g'],['Creatina monohidratada','3 g'],['Carboidratos','0 g'],['Calorias','0 kcal']],uso:'Consuma 1 dose (3 g) ao dia, todos os dias, inclusive em dias sem treino. Hidrate-se bem.',alerg:'Não contém alergênicos. Livre de glúten e lactose.'},
+ {id:'pre-treino',name:'Pré-Treino Volta',cat:'Pré-treinos',kind:'tub',size:'l',sku:'FJ-PRE-300',price:119.90,old:null,rank:5,tag:'Novo',stock:42,rating:4.7,reviews:158,sold:860,
+  flavors:[{n:'Frutas vermelhas',c:'#B84A63'},{n:'Melancia',c:'#D96A7E'},{n:'Uva verde',c:'#8FA84A'}],
+  weights:[{n:'300 g',m:1}],desc:'Blend de cafeína natural, beta-alanina e citrulina. 150 mg de cafeína por dose — evite consumir após as 18h.',nut:[['Porção','15 g'],['Cafeína','150 mg'],['Beta-alanina','2 g'],['Citrulina','1,5 g']],uso:'Consuma 1 dose em 300 ml de água, 30 a 40 minutos antes do treino. Não recomendado para menores de 18 anos, gestantes e hipertensos sem avaliação médica.',alerg:'Pode conter traços de leite e soja.'},
+ {id:'whey-3w',name:'Whey 3W Blend',cat:'Whey Protein',kind:'tub',size:'xl',sku:'FJ-3W-2000',price:219.90,old:249.90,rank:4,tag:'-12%',stock:26,rating:4.8,reviews:301,sold:1420,
+  flavors:[{n:'Cookies',c:'#6B533A'},{n:'Chocolate',c:'#4A3223'},{n:'Doce de leite',c:'#C79A5B'}],
+  weights:[{n:'2 kg',m:1}],desc:'Blend de três proteínas (concentrado, isolado e albumina) para liberação gradual ao longo do dia.',nut:[['Porção','35 g'],['Proteínas','26 g'],['Carboidratos','4 g'],['Gorduras totais','2,2 g']],uso:'1 dose em 250 ml de líquido, entre 1 e 3 vezes ao dia.',alerg:'Contém leite, ovo e soja.'},
+ {id:'veg-protein',name:'Proteína Vegetal',cat:'Proteínas vegetais',kind:'tub',size:'l',sku:'FJ-VEG-900',price:139.90,old:null,rank:9,tag:null,stock:33,rating:4.7,reviews:96,sold:520,
+  flavors:[{n:'Cacau',c:'#5C4033'},{n:'Banana',c:'#D9C36A'}],
+  weights:[{n:'900 g',m:1}],desc:'Blend de ervilha e arroz com perfil aminoacidídico completo. 100% vegetal.',nut:[['Porção','33 g'],['Proteínas','24 g'],['Carboidratos','4,5 g'],['Fibras','2 g']],uso:'1 dose em 250 ml de bebida vegetal ou água.',alerg:'Pode conter traços de soja e amendoim.'},
+ {id:'barra',name:'Barra Proteica (caixa 12 un)',cat:'Barras proteicas',kind:'bar',sku:'FJ-BAR-12',price:89.90,old:99.90,rank:7,tag:'-10%',stock:58,rating:4.6,reviews:176,sold:990,
+  flavors:[{n:'Amendoim',c:'#C79A5B'},{n:'Chocolate',c:'#4A3223'}],weights:[{n:'12 × 60 g',m:1}],
+  desc:'Barra de 60 g com 20 g de proteína. Lanche prático antes ou depois do treino.',nut:[['Porção','1 barra (60 g)'],['Proteínas','20 g'],['Fibras','5 g'],['Açúcares','4 g']],uso:'Consuma até 2 barras ao dia como complemento da alimentação.',alerg:'Contém amendoim, leite e soja.'},
+ {id:'multivit',name:'Multivitamínico A-Z',cat:'Vitaminas e minerais',kind:'tub',size:'s',sku:'FJ-MV-90',price:49.90,old:null,rank:11,tag:null,stock:150,rating:4.8,reviews:240,sold:1870,
+  flavors:[{n:'Cápsulas',c:'#2E4A3A'}],weights:[{n:'90 cápsulas',m:1}],
+  desc:'26 vitaminas e minerais em 1 cápsula ao dia. Formulação dentro dos limites da RDC 24/2010.',nut:[['Porção','1 cápsula'],['Vitamina C','45 mg'],['Vitamina D','5 mcg'],['Zinco','3 mg']],uso:'1 cápsula ao dia junto a uma refeição.',alerg:'Contém derivados de soja.'},
+ {id:'bcaa',name:'BCAA 2:1:1',cat:'Aminoácidos',kind:'tub',size:'s',sku:'FJ-BCAA-250',price:84.90,old:null,rank:13,tag:null,stock:71,rating:4.5,reviews:88,sold:430,
+  flavors:[{n:'Limão',c:'#B8D94A'},{n:'Uva',c:'#7A4A8A'}],weights:[{n:'250 g',m:1}],
+  desc:'Leucina, isoleucina e valina na proporção clássica 2:1:1.',nut:[['Porção','5 g'],['BCAA','5 g'],['Leucina','2,5 g']],uso:'1 dose antes ou durante o treino.',alerg:'Livre de glúten.'},
+ {id:'hiper',name:'Hipercalórico Mass',cat:'Hipercalóricos',kind:'tub',size:'xl',sku:'FJ-HIP-3000',price:149.90,old:179.90,rank:8,tag:'-17%',stock:19,rating:4.6,reviews:132,sold:640,
+  flavors:[{n:'Morango',c:'#D98F8F'},{n:'Baunilha',c:'#E3D6B4'},{n:'Chocolate',c:'#4A3223'}],weights:[{n:'3 kg',m:1}],
+  desc:'Fonte de carboidratos e proteínas para quem tem dificuldade de ganhar peso. 420 kcal por porção.',nut:[['Porção','100 g'],['Carboidratos','76 g'],['Proteínas','14 g'],['Gorduras totais','3 g']],uso:'2 doses em 400 ml de leite ou água, 1 a 2 vezes ao dia.',alerg:'Contém leite e soja. Pode conter traços de ovo.'},
+ {id:'isotonico',name:'Bebida Esportiva (pó)',cat:'Bebidas esportivas',kind:'tub',size:'s',sku:'FJ-ISO-400',price:39.90,old:null,rank:14,tag:null,stock:98,rating:4.5,reviews:64,sold:380,
+  flavors:[{n:'Uva',c:'#7A4A8A'},{n:'Laranja',c:'#D98F3F'}],weights:[{n:'400 g',m:1}],
+  desc:'Reposição de eletrólitos para treinos longos ou dias quentes.',nut:[['Porção','10 g'],['Sódio','110 mg'],['Potássio','40 mg'],['Carboidratos','9 g']],uso:'1 dose em 500 ml de água. Consuma durante a atividade.',alerg:'Livre de glúten.'},
+ {id:'omega',name:'Omega 3 1000 mg',cat:'Vitaminas e minerais',kind:'tub',size:'s',sku:'FJ-OMG-120',price:59.90,old:null,rank:12,tag:null,stock:104,rating:4.8,reviews:198,sold:1240,
+  flavors:[{n:'Cápsulas',c:'#3A4A6B'}],weights:[{n:'120 cápsulas',m:1}],
+  desc:'Óleo de peixe com EPA 180 mg e DHA 120 mg por cápsula.',nut:[['Porção','1 cápsula'],['Óleo de peixe','1000 mg'],['EPA','180 mg'],['DHA','120 mg']],uso:'1 a 2 cápsulas ao dia com as refeições.',alerg:'Contém peixe.'},
+ {id:'shaker',name:'Shaker Forja 700 ml',cat:'Shakers e garrafas',kind:'shaker',sku:'FJ-SHK-700',price:34.90,old:null,rank:6,tag:null,stock:210,rating:4.7,reviews:310,sold:2680,
+  flavors:[{n:'Grafite',c:'#3A3A3E'},{n:'Verde',c:'#4A6B3A'}],weights:[{n:'700 ml',m:1}],
+  desc:'Três compartimentos, mola misturadora em aço inox e tampa rosqueável antivazamento.',specs:[['Material','PP livre de BPA'],['Capacidade','700 ml'],['Medidas','ø 90 × 210 mm']],uso:'Lave antes do primeiro uso. Não usar em micro-ondas.'},
+ {id:'garrafa',name:'Garrafa Térmica Inox 1 L',cat:'Shakers e garrafas',kind:'garrafa',sku:'FJ-GAR-1L',price:79.90,old:null,rank:null,tag:'Novo',stock:47,rating:4.8,reviews:88,sold:340,
+  flavors:[{n:'Inox',c:'#9A9A96'},{n:'Preto',c:'#2A2A2E'}],weights:[{n:'1 L',m:1}],
+  desc:'Parede dupla a vácuo: mantém a água gelada por até 24 h.',specs:[['Material','Aço inox 304'],['Capacidade','1 L'],['Altura','265 mm']],uso:'Não congelar nem aquecer no micro-ondas.'},
+ {id:'luva',name:'Luvas de Treino Pro',cat:'Luvas, straps e cintos',kind:'luva',sku:'FJ-LUV-P',price:59.90,old:null,rank:10,tag:null,stock:66,rating:4.6,reviews:142,sold:780,
+  flavors:[{n:'Preto',c:'#2A2A2E'}],weights:[{n:'P',m:1},{n:'M',m:1},{n:'G',m:1}],
+  desc:'Palma em couro sintético com gripe antiderrapante e apoio de punho ajustável.',specs:[['Material','Couro sintético + neoprene'],['Tamanhos','P / M / G']],uso:'Areje após o uso. Higienize com pano úmido.'},
+ {id:'straps',name:'Straps Acolchados',cat:'Luvas, straps e cintos',kind:'strap',sku:'FJ-STR-A',price:44.90,old:null,rank:null,tag:null,stock:88,rating:4.7,reviews:76,sold:410,
+  flavors:[{n:'Preto',c:'#2A2A2E'}],weights:[{n:'Par',m:1}],
+  desc:'Algodão reforçado com punho acolchoado para puxadas pesadas sem perder a pegada.',specs:[['Material','Algodão 100%'],['Comprimento','580 mm']],uso:'Verifique desgaste antes de cada uso.'},
+ {id:'cinto',name:'Cinto de Treino 10 mm',cat:'Luvas, straps e cintos',kind:'cinto',sku:'FJ-CIN-10',price:149.90,old:null,rank:null,tag:null,stock:23,rating:4.9,reviews:64,sold:290,
+  flavors:[{n:'Preto',c:'#2A2A2E'}],weights:[{n:'M',m:1},{n:'G',m:1}],
+  desc:'Couro legítimo com fivela de duplo pino. Apoio lombar em cargas máximas.',specs:[['Material','Couro bovino'],['Espessura','10 mm']],uso:'Use apenas em séries pesadas; afrouxe entre séries.'},
+ {id:'tee',name:'Camiseta Dry Fit',cat:'Roupas fitness masculinas',kind:'tee',sku:'FJ-TEE-DF',price:69.90,old:null,rank:null,tag:null,stock:130,rating:4.7,reviews:210,sold:1130,
+  flavors:[{n:'Preto',c:'#232326'},{n:'Grafite',c:'#4A4A50'},{n:'Verde',c:'#4A6B3A'}],weights:[{n:'P',m:1},{n:'M',m:1},{n:'G',m:1},{n:'GG',m:1}],
+  desc:'Poliamida com tecnologia de secagem rápida e corte atlético.',specs:[['Tecido','Poliamida 86% / Elastano 14%'],['Modelagem','Atlética']],uso:'Lavar a frio com cores semelhantes.'},
+ {id:'top',name:'Top Fitness Alta Sustentação',cat:'Roupas fitness femininas',kind:'top',sku:'FJ-TOP-AS',price:59.90,old:null,rank:null,tag:null,stock:96,rating:4.8,reviews:184,sold:920,
+  flavors:[{n:'Preto',c:'#232326'},{n:'Cinza',c:'#7A7A80'}],weights:[{n:'P',m:1},{n:'M',m:1},{n:'G',m:1}],
+  desc:'Tecido de compressão média com bojo removível.',specs:[['Tecido','Poliéster / Elastano'],['Sustentação','Alta']],uso:'Lavar a frio. Não usar alvejante.'},
+ {id:'mochila',name:'Mochila Gym 35 L',cat:'Mochilas esportivas',kind:'mochila',sku:'FJ-MOC-35',price:189.90,old:null,rank:null,tag:null,stock:31,rating:4.8,reviews:98,sold:460,
+  flavors:[{n:'Preto',c:'#232326'}],weights:[{n:'35 L',m:1}],
+  desc:'Compartimento ventilado para tênis, bolso interno térmico para shaker e roupa, resistente à água.',specs:[['Capacidade','35 L'],['Material','Poliéster 900D'],['Medidas','300 × 520 × 240 mm']],uso:'Não exceder 12 kg de carga.'},
+ {id:'corda',name:'Corda de Saltar Speed',cat:'Acessórios para treino',kind:'corda',sku:'FJ-COR-SP',price:39.90,old:null,rank:null,tag:null,stock:120,rating:4.6,reviews:154,sold:890,
+  flavors:[{n:'Preto',c:'#2A2A2E'}],weights:[{n:'2,8 m ajustável',m:1}],
+  desc:'Rolamentos duplos e cabo de aço revestido para duplos e triplos.',specs:[['Comprimento','2,8 m (ajustável)'],['Cabo','Aço 3 mm']],uso:'Use com tênis e em superfície que absorva impacto.'}
+];
+
+let cfg=Object.assign({brand:'FORJA',kicker:'Nutrição esportiva — Brasil',h1a:'Sua evolução',h1b:'começa',h1c:'aqui.',accent:'#C8F62E'},store.get('cfg',{}));
+function applyCfg(){
+  $('#brandLogo').innerHTML=cfg.brand+'<i>.</i>';
+  $('#heroKicker').textContent=cfg.kicker;
+  $('#heroH1').innerHTML=cfg.h1a+'<br><span class="outline-t">'+cfg.h1b+'</span><br><span class="tx-ac">'+cfg.h1c+'.</span>';
+  document.documentElement.style.setProperty('--ac',cfg.accent);
+  const h=cfg.accent.replace('#','');const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+  const lum=(0.299*r+0.587*g+0.114*b)/255;
+  document.documentElement.style.setProperty('--acInk',lum>0.45?'#0C0C0D':'#F1F0EA');
+  document.documentElement.style.setProperty('--acTxt',document.documentElement.dataset.theme==='light'?(lum<0.55?cfg.accent:'#5F7E00'):cfg.accent);
+  const topTxt=cfg.top||'FRETE GRÁTIS ACIMA DE R$ 299 — CUPOM FORJA10: 10% OFF — ATÉ 12X SEM JUROS — TROCA FÁCIL EM ATÉ 30 DIAS';
+  $('#topMq').innerHTML=Array(4).fill('<span>'+topTxt+'</span>').join('');
+  if(cfg.hero)$('#heroImg').src=cfg.hero;
+}
+function setTheme(t){document.documentElement.dataset.theme=t;store.set('theme',t);applyCfg();$('#themeBtn').innerHTML=ic(t==='dark'?'sun':'moon')}
+function toggleTheme(){setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')}
+
+let cart=store.get('cart',[]),favs=store.get('favs',[]),user=store.get('user',null),orders=store.get('orders',[]),addr=store.get('addr',null),coupon=null;
+const CATS=[...new Set(PRODUCTS.map(p=>p.cat))];
+const getP=id=>PRODUCTS.find(p=>p.id===id);
+
+function tubHTML(p,f){const fl=p.flavors[f];
+  return '<div class="tub '+(p.size||'m')+'" style="--tc:'+fl.c+'"><div class="lb"><b>'+cfg.brand.toUpperCase()+'</b><em>'+p.name+'</em><span>'+fl.n.toUpperCase()+' · '+p.weights[0].n.toUpperCase()+'</span></div></div><div class="tub-sh"></div>';}
+function techHTML(p){
+  const S={shaker:I.shaker,
+  garrafa:'<rect x="42" y="30" width="36" height="76" rx="10"/><path d="M50 30v-8h20v8"/><path d="M46 14h28"/><path d="M42 52h36"/>',
+  luva:'<path d="M40 96V48c0-4 3-6 6-6s6 2 6 6v-8c0-4 3-6 6-6s6 2 6 6v8c0-4 3-6 6-6s6 2 6 6v12l6 4v32H40z"/><path d="M40 84h46"/><path d="M46 96v8h34v-8"/>',
+  strap:'<path d="M44 22v40c0 14 8 22 16 22s16-8 16-22V22"/><path d="M40 22h12M68 22h12"/><rect x="50" y="74" width="20" height="14" rx="2"/><path d="M42 22l-4 10M78 22l4 10"/><path d="M84 34h18M84 34v-4M84 34v4"/>',
+  cinto:'<path d="M28 60c10-10 20-14 32-14s22 4 32 14v14c-10-8-20-12-32-12s-22 4-32 12V60z"/><rect x="24" y="56" width="14" height="22" rx="2"/><path d="M38 67h8"/><path d="M96 56l10-4v24l-10-4"/>',
+  tee:'<path d="M42 34l14-8c2 4 8 4 8 0l14 8 8 14-10 6-2-6v42H46V48l-2 6-10-6 8-14z"/>',
+  top:'<path d="M44 42l12-8 4 6 4-6 12 8 6 26-10 4-2-6v26H50V66l-2 6-10-4 6-26z"/>',
+  mochila:'<rect x="36" y="30" width="48" height="70" rx="10"/><path d="M46 30c0-8 6-12 14-12s14 4 14 12"/><rect x="46" y="62" width="28" height="26" rx="4"/><path d="M36 52h48" stroke-dasharray="4 4"/>',
+  corda:'<path d="M36 28c0 40 10 64 24 64s24-24 24-64"/><rect x="30" y="18" width="12" height="22" rx="3"/><rect x="78" y="18" width="12" height="22" rx="3"/>',
+  bar:'<path d="M34 52h52v20H34z"/><path d="M34 52l-12-8v36l12-8M86 52l12-8v36l-12-8"/><path d="M52 52v20M68 52v20"/>'};
+  return '<div class="tech"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">'+S[p.kind]+'</svg><svg viewBox="0 0 120 14" style="margin-top:2px"><text class="dim" x="60" y="10" text-anchor="middle">REF. '+p.sku+(p.specs?' · '+p.specs[0][1]:'')+'</text></svg></div>';}
+function pvHTML(p,f){f=f||0;return p.kind==='tub'?tubHTML(p,f):techHTML(p);}
+const stars=r=>'★★★★★'.slice(0,Math.round(r))+'<span style="opacity:.25">'+'★★★★★'.slice(Math.round(r))+'</span>';
+
+function cardHTML(p,idx,f){
+  f=f||0;
+  const tag=p.tag?'<span class="p-tag '+(p.tag.startsWith('-')?'tag-ac':'tag-ol')+'">'+p.tag+'</span>':'';
+  const rank=p.rank?'<span class="p-rank">'+String(p.rank).padStart(2,'0')+'</span>':'';
+  const sw=p.flavors.length>1?'<div class="p-sw">'+p.flavors.map((fl,i)=>'<button class="sw'+(i===f?' on':'')+'" style="background:'+fl.c+'" title="'+fl.n+'" onclick="event.stopPropagation();cardSw(this,'+idx+','+i+')" aria-label="'+fl.n+'"></button>').join('')+'</div>':'';
+  return '<article class="pcard" data-id="'+p.id+'">'+
+   '<div class="p-visual corners" onclick="openPDP(\''+p.id+'\')">'+tag+'<button class="icbtn p-fav" onclick="event.stopPropagation();toggleFav(\''+p.id+'\')" aria-label="Favoritar">'+ic('heart',18)+'</button>'+rank+'<div class="pv">'+pvHTML(p,f)+'</div></div>'+
+   '<div class="p-body"><span class="p-cat mono">'+p.cat+'</span><h3 class="p-name" onclick="openPDP(\''+p.id+'\')">'+p.name+'</h3>'+sw+
+   '<div style="margin-top:4px"><span class="stars" style="font-size:11px">'+stars(p.rating)+' <span class="mono" style="color:var(--mut)">('+p.reviews+')</span></span></div></div>'+
+   '<div class="p-foot"><div class="p-price"><b>'+BRL(p.price*(p.weights[p.weights.length-1].m||1))+'</b>'+(p.old?'<s>'+BRL(p.old)+'</s>':'')+'<span class="mono">ou 12x '+(BRL(p.price/12))+'</span></div>'+
+   '<button class="p-add" onclick="quickAdd(\''+p.id+'\')">Adicionar</button></div></article>';
+}
+let cardFlavor={};
+function cardSw(btn,idx,f){const p=PRODUCTS[idx];cardFlavor[p.id]=f;const card=btn.closest('.pcard');
+  card.querySelector('.p-visual .pv').innerHTML=pvHTML(p,f);
+  card.querySelectorAll('.sw').forEach((b,i)=>b.classList.toggle('on',i===f));}
+function quickAdd(id){const p=getP(id);addToCart(id,cardFlavor[id]||0,p.weights.length-1,1);}
+
+function renderBest(){const top=PRODUCTS.filter(p=>p.rank&&p.rank<=8).sort((a,b)=>a.rank-b.rank);
+  $('#bestCar').innerHTML=top.map((p,i)=>cardHTML(p,i)).join('');}
+function renderDrops(){const off=PRODUCTS.filter(p=>p.old).slice(0,3);
+  if(!off.length){$('#dropGrid').innerHTML='<div class="adm-note" style="grid-column:1/-1;background:var(--sf);padding:30px">Nenhum produto em oferta no momento. Cadastre um "preço antigo" para apareceria aqui.</div>';return;}
+  const big=off[0],mini=off.slice(1);
+  $('#dropGrid').innerHTML=
+   '<div class="drop-big">'+(big.tag?'<span class="p-tag tag-ac" style="position:static;align-self:flex-start">'+big.tag+' HOJE</span>':'')+
+   '<h3 style="font-family:var(--disp);font-size:clamp(22px,2.4vw,30px);font-weight:800;text-transform:uppercase">'+big.name+'</h3>'+
+   '<p style="color:var(--mut);font-size:13px">'+big.desc+'</p><div class="pv">'+pvHTML(big,0)+'</div>'+
+   '<div class="drop-price"><b>'+BRL(big.price)+'</b> <s>'+BRL(big.old)+'</s></div>'+
+   '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-ac" onclick="quickAdd(\''+big.id+'\')">Aproveitar oferta</button><button class="btn btn-sm" onclick="openPDP(\''+big.id+'\')">Detalhes</button></div></div>'+
+   '<div class="drop-side">'+mini.map(p=>'<div class="drop-mini"><div class="pv">'+pvHTML(p,0)+'</div><div><h4>'+p.name+'</h4><div class="drop-price"><b style="font-size:18px">'+BRL(p.price)+'</b> <s>'+BRL(p.old)+'</s></div>'+
+   '<button class="link-mono" onclick="openPDP(\''+p.id+'\')">Ver produto →</button></div></div>').join('')+'</div>';}
+function renderCats(){
+  $('#catList').innerHTML=CATS.map((c,i)=>'<div class="cat-row" onclick="goCat(\''+c+'\')" onmouseenter="floatImgShow('+i+',this)" data-cat="'+c+'"><h3>'+c+'</h3><span class="mono">'+PRODUCTS.filter(p=>p.cat===c).length+' produtos →</span></div>').join('');
+  $('#hnav').innerHTML=CATS.slice(0,6).map(c=>'<button onclick="goCat(\''+c+'\')">'+c+'</button>').join('')+'<button onclick="goCat(\'\')">Todos</button>'+'<button onclick="document.getElementById(\'blog\').scrollIntoView({behavior:\'smooth\'})">Blog</button>';
+  $('#navLinks').innerHTML=CATS.map((c,i)=>'<button class="navlink" onclick="closeNav();goCat(\''+c+'\')">'+c+'<span class="mono">0'+(i+1)+'</span></button>').join('')+ '<button class="navlink" onclick="closeNav();goCat(\'\')">Todos os produtos</button>';}
+
+let fiX=0,fiY=0,fiTX=0,fiTY=0,fiOn=false;
+function floatImgShow(i,el){if(matchMedia('(hover:none)').matches)return;
+  const box=$('#floatImg');box.querySelector('img').src='https://picsum.photos/seed/forja-cat'+i+'/460/580.jpg';
+  box.querySelector('.mono').textContent=el.dataset.cat;fiOn=true;box.style.opacity=1;}
+document.addEventListener('mousemove',e=>{fiTX=e.clientX+26;fiTY=e.clientY-150;});
+(function fiLoop(){fiX+=(fiTX-fiX)*.12;fiY+=(fiTY-fiY)*.12;
+  const box=$('#floatImg');if(fiOn){box.style.left=fiX+'px';box.style.top=fiY+'px';}requestAnimationFrame(fiLoop);})();
+ $('#catList').addEventListener('mouseleave',()=>{$('#floatImg').style.opacity=0;fiOn=false;});
+
+let catFilter='';
+function renderChips(){const counts={};PRODUCTS.forEach(p=>counts[p.cat]=(counts[p.cat]||0)+1);
+  $('#chipBar').innerHTML='<button class="chip'+(catFilter===''?' on':'')+'" onclick="goCat(\'\')">Todos ('+PRODUCTS.length+')</button>'+
+   CATS.map(c=>'<button class="chip'+(catFilter===c?' on':'')+'" onclick="goCat(\''+c+'\')">'+c+' ('+counts[c]+')</button>').join('');}
+function renderCatalog(){
+  let list=PRODUCTS.filter(p=>!catFilter||p.cat===catFilter);
+  const s=$('#sortSel').value;
+  if(s==='asc')list.sort((a,b)=>a.price-b.price);else if(s==='desc')list.sort((a,b)=>b.price-a.price);
+  else if(s==='sold')list.sort((a,b)=>(b.rank||99)-(a.rank||99));
+  else if(s==='rate')list.sort((a,b)=>b.rating-a.rating);else list.sort((a,b)=>b.sold-a.sold);
+  $('#catGrid').innerHTML=list.map((p,i)=>cardHTML(p,i)).join('');
+  $('#catCount').textContent=list.length+' produtos'+(catFilter?' em '+catFilter:'');}
+function goCat(c){catFilter=c||'';renderChips();renderCatalog();$('#catalogo').scrollIntoView({behavior:'smooth'});}
+
+let pdp={id:null,f:0,w:0,q:1,tab:'desc'};
+function pushJSONLD(p){
+  let el=document.getElementById('jsonld');
+  if(!el){el=document.createElement('script');el.id='jsonld';el.type='application/ld+json';document.head.appendChild(el);}
+  el.textContent=JSON.stringify({"@context":"https://schema.org","@type":"Product",
+    "name":p.name,"sku":p.sku,"brand":{"@type":"Brand","name":cfg.brand},"description":p.desc,
+    "aggregateRating":{"@type":"AggregateRating","ratingValue":p.rating,"reviewCount":p.reviews},
+    "offers":{"@type":"Offer","price":(p.price*p.weights[pdp.w].m).toFixed(2),"priceCurrency":"BRL",
+    "availability":p.stock>0?"https://schema.org/InStock":"https://schema.org/OutOfStock"}});}
+function openPDP(id){const p=getP(id);pdp={id,f:cardFlavor[id]||0,w:p.weights.length-1,q:1,tab:'desc'};
+  pushJSONLD(p);renderPDP();openModal('pdpModal');}
+function renderPDP(){const p=getP(pdp.id);if(!p)return;const fl=p.flavors[pdp.f],w=p.weights[pdp.w];
+  const price=p.price*w.m;
+  $('#pdpCrumb').textContent=p.cat+' / '+p.sku;
+  $('#pdpVisual').innerHTML='<div class="pv" style="transform:scale(1.25)">'+pvHTML(p,pdp.f)+'</div>';
+  $('#pdpInfo').innerHTML=
+   '<div><span class="mono" style="color:var(--mut)">'+cfg.brand.toUpperCase()+' · REF. '+p.sku+'</span><h2>'+p.name+'</h2>'+
+   '<div class="stars">'+stars(p.rating)+' <span class="mono" style="color:var(--mut)">'+p.rating.toFixed(1).replace('.',',')+' · '+p.reviews+' avaliações verificadas · '+p.sold+' vendidos</span></div></div>'+
+   '<div class="pdp-price"><b>'+BRL(price)+'</b>'+(p.old?'<s>'+BRL(p.old*w.m)+'</s>':'')+'<span class="mono">ou 12x de '+BRL(price/12)+' sem juros</span></div>'+
+   (p.flavors.length>1?'<div><span class="opt-label">Sabor — '+fl.n+'</span><div style="display:flex;gap:8px">'+p.flavors.map((x,i)=>'<button class="sw-lg'+(i===pdp.f?' on':'')+'" style="background:'+x.c+'" title="'+x.n+'" onclick="pdp.f='+i+';renderPDP()" aria-label="'+x.n+'"></button>').join('')+'</div></div>':'')+
+   (p.weights.length>1?'<div><span class="opt-label">Tamanho</span><div style="display:flex;gap:8px;flex-wrap:wrap">'+p.weights.map((x,i)=>'<button class="wpill'+(i===pdp.w?' on':'')+'" onclick="pdp.w='+i+';renderPDP()">'+x.n+'</button>').join('')+'</div></div>':'')+
+   '<div style="display:flex;gap:12px;align-items:center"><div><span class="opt-label">Quantidade</span><div class="step-ctrl"><button onclick="pdpQ(-1)">−</button><span>'+pdp.q+'</span><button onclick="pdpQ(1)">+</button></div></div>'+
+   '<span class="mono" style="color:'+(p.stock>5?'var(--acTxt)':'#E2A05B')+';margin-top:16px">'+(p.stock>0?p.stock+' em estoque':'Esgotado')+'</span></div>'+
+   '<div class="pdp-actions">'+
+   '<button class="btn btn-ac" onclick="pdpAdd(false)" '+(!p.stock?'disabled style="opacity:.4"':'')+'>Adicionar ao carrinho</button>'+
+   '<button class="btn" onclick="pdpAdd(true)" '+(!p.stock?'disabled style="opacity:.4"':'')+'>Comprar agora</button>'+
+   '<button class="btn btn-sm" onclick="toggleFav(\''+p.id+'\')" style="grid-column:auto">'+ic('heart',15)+((favs.includes(p.id))?' Favoritado':' Favoritar')+'</button>'+
+   '<button class="btn btn-sm" onclick="waShare(\''+p.id+'\')" style="grid-column:auto">'+ic('wa',15)+' WhatsApp</button></div>'+
+   '<div class="pdp-tabs"><div class="tab-btns">'+
+   [['desc','Descrição'],['nut',p.kind==='tub'?'Tabela nutricional':'Especificações'],['uso','Modo de uso'],['rev','Avaliações'],['ent','Entrega']].map(t=>
+   '<button class="'+(pdp.tab===t[0]?'on':'')+'" onclick="pdp.tab=\''+t[0]+'\';renderPDP()">'+t[1]+'</button>').join('')+'</div><div class="tab-pane">'+pdpTab(p)+'</div></div>'+
+   '<div class="warn"><b style="color:var(--tx)">Advertência:</b> este produto não é um medicamento. Siga as orientações do rótulo; o consumo deve seguir recomendação de nutricionista ou médico.</div>';
+  $('#pdpModal .m-body').scrollTop=0;}
+function pdpQ(d){const p=getP(pdp.id);pdp.q=Math.min(Math.max(1,pdp.q+d),Math.max(1,p.stock));renderPDP();}
+function pdpTab(p){switch(pdp.tab){
+  case 'desc':return '<p>'+p.desc+'</p><p class="mono" style="color:var(--mut)">Marca: '+cfg.brand.toUpperCase()+' · Categoria: '+p.cat+' · SKU: '+p.sku+'</p>';
+  case 'nut':{const rows=p.nut||p.specs||[['—','—']];return '<table class="nut-tb">'+rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>').join('')+'</table>'+(p.nut?'<p style="margin-top:10px;color:var(--mut)">Informações conforme rotulagem. Valores podem variar entre lotes.</p>':'');}
+  case 'uso':return '<p>'+p.uso+'</p>'+(p.alerg?'<p><b style="color:var(--tx)">Alergênicos:</b> '+p.alerg+'</p>':'');
+  case 'rev':{
+    const list=(REV_SEED[p.id]||[]).concat(REV_USER[p.id]||[]);
+    const avg=list.length?list.reduce((s,r)=>s+r.r,0)/list.length:0;
+    const qa=QA_SEED[p.id]||[];
+    return (list.length?'<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px"><b style="font-family:var(--disp);font-size:38px;color:var(--tx)">'+avg.toFixed(1).replace('.',',')+'</b><div><span class="stars">'+stars(avg)+'</span><br><span class="mono" style="color:var(--mut)">'+list.length+' avaliações</span></div></div>':'<p class="mono" style="color:var(--mut)">Ainda sem avaliações para este produto.</p>')
+     +list.map(r=>'<div style="border-bottom:1px solid var(--ln);padding:12px 0"><span class="stars" style="font-size:12px">'+stars(r.r)+'</span>'
+       +'<b style="display:block;font-size:13px;margin-top:3px;color:var(--tx)">'+r.t+'</b><p style="color:var(--mut);font-size:13px">'+r.b+'</p>'
+       +'<span class="mono" style="color:var(--mut)">'+r.n+' · '+r.d+(r.v?' · <span style="color:var(--acTxt)">compra verificada</span>':' · não verificada')+'</span></div>').join('')
+     +'<b style="font-family:var(--disp);font-size:18px;text-transform:uppercase;display:block;margin-top:18px;color:var(--tx)">Perguntas & respostas</b>'
+     +(qa.length?qa.map(q=>'<div style="padding:10px 0;border-bottom:1px solid var(--ln)"><b style="font-size:13px;color:var(--tx)">'+q.q+'</b><p style="color:var(--acTxt);font-size:13px">R: '+q.a+'</p><span class="mono" style="color:var(--mut)">respondido por '+q.by+'</span></div>').join(''):'<p style="color:var(--mut);font-size:13px">Nenhuma pergunta ainda.</p>')
+     +'<div class="fld" style="margin-top:14px"><label>Sua nota (1–5)</label><input id="rvRate" type="number" min="1" max="5" style="max-width:90px"></div>'
+     +'<div class="fld"><label>Título</label><input id="rvTitle" maxlength="60"></div>'
+     +'<div class="fld"><label>Comentário</label><textarea id="rvBody" rows="3" style="width:100%;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);padding:10px 12px"></textarea></div>'
+     +'<button class="btn btn-sm btn-ac" onclick="revSubmit()">Enviar avaliação</button>';}
+  case 'ent':return '<p>Frete calculado pelo CEP de destino. Opções simuladas neste ambiente:</p><div class="cep-row"><input id="cepPdp" placeholder="00000-000" maxlength="9" inputmode="numeric"></div><div id="cepOut"></div>';}}
+function cepCalc(){const v=$('#cepPdp').value;if(!/^\d{5}-?\d{3}$/.test(v)){$('#cepOut').innerHTML='<small style="color:#E25B5B">Informe um CEP válido no formato 00000-000.</small>';return;}
+  $('#cepOut').innerHTML='<div class="ship-opt"><span>PAC — até 7 dias úteis</span><span class="mono">R$ 19,90</span></div><div class="ship-opt"><span>SEDEX — até 3 dias úteis</span><span class="mono">R$ 34,90</span></div><div class="ship-opt"><span>Retirada no balcão</span><span class="mono">Grátis</span></div><p class="mono" style="color:var(--mut)">Simulação demonstrativa — na produção, consulta Correios/Melhor Envio.</p>';}
+document.addEventListener('input',e=>{if(e.target.id==='cepPdp'){let v=e.target.value.replace(/\D/g,'').slice(0,8);if(v.length>5)v=v.slice(0,5)+'-'+v.slice(5);e.target.value=v;if(v.length===9)cepCalc();}});
+function pdpAdd(buy){const p=getP(pdp.id);addToCart(pdp.id,pdp.f,pdp.w,pdp.q);if(buy)openCheckout();}
+function waShare(id){const p=getP(id);window.open('https://wa.me/?text='+encodeURIComponent('Confira "'+p.name+'" por '+BRL(p.price)+' na '+cfg.brand+'.'),'_blank');}
+
+const FREE_SHIP=299;
+function cartTotal(){return cart.reduce((s,it)=>{const p=getP(it.id);return s+p.price*p.weights[it.w].m*it.q},0);}
+function cartQty(){return cart.reduce((s,i)=>s+i.q,0);}
+function addToCart(id,f,w,q){const p=getP(id);if(!p)return;
+  const ex=cart.find(i=>i.id===id&&i.f===f&&i.w===w);
+  if(ex){if(ex.q+q>p.stock){toast('Estoque insuficiente ('+p.stock+' un).');return;}ex.q+=q;}
+  else{if(q>p.stock){toast('Estoque insuficiente.');return;}cart.push({id,f,w,q});}
+  store.set('cart',cart);renderBadges();toast(p.name+' adicionado ao carrinho.','Ver carrinho',openCart);}
+function setQty(idx,d){const it=cart[idx],p=getP(it.id);
+  it.q=Math.min(Math.max(1,it.q+d),p.stock);store.set('cart',cart);renderCart();renderBadges();}
+function rmItem(idx){cart.splice(idx,1);store.set('cart',cart);renderCart();renderBadges();}
+function renderBadges(){const n=cartQty();
+  $('#cartBadge').innerHTML=n?'<span class="bdg">'+n+'</span>':'';
+  $('#favBadge').innerHTML=favs.length?'<span class="bdg">'+favs.length+'</span>':'';
+  $('#accBadge').innerHTML=ic('user');recoverySync();}
+function renderCart(){const n=cartQty();$('#cartCountLbl').textContent=n?n+' item(ns)':'vazio';
+  if(!cart.length){$('#cartItems').innerHTML='<div class="empty-state">'+ic('box',38)+'<p>Seu carrinho está vazio.</p><button class="btn btn-sm btn-ac" onclick="closeAllOverlays();goCat(\'\')">Explorar produtos</button></div>';
+   $('#cartFoot').innerHTML='';return;}
+  $('#cartItems').innerHTML=cart.map((it,idx)=>{const p=getP(it.id);if(!p)return '';const fl=p.flavors[it.f],w=p.weights[it.w];
+   return '<div class="ci"><div class="pv" style="transform:scale(.85)">'+pvHTML(p,it.f)+'</div>'+
+   '<div><b>'+p.name+'</b><span class="mono">'+fl.n+' · '+w.n+'</span><div class="step-ctrl" style="margin-top:8px"><button onclick="setQty('+idx+',-1)">−</button><span>'+it.q+'</span><button onclick="setQty('+idx+',1)">+</button></div></div>'+
+   '<div class="ci-right"><button class="ci-rm" onclick="rmItem('+idx+')">Remover</button><b>'+BRL(p.price*w.m*it.q)+'</b></div></div>';}).join('');
+  const sub=cartTotal(),disc=coupon?sub*coupon.pct:0,rest=Math.max(0,FREE_SHIP-(sub-disc));
+  const pct=Math.min(100,((sub-disc)/FREE_SHIP)*100);
+  $('#cartFoot').innerHTML=
+   '<div class="shipbar mono" style="color:var(--mut)">'+(rest>0?'Faltam '+BRL(rest)+' para o FRETE GRÁTIS':'Você conquistou o frete grátis')+'<div class="bar"><i style="width:'+pct+'%"></i></div></div>'+
+   '<div class="coupon-row"><input id="cpnIn" placeholder="Cupom (ex.: FORJA10)">'+(coupon?'':'<button class="btn btn-sm" onclick="applyCoupon()">Aplicar</button>')+'</div>'+
+   (coupon?'<div class="coupon-ok"><span>'+coupon.code+' — '+coupon.label+' aplicado</span><button onclick="rmCoupon()">remover</button></div>':'')+
+   '<div class="tot-row"><span>Subtotal</span><b>'+BRL(sub)+'</b></div>'+
+   (disc?'<div class="tot-row"><span>Desconto</span><b style="color:var(--acTxt)">−'+BRL(disc)+'</b></div>':'')+
+   '<div class="tot-row"><span>Frete</span><b>'+(rest<=0?'GRÁTIS':'calculado no checkout')+'</b></div>'+
+   '<div class="tot-row grand"><span>Total</span><b>'+BRL(sub-disc)+'</b></div>'+
+   '<button class="btn btn-ac" onclick="openCheckout()">Finalizar compra</button>';}
+let COUPONS=Object.assign({'FORJA10':{pct:.10,label:'10% OFF'},'PRIMEIRA15':{pct:.15,label:'15% primeira compra'},'FRETEGRATIS':{pct:0,free:true,label:'Frete grátis'}},store.get('coupons',{}));
+function applyCoupon(){const v=($('#cpnIn').value||'').trim().toUpperCase();
+  if(!COUPONS[v]){toast('Cupom inválido ou expirado.');return;}
+  coupon={code:v,...COUPONS[v]};renderCart();toast('Cupom '+v+' aplicado.');}
+function rmCoupon(){coupon=null;renderCart();}
+function openCart(){closeAllOverlays();renderCart();$('#cartDrawer').classList.add('open');$('#overlay').classList.add('show');document.body.classList.add('modal-open');}
+function addKit(){addToCart('whey-conc',0,0,1);addToCart('creatina',0,0,1);addToCart('shaker',0,0,1);}
+
+function toggleFav(id){const i=favs.indexOf(id);
+  if(i>=0){favs.splice(i,1);toast('Removido dos favoritos.');}else{favs.push(id);toast('Salvo nos favoritos.');}
+  store.set('favs',favs);renderBadges();renderFavs();if($('#pdpModal').classList.contains('open'))renderPDP();}
+function renderFavs(){$('#favCountLbl').textContent=favs.length?favs.length+' item(ns)':'vazio';
+  if(!favs.length){$('#favItems').innerHTML='<div class="empty-state">'+ic('heart',38)+'<p>Nenhum favorito ainda. Toque no coração nos produtos.</p></div>';return;}
+  $('#favItems').innerHTML=favs.map(id=>{const p=getP(id);if(!p)return '';
+   return '<div class="ci"><div class="pv" style="transform:scale(.85)" onclick="closeAllOverlays();openPDP(\''+p.id+'\')" role="button">'+pvHTML(p,0)+'</div><div><b>'+p.name+'</b><span class="mono">'+p.cat+'</span></div><div class="ci-right"><b>'+BRL(p.price)+'</b><button class="btn btn-sm btn-ac" onclick="quickAdd(\''+p.id+'\')">Comprar</button><button class="ci-rm" onclick="toggleFav(\''+p.id+'\')">Remover</button></div></div>';}).join('');}
+function openFavs(){closeAllOverlays();renderFavs();$('#favDrawer').classList.add('open');$('#overlay').classList.add('show');document.body.classList.add('modal-open');}
+
+function renderSearch(){const q=$('#searchInput').value.trim().toLowerCase();
+  if(q.length<2){$('#searchDrop').classList.remove('open');return;}
+  const res=PRODUCTS.filter(p=>(p.name+' '+p.cat+' '+p.sku).toLowerCase().includes(q)).slice(0,6);
+  $('#searchDrop').innerHTML=res.length?res.map(p=>'<div class="sr-item" onclick="closeSearch();openPDP(\''+p.id+'\')"><div class="sr-v">'+pvHTML(p,0)+'</div><div><b>'+p.name+'</b><span class="mono">'+p.cat+' · '+BRL(p.price)+'</span></div></div>').join(''):'<div class="sr-empty">Nada encontrado para "'+q+'".</div>';
+  $('#searchDrop').classList.add('open');}
+function closeSearch(){$('#searchDrop').classList.remove('open');$('#searchWrap').classList.remove('open');$('#searchInput').value='';}
+
+function openModal(id){closeAllOverlays();$('#'+id).classList.add('open');$('#overlay').classList.add('show');document.body.classList.add('modal-open');}
+function closeAllOverlays(){$$('.modal').forEach(m=>m.classList.remove('open'));$$('.drawer.right').forEach(d=>d.classList.remove('open'));$('#overlay').classList.remove('show');document.body.classList.remove('modal-open');}
+function closeNav(){$('#navDrawer').classList.remove('open');$('#overlay').classList.remove('show');}
+ $('#hamb').addEventListener('click',()=>{$('#navDrawer').classList.add('open');$('#overlay').classList.add('show');});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeAllOverlays();closeSearch();closeNav();$('#chatPanel').classList.remove('open');}});
+
+let ck={step:1,name:'',email:'',cep:'',addrTxt:'',ship:null,pay:'pix',inst:1};
+const SHIPS=[{id:'pac',l:'PAC — 4 a 7 dias úteis',p:19.90},{id:'sedex',l:'SEDEX — 1 a 3 dias úteis',p:34.90},{id:'ret',l:'Retirada no balcão',p:0}];
+function openCheckout(){if(!cart.length){toast('Seu carrinho está vazio.');return;}closeAllOverlays();ck.step=1;
+  if(user){ck.name=user.name;ck.email=user.email;}
+  if(addr){ck.cep=addr.cep;ck.addrTxt=addr.txt;ck.ship=SHIPS.find(s=>s.id===addr.ship)||null;}
+  ckModal();openModal('ckModal');}
+function ckModal(){
+  $('#ckSteps').innerHTML=['Identificação','Entrega','Pagamento','Revisão'].map((t,i)=>'<div class="'+(ck.step===i+1?'on':'')+'">0'+(i+1)+' '+t+'</div>').join('');
+  const body=$('#ckBody'),foot=$('#ckFoot');
+  if(ck.step===1){body.innerHTML='<h4>Seus dados</h4><div class="frow1"><div class="fld"><label>Nome completo</label><input id="ckName" value="'+ck.name+'"><small></small></div></div><div class="frow1"><div class="fld"><label>E-mail</label><input id="ckEmail" type="email" value="'+ck.email+'"><small></small></div>'+
+   '<p class="mono" style="color:var(--mut)">Sem conta? A compra como visitante é permitida. Criar conta salva seus pedidos para acompanhamento.</p></div>';
+   foot.innerHTML='<button class="btn btn-sm" onclick="closeAllOverlays()">Voltar</button><button class="btn btn-ac" onclick="ckNext1()">Continuar</button>';}
+  if(ck.step===2){body.innerHTML='<h4>Entrega</h4><div class="frow1"><div class="fld"><label>CEP</label><input id="ckCep" value="'+ck.cep+'" placeholder="00000-000" maxlength="9" inputmode="numeric"><small></small></div></div><div class="frow1"><div class="fld"><label>Endereço (rua, nº, complemento, bairro, cidade/UF)</label><textarea id="ckAddr" rows="2" style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);padding:10px 12px;outline:none;resize:vertical">'+ck.addrTxt+'</textarea><small></small></div></div>'+
+   '<div><span class="opt-label">Opções de frete (simulação)</span>'+SHIPS.map(s=>'<div class="ship-opt" style="'+(ck.ship&&ck.ship.id===s.id?'border-color:var(--ac)':'')+'" onclick="ckShip(\''+s.id+'\')"><span>'+s.l+'</span><span class="mono">'+(s.p?BRL(s.p):'Grátis')+'</span></div>').join('')+'</div>';
+   foot.innerHTML='<button class="btn btn-sm" onclick="ck.step=1;ckModal()">Voltar</button><button class="btn btn-ac" onclick="ckNext2()">Continuar</button>';}
+  if(ck.step===3){const sub=cartTotal(),disc=coupon?sub*coupon.pct:0,ship=ck.ship?ck.ship.p:0;
+   body.innerHTML='<h4>Pagamento</h4>'+
+   '<div style="display:flex;flex-direction:column;gap:10px">'+
+   '<div class="pay-opt '+(ck.pay==='pix'?'on':'')+'" onclick="ck.pay=\'pix\';ckModal()"><span class="radio"></span><div><b>Pix</b><span class="mono">Aprovação imediata</span></div></div>'+
+   '<div class="pay-opt '+(ck.pay==='card'?'on':'')+'" onclick="ck.pay=\'card\';ckModal()"><span class="radio"></span><div><b>Cartão de crédito</b><span class="mono">Até 12x sem juros</span></div></div></div>'+
+   (ck.pay==='card'?'<div class="frow1"><div class="fld"><label>Número do cartão (não é armazenado nem processado)</label><input id="ckCard" inputmode="numeric" placeholder="0000 0000 0000 0000"><small></small></div><div class="frow"><div class="fld"><label>Validade</label><input id="ckVal" placeholder="MM/AA"><small></small></div><div class="fld"><label>CVV</label><input id="ckCvv" inputmode="numeric" maxlength="4" placeholder="123"><small></small></div></div><div class="fld"><label>Parcelas</label><select id="ckInst">'+[1,2,3,4,6,10,12].map(n=>'<option value="'+n+'">'+n+'x de '+BRL((sub-disc+ship)/n)+' sem juros</option>').join('')+'</select></div></div>':'')+
+   (ck.pay==='pix'?'<p style="color:var(--mut);font-size:13px">Após confirmar, exibiremos um código para copia e cola. <b style="color:var(--tx)">Nenhuma cobrança é emitida neste ambiente de demonstração.</b></p>':'')+
+   '<div class="tot-row grand"><span>Total</span><b>'+BRL(sub-disc+ship)+'</b></div>';
+   foot.innerHTML='<button class="btn btn-sm" onclick="ck.step=2;ckModal()">Voltar</button><button class="btn btn-ac" onclick="ckNext3()">Revisar pedido</button>';
+   const cc=$('#ckCard');if(cc)cc.addEventListener('input',()=>{cc.value=cc.value.replace(/\D/g,'').slice(0,16).replace(/(\d{4})(?=\d)/g,'$1 ');});}
+  if(ck.step===4){const sub=cartTotal(),disc=coupon?sub*coupon.pct:0,ship=ck.ship.p,tot=sub-disc+ship;
+   body.innerHTML='<h4>Revisão</h4>'+
+   cart.map(it=>{const p=getP(it.id);return '<div class="rev-line"><span>'+it.q+'× '+p.name+' <span class="mono">('+p.flavors[it.f].n+' · '+p.weights[it.w].n+')</span></span><b>'+BRL(p.price*p.weights[it.w].m*it.q)+'</b></div>';}).join('')+
+   '<div class="rev-line"><span class="mono">Entrega</span><span>'+ck.name+' · '+ck.addrTxt+' · CEP '+ck.cep+'</span></div>'+
+   '<div class="rev-line"><span class="mono">Frete</span><span>'+ck.ship.l+' — '+(ship?BRL(ship):'Grátis')+'</span></div>'+
+   '<div class="rev-line"><span class="mono">Pagamento</span><span>'+(ck.pay==='pix'?'Pix':'Cartão de crédito — '+ck.inst+'x sem juros')+'</span></div>'+
+   (disc?'<div class="rev-line"><span class="mono">Cupom '+coupon.code+'</span><b style="color:var(--acTxt)">−'+BRL(disc)+'</b></div>':'')+
+   '<div class="tot-row grand" style="margin-top:8px"><span>Total</span><b>'+BRL(tot)+'</b></div>';
+   foot.innerHTML='<button class="btn btn-sm" onclick="ck.step=3;ckModal()">Voltar</button><button class="btn btn-ac" onclick="ckConfirm()">Confirmar pedido</button>';}
+  if(ck.step===5){foot.innerHTML='';}
+  $('#ckModal .m-body').scrollTop=0;}
+function ckShip(id){ck.ship=SHIPS.find(s=>s.id===id);ckModal();}
+function val(inp,msg){const el=$(inp);if(!el.value.trim()){el.classList.add('err');el.parentElement.querySelector('small').textContent=msg;return false;}el.classList.remove('err');return true;}
+function ckNext1(){if(!val('#ckName','Informe seu nome.'))return;
+  const em=$('#ckEmail');if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em.value)){em.classList.add('err');em.parentElement.querySelector('small').textContent='E-mail inválido.';return;}
+  ck.name=$('#ckName').value.trim();ck.email=em.value.trim();ck.step=2;ckModal();}
+function ckNext2(){if(!/^\d{5}-?\d{3}$/.test($('#ckCep').value)){$('#ckCep').classList.add('err');$('#ckCep').parentElement.querySelector('small').textContent='CEP inválido.';return;}
+  if(!val('#ckAddr','Informe o endereço completo.'))return;
+  if(!ck.ship){toast('Escolha uma opção de frete.');return;}
+  ck.cep=$('#ckCep').value;ck.addrTxt=$('#ckAddr').value.trim();
+  store.set('addr',{cep:ck.cep,txt:ck.addrTxt,ship:ck.ship.id});ck.step=3;ckModal();}
+function ckNext3(){if(ck.pay==='card'){
+   if($('#ckCard').value.replace(/\D/g,'').length<13){toast('Número do cartão incompleto.');return;}
+   if(!/^\d{2}\/\d{2}$/.test($('#ckVal').value)){toast('Validade no formato MM/AA.');return;}
+   if($('#ckCvv').value.length<3){toast('CVV inválido.');return;}
+   ck.inst=parseInt($('#ckInst').value);}
+  ck.step=4;ckModal();}
+function ckConfirm(){const num='FJ-'+String(Date.now()).slice(-6);
+  const sub=cartTotal(),disc=coupon?sub*coupon.pct:0,ship=ck.ship.p;
+  orders.unshift({num,date:new Date().toLocaleString('pt-BR'),name:ck.name,email:ck.email,
+    items:cart.map(it=>{const p=getP(it.id);return it.q+'× '+p.name+' ('+p.flavors[it.f].n+' · '+p.weights[it.w].n+')'}),
+    total:sub-disc+ship,ship:ck.ship.l,pay:ck.pay==='pix'?'Pix (demo)':('Cartão — '+ck.inst+'x (demo)'),
+    status:(ck.pay==='pix'?'Aguardando pagamento':'Pagamento aprovado (demo)')});
+  store.set('orders',orders);
+  const tot=sub-disc+ship,ganhou=ptsEarn(Math.round(tot));
+  recoveryMark('ordered');
+  cart=[];coupon=null;store.set('cart',cart);renderBadges();ck.step=5;
+  const pixCode='00020126580014BR.GOV.BCB.PIX5204000053039865802BR5911FORJA DEMO6009SAO PAULO62'+num+'6304DEMO';
+  const pix=ck.pay==='pix'
+   ?'<div style="width:100%;max-width:460px;text-align:left"><span class="opt-label">Pix copia e cola — demonstração, nenhuma cobrança é emitida</span>'
+   +'<div class="pix-code">'+pixCode+'</div><button class="btn btn-sm" style="margin-top:8px" onclick="copyPix(\''+pixCode+'\')">Copiar código Pix</button> '
+   +'<button class="link-mono" style="margin-left:8px" onclick="pixPaid(\''+num+'\')">Simular confirmação do webhook →</button></div>':'';
+  $('#ckSteps').innerHTML='';
+  $('#ckBody').innerHTML='<div class="success"><div class="ok-ring">'+ic('check',28)+'</div>'
+   +'<h4 style="font-family:var(--disp);font-size:30px;text-transform:uppercase">Pedido '+num+' confirmado</h4>'
+   +'<p style="color:var(--mut)">Total de '+BRL(tot)+' — '+ck.ship.l+'.<br>Acompanhe o status em Minha conta → Pedidos.</p>'
+   +pix+'<p class="mono" style="color:var(--acTxt)">+'+ganhou+' pontos neste pedido</p>'
+   +'<button class="btn btn-ac" onclick="closeAllOverlays();openAcc(\'ped\')">Ver meus pedidos</button>'
+   +'<button class="btn btn-sm" onclick="closeAllOverlays()">Continuar comprando</button></div>';
+  toast('Pedido '+num+' registrado (demonstração).');}
+function pixPaid(num){const o=orders.find(x=>x.num===num);
+  if(o){o.status='Pagamento aprovado (demo)';store.set('orders',orders);
+  toast('Webhook simulado: pedido '+num+' marcado como pago.');}}
+function copyPix(txt){navigator.clipboard.writeText(txt).then(()=>toast('Código copiado.'));}
+
+function ptsGet(){return store.get('points',0)}
+function ptsEarn(tot){const g=Math.floor(tot);store.set('points',ptsGet()+g);return g}
+function refCode(){let h=0;const s=user?user.email:'guest';for(const c of s)h=(h*31+c.charCodeAt(0))>>>0;
+  return 'FJ-'+h.toString(36).toUpperCase().slice(0,6)}
+
+let accTab='ped';
+function openAcc(tab){accTab=tab||'ped';accModal();openModal('accModal');}
+function accModal(){
+  $('#accTabs').innerHTML=user?
+   [['ped','Pedidos'],['pts','Pontos'],['fav','Favoritos'],['end','Endereço'],['dados','Dados']].map(t=>'<button class="'+(accTab===t[0]?'on':'')+'" onclick="accTab=\''+t[0]+'\';accModal()">'+t[1]+'</button>').join('')+
+   '<button onclick="logout()">Sair</button>'
+   :[['in','Entrar'],['up','Criar conta']].map(t=>'<button class="'+(accTab===t[0]?'on':'')+'" onclick="accTab=\''+t[0]+'\';accModal()">'+t[1]+'</button>').join('');
+  const b=$('#accBody');
+  if(!user){b.innerHTML='<div class="fld"><label>E-mail</label><input id="acEm" type="email"></div><div class="fld"><label>Senha</label><input id="acPw" type="password"></div>'+(accTab==='up'?'<div class="fld"><label>Nome completo</label><input id="acNm"></div>'
+     +'<div class="fld"><label>WhatsApp (opcional)</label><input id="acPh" type="tel" inputmode="tel" placeholder="(86) 99999-9999" autocomplete="tel"></div>'
+     +'<label style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--mut);cursor:pointer"><input id="acWa" type="checkbox" style="width:auto;height:auto;margin-top:3px"><span>Aceito receber lembretes do meu carrinho por WhatsApp. Posso responder SAIR a qualquer momento para parar.</span></label>':'')+
+   '<button class="btn btn-ac" onclick="'+(accTab==='up'?'accRegister()':'accLogin()')+'">'+(accTab==='up'?'Criar conta':'Entrar')+'</button>'+
+   '<p class="mono" style="color:var(--mut)">Demonstração local: os dados ficam apenas no seu navegador. Em produção: autenticação com hash de senha, recuperação por e-mail e login social.</p>'+
+   (accTab==='in'?'<button class="link-mono" onclick="accTab=\'up\';accModal()">Não tenho conta →</button>':'<button class="link-mono" onclick="accTab=\'in\';accModal()">Já tenho conta →</button>');return;}
+  if(accTab==='ped'){b.innerHTML=orders.length?orders.map(o=>'<div class="order-card"><div class="oh"><b style="font-family:var(--mono)">'+o.num+'</b>'+tl(o.status)+'</div><span class="mono" style="color:var(--mut)">'+o.date+' · '+o.pay+'</span>'+o.items.map(i=>'<span style="font-size:13px">— '+i+'</span>').join('')+'<div class="oh"><b style="font-family:var(--mono)">'+BRL(o.total)+'</b><span class="mono" style="color:var(--mut)">'+o.ship+'</span></div><button class="btn btn-sm" onclick="rebuy('+orders.indexOf(o)+')">Recompra rápida</button></div>').join(''):'<div class="empty-state">'+ic('box')+'<p>Nenhum pedido ainda.</p></div>';}
+  if(accTab==='pts'){const p=ptsGet();b.innerHTML=
+   '<div class="order-card"><div class="oh"><span class="mono" style="color:var(--mut)">Saldo de pontos</span><b style="font-family:var(--mono);font-size:26px">'+p+'</b></div>'
+   +'<span style="font-size:13px;color:var(--mut)">1 ponto por R$ 1 gasto. A cada 100 pontos você resgata R$ 10 no próximo pedido (resgate via cupom gerado no painel, em produção).</span></div>'
+   +'<div class="order-card"><div class="oh"><span class="mono" style="color:var(--mut)">Seu código de indicação</span><b style="font-family:var(--mono)">'+refCode()+'</b></div>'
+   +'<span style="font-size:13px;color:var(--mut)">Quem usar seu código com o cupom INDICA10 ganha 10% OFF na primeira compra — e você acumula pontos nela.</span>'
+   +'<button class="btn btn-sm" onclick="copyPix(\''+refCode()+'\')">Copiar meu código</button></div>';}
+  if(accTab==='fav'){b.innerHTML=favs.length?'<div style="display:flex;flex-direction:column;gap:8px">'+favs.map(id=>{const p=getP(id);return '<div class="order-card" style="flex-direction:row;align-items:center;justify-content:space-between"><span>'+p.name+' — <b style="font-family:var(--mono)">'+BRL(p.price)+'</b></span><span><button class="btn btn-sm btn-ac" onclick="quickAdd(\''+id+'\')">Comprar</button> <button class="ci-rm" onclick="toggleFav(\''+id+'\');accModal()">Remover</button></span></div>';}).join('')+'</div>':'<p style="color:var(--mut)">Nenhum favorito.</p>';}
+  if(accTab==='end'){const a=addr;b.innerHTML='<div class="fld"><label>CEP</label><input id="adCep" value="'+(a?a.cep:'')+'" placeholder="00000-000"></div><div class="fld"><label>Endereço</label><textarea id="adTxt" rows="2" style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);padding:10px 12px">'+(a?a.txt:'')+'</textarea></div><button class="btn btn-ac" onclick="saveAddr()">Salvar endereço</button>';}
+  if(accTab==='dados'){b.innerHTML='<div class="order-card"><div class="oh"><span class="mono" style="color:var(--mut)">Nome</span><b>'+user.name+'</b></div><div class="oh"><span class="mono" style="color:var(--mut)">E-mail</span><b>'+user.email+'</b></div></div>'+
+   '<button class="btn btn-sm" onclick="exportData()">Exportar meus dados (LGPD)</button>'+
+   '<button class="btn btn-sm" onclick="delData()" style="border-color:#E25B5B;color:#E25B5B">Excluir meus dados</button>';}
+}
+function tl(cur){const steps=['Aguardando pagamento','Pagamento aprovado (demo)','Em separação','Enviado','Entregue'];
+  const i=steps.indexOf(cur);
+  if(i<0)return '<span class="status-pill">'+cur+'</span>';
+  return '<div style="display:flex;gap:0;margin:8px 0 4px;min-width:260px">'+steps.map((s,j)=>
+   '<div style="flex:1;text-align:center"><div style="height:3px;background:'+(j<=i?'var(--ac)':'var(--ln)')+'"></div>'
+   +'<span class="mono" style="font-size:8px;letter-spacing:.04em;color:'+(j<=i?'var(--tx)':'var(--mut)')+'">'+s+'</span></div>').join('')+'</div>';}
+function accLogin(){const em=$('#acEm').value,pw=$('#acPw').value;
+  if(!em||!pw){toast('Preencha e-mail e senha.');return;}
+  const st=store.get('users',{});const u=st[em.toLowerCase()];
+  if(u&&u.pw===btoa(pw)){user={name:u.name,email:em.toLowerCase(),phone:u.phone||null,wa:!!u.wa};store.set('user',user);renderBadges();accModal();toast('Bem-vindo de volta, '+user.name.split(' ')[0]+'.');}
+  else toast('Conta não encontrada ou senha incorreta. Crie uma conta.');}
+function accRegister(){const em=$('#acEm').value.toLowerCase(),pw=$('#acPw').value,nm=$('#acNm').value;
+  if(!em||pw.length<4||!nm){toast('Preencha nome, e-mail e senha (mín. 4 caracteres).');return;}
+  const st=store.get('users',{});if(st[em]){toast('E-mail já cadastrado.');return;}
+  const phone=recoveryPhone($('#acPh').value),wa=!!$('#acWa').checked;
+  if($('#acPh').value.trim()&&!phone){toast('WhatsApp inválido. Use DDD + número, ex.: (86) 99999-9999.');return;}
+  if(wa&&!phone){toast('Informe seu WhatsApp para receber os lembretes.');return;}
+  st[em]={name:nm,pw:btoa(pw),phone:phone,wa:wa&&!!phone};store.set('users',st);user={name:nm,email:em,phone:phone,wa:wa&&!!phone};store.set('user',user);
+  renderBadges();accModal();toast('Conta criada em modo demonstração.');}
+function logout(){recoveryMark('clear');user=null;store.set('user',null);renderBadges();closeAllOverlays();toast('Você saiu da conta.');}
+function saveAddr(){addr={cep:$('#adCep').value,txt:$('#adTxt').value};store.set('addr',addr);toast('Endereço salvo.');}
+function exportData(){const blob=new Blob([JSON.stringify({user,orders,favs,addr},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='forja-meus-dados.json';a.click();toast('Download gerado.');}
+function delData(){if(!confirm('Excluir todos os seus dados locais? Esta ação não pode ser desfeita.'))return;recoveryMark('erase');
+  ['user','orders','favs','addr','cart'].forEach(k=>localStorage.removeItem('forja_'+k));user=null;favs=[];orders=[];addr=null;cart=[];renderBadges();closeAllOverlays();toast('Dados excluídos.');}
+function rebuy(i){const o=orders[i];toast('Recompra: adicione os itens manualmente — pedido '+o.num+'.');openCart();}
+
+/* ---------- Avaliações & P&R ---------- */
+const REV_SEED={
+ 'whey-conc':[{r:5,t:'Dissolve de verdade',b:'Zero grumos no shaker, sabor consistente entre lotes. Já é o terceiro pote.',n:'Marina C.',d:'12/03/2025',v:1},
+  {r:4,t:'Ótimo custo-benefício',b:'Poderia ter versão sachê para testar sabores, mas o chocolate é seguro.',n:'Luiz F.',d:'28/02/2025',v:1}],
+ 'creatina':[{r:5,t:'Rótulo honesto',b:'Micronizada de verdade, não empapa. Uso todos os dias há 4 meses.',n:'Diego M.',d:'02/03/2025',v:1}],
+ 'pre-treino':[{r:4,t:'Energia na medida',b:'150 mg de cafeína é justo — não dá tremor. Evite depois das 18h como o rótulo avisa.',n:'Camila R.',d:'19/02/2025',v:1}]};
+const QA_SEED={
+ 'whey-conc':[{q:'Posso tomar à noite?',a:'Sim. O whey concentrado não contém cafeína. Só o pré-treino tem restrição de horário.',by:'FORJA Assist'},
+  {q:'É lacrado?',a:'Sim — todo lote sai com lacre de segurança e código de rastreio no lacre.',by:'Atendimento'}],
+ 'creatina':[{q:'Preciso de fase de saturação?',a:'Não. A literatura atual indica 3–5 g/dia contínuos, sem necessidade de sobredose inicial.',by:'FORJA Assist'}]};
+const REV_USER=store.get('reviews',{});
+function revSubmit(){const p=getP(pdp.id);
+  const r={r:Math.min(5,Math.max(1,parseInt($('#rvRate').value)||0)),
+    t:$('#rvTitle').value.trim(),b:$('#rvBody').value.trim(),
+    n:(user?user.name:'Cliente'),d:new Date().toLocaleDateString('pt-BR'),v:0};
+  if(!r.r||!r.b){toast('Dê uma nota de 1 a 5 e escreva o comentário.');return;}
+  (REV_USER[p.id]=REV_USER[p.id]||[]).unshift(r);store.set('reviews',REV_USER);
+  renderPDP();toast('Avaliação registrada — passará por moderação antes de publicar.');}
+
+/* ---------- Chatbot ---------- */
+function toggleChat(){const p=$('#chatPanel');p.classList.toggle('open');
+  if(p.classList.contains('open')&&!$('#chatLog').children.length)
+   botSay('Olá! Sou o assistente da '+cfg.brand+'. Posso buscar produtos, informar preços, explicar frete e políticas. Como posso ajudar?');}
+function addMsg(html,me){const d=document.createElement('div');d.className='msg '+(me?'me':'bot');d.innerHTML=html;$('#chatLog').appendChild(d);$('#chatLog').scrollTop=1e6;return d;}
+function botSay(txt,prods){const t=addMsg('<span class="typing"><i></i><i></i><i></i></span>',false);
+  setTimeout(()=>{t.innerHTML=txt;
+   if(prods&&prods.length)t.innerHTML+=prods.map(p=>'<div class="m-prod" onclick="toggleChat();openPDP(\''+p.id+'\')"><div class="pv">'+pvHTML(p,0)+'</div><div><b>'+p.name+'</b><span class="mono">'+BRL(p.price)+' · '+p.cat+'</span></div></div>').join('');
+   $('#chatLog').scrollTop=1e6;},600+Math.random()*400);}
+function chatSend(txtIn){const inp=$('#chatInput');const q=(txtIn||inp.value).trim();if(!q)return;inp.value='';
+  addMsg(q,true);setTimeout(()=>routeChat(q.toLowerCase()),350);}
+function routeChat(q){
+  const priceWords=['preço','preco','quanto custa','valor'];
+  const found=PRODUCTS.filter(p=>q.includes(p.name.toLowerCase().split(' ')[0].toLowerCase())||p.name.toLowerCase().includes(q)||p.cat.toLowerCase().includes(q));
+  if(priceWords.some(w=>q.includes(w))||found.length){
+    if(found.length)return botSay('Encontrei no catálogo'+(found.length>1?' ('+found.length+' itens)':'')+':',found.slice(0,3));
+    return botSay('Não localizei esse item. Digite o nome (ex.: "whey", "creatina", "luva") e eu busco para você.');}
+  if(q.includes('frete')||q.includes('prazo')||q.includes('entrega'))
+    return botSay('Frete grátis acima de '+BRL(FREE_SHIP)+'. Na produção, o prazo real é calculado pelo CEP via Correios/Melhor Envio — aqui exibimos simulações de PAC (4–7 dias úteis), SEDEX (1–3) e retirada. A calculadora de CEP está na aba "Entrega" de cada produto.');
+  if(q.includes('troca')||q.includes('devolu'))
+    return botSay('Você tem até 30 dias corridos após o recebimento para solicitar troca ou devolução, com o produto na embalagem original. Abra a solicitação em Minha conta → Pedidos. Consulte a política completa no rodapé.');
+  if(q.includes('cupom')||q.includes('desconto'))
+    return botSay('Cupons ativos nesta demonstração: <b>FORJA10</b> (10% OFF) e <b>PRIMEIRA15</b> (15% na primeira compra). Aplique no carrinho.');
+  if(q.includes('pagamento')||q.includes('pix')||q.includes('cartão')||q.includes('cartao'))
+    return botSay('Aceitamos Pix e cartão de crédito em até 12x sem juros. Neste ambiente de demonstração nenhuma cobrança é emitida — os gateways (Mercado Pago, PagBank, Pagar.me) são conectados via adaptadores quando as credenciais reais forem configuradas.');
+  if(q.includes('humano')||q.includes('atendente'))
+    return botSay('Claro! Encaminhando para o atendimento humano: <a class="link-mono" onclick="toast(\'Conecte o WhatsApp Business no painel administrativo.\')" style="cursor:pointer">Abrir conversa no WhatsApp →</a><br><span class="mono" style="color:var(--mut)">Seg–Sáb, 8h às 18h.</span>');
+  if(q.includes('oi')||q.includes('olá')||q.includes('ola')||q.includes('bom dia')||q.includes('boa tarde')||q.includes('boa noite'))
+    return botSay('Olá! Em que posso ajudar? Posso buscar produtos, falar de frete, cupons ou políticas.');
+  botSay('Não tenho certeza se entendi. Tente perguntas como "quanto custa a creatina", "qual o prazo de entrega" ou "quero um cupom".');}
+
+const INFO={
+ trocas:['Trocas e devoluções','Você pode desistir da compra em até 7 dias corridos (art. 49 do CDC) e solicitar troca por defeito ou desistência em até 30 dias, com produto na embalagem original e sem sinais de uso. Solicite por Minha conta → Pedidos. Em produção, cada solicitação gera um ticket no painel de atendimento.'],
+ frete:['Frete e prazos','Trabalhamos com PAC, SEDEX e transportadoras parceiras via Melhor Envio. Frete grátis para pedidos acima de '+BRL(FREE_SHIP)+'. Os prazos exibidos nesta demonstração são simulações; em produção, a cotação é feita em tempo real pelo CEP.'],
+ priv:['Privacidade e LGPD (Lei 13.709/2018)','Coletamos apenas dados necessários para executar o pedido. Você pode exportar seus dados, solicitar exclusão e gerenciar consentimentos de marketing na sua conta. Cookies de marketing só são ativados com consentimento explícito.'],
+ termos:['Termos de uso','Este ambiente é uma demonstração técnica: pedidos, cupons e pagamentos não geram obrigações comerciais reais. Em produção, os termos devem incluir dados cadastrais da empresa, políticas da Anvisa para publicação de suplementos e regras de consumo aplicáveis.']};
+function openInfo(k){$('#infoTitle').textContent=INFO[k][0];$('#infoBody').innerHTML='<p>'+INFO[k][1]+'</p>';openModal('infoModal');}
+
+/* ---------- Blog ---------- */
+const BLOG=[
+ {k:'Nutrição',t:'Creatina: o que a ciência realmente diz',m:'6 min',img:'forja-blog1',body:
+  '<p><b>Mitologia mais batida:</b> "creatina engorda". O que muda na balança é água intramuscular — e é justamente isso que melhora o desempenho nas séries pesadas.</p>'
+ +'<p>A creatina monohidratada é o suplemento mais estudado da nutrição esportiva. A dose eficaz é simples: 3 a 5 g por dia, todos os dias, com ou sem treino. Fase de saturação com doses altas não é necessária — só aumenta o risco de desconforto gástrico.</p>'
+ +'<p>Dois cuidados práticos: hidrate-se bem e prefira marcas com laudo de pureza por lote. Suplemento não é medicamento: não trata, não cura e não substitui a alimentação. Em caso de dúvida, procure nutricionista.</p>'},
+ {k:'Guia de compra',t:'Concentrado, isolado ou hidrolisado?',m:'5 min',img:'forja-blog2',body:
+  '<p>A diferença entre os tipos de whey está no processo de filtragem — e no preço.</p>'
+ +'<p>O <b>concentrado</b> mantém um pouco mais de lactose e gordura, custa menos e resolve para a maioria das pessoas. O <b>isolado</b> entrega mais proteína por grama com menos lactose — faz sentido para quem tem sensibilidade ou está em fase de definição. O <b>hidrolisado</b> é pré-digerido: absorve rápido, mas raramente justifica a diferença de preço.</p>'
+ +'<p>Dica de mercado: ignore o tamanho do pote e divida o preço pelo total de proteína declarada na rotulagem. É assim que se compara oferta de verdade — e é por isso que exibimos a tabela completa em cada produto.</p>'},
+ {k:'Treino',t:'5 erros de quem está começando',m:'4 min',img:'forja-blog3',body:
+  '<p>1) <b>Carga antes da técnica.</b> Progressão só vale com execução limpa — gravar os próprios vídeos ajuda mais que qualquer app.</p>'
+ +'<p>2) <b>Pular o aquecimento.</b> Cinco minutos de mobilidade e séries de aproximação poupam semanas parado.</p>'
+ +'<p>3) <b>Treinar sem plano.</b> Frequência vence intensidade: três sessões consistentes por semana superam uma "monstra" isolada.</p>'
+ +'<p>4) <b>Achar que suplemento compensa sono ruim.</b> Nada no catálogo substitui 7–8 horas de sono. Nada.</p>'
+ +'<p>5) <b>Ignorar a alimentação.</b> Proteína distribuída nas refeições é a fundação — o suplemento é ajuste fino, não base.</p>'}];
+function renderBlog(){$('#blogGrid').innerHTML=BLOG.map((b,i)=>
+  '<article class="bcard" onclick="openPost('+i+')"><img src="https://picsum.photos/seed/'+b.img+'/640/360.jpg" alt="'+b.t+'">'
+ +'<div class="bi"><span class="mono" style="color:var(--acTxt)">'+b.k+' · '+b.m+' de leitura</span><h3>'+b.t+'</h3><span class="link-mono">Ler artigo →</span></div></article>').join('');}
+function openPost(i){$('#infoTitle').textContent=BLOG[i].t;$('#infoBody').innerHTML=BLOG[i].body;openModal('infoModal');}
+
+/* ---------- LGPD ---------- */
+function lgpdInit(){if(!store.get('lgpd',null)){$('#lgpd').classList.add('show');}}
+function lgpdSet(v){store.set('lgpd',v);$('#lgpd').classList.remove('show');
+  toast(v==='all'?'Consentimento registrado — marketing habilitado.':'Consentimento registrado — apenas cookies essenciais.');
+  /* Em produção: v==='all' injeta GA4/GTM/Meta Pixel aqui. Sem consentimento, nenhum pixel carrega. */}
+
+/* ---------- Produtos criados pelo admin (persistidos) ---------- */
+let CUSTOM=store.get('customProducts',[]);
+let DELETED=store.get('deletedBase',[]);
+function loadCustom(){
+  PRODUCTS.forEach(p=>{if(DELETED.includes(p.id))p._hidden=true;});
+  CUSTOM.forEach(p=>{if(!getP(p.id))PRODUCTS.push(p);});}
+function rebuildCats(){CATS.splice(0,CATS.length,...new Set(PRODUCTS.filter(p=>!p._hidden).map(p=>p.cat)));}
+function admAddProduct(){
+  const name=($('#npName').value||'').trim(),cat=($('#npCat').value||'').trim();
+  const price=parseFloat($('#npPrice').value),old=parseFloat($('#npOld').value)||null;
+  const stock=parseInt($('#npStock').value)||0,flN=($('#npFl').value||'').trim(),flC=$('#npCol').value;
+  const kind=$('#npKind').value,size=$('#npSize').value,desc=($('#npDesc').value||'').trim();
+  if(!name||!cat||!price){toast('Preencha ao menos nome, categoria e preço.');return;}
+  const p={id:'cust-'+Date.now(),name:name,cat:cat,kind:kind,size:size,
+    sku:'FJ-NV-'+String(Date.now()).slice(-4),price:price,old:old,rank:null,tag:'Novo',
+    stock:stock,rating:4.7,reviews:0,sold:0,
+    flavors:[{n:flN||'Padrão',c:flC}],weights:[{n:'1 un',m:1}],
+    desc:desc||'Descrição a complementar pelo painel.',nut:[['Porção','—']],uso:'Conforme rotulagem do produto.',alerg:''};
+  CUSTOM.push(p);store.set('customProducts',CUSTOM);PRODUCTS.push(p);rebuildCats();
+  renderChips();renderCatalog();renderBest();renderDrops();renderCats();
+  $('#footShop').innerHTML=CATS.slice(0,7).map(c=>'<li><button onclick="goCat(\''+c+'\')">'+c+'</button></li>').join('');
+  toast('Produto "'+name+'" criado e visível na loja.');admTab('pr',null);}
+function admDelProduct(id){
+  const i=PRODUCTS.findIndex(p=>p.id===id);if(i<0)return;
+  if(!id.startsWith('cust-')){DELETED.push(id);store.set('deletedBase',DELETED);}
+  PRODUCTS.splice(i,1);CUSTOM=CUSTOM.filter(p=>p.id!==id);store.set('customProducts',CUSTOM);
+  rebuildCats();renderChips();renderCatalog();renderBest();renderDrops();renderCats();
+  toast('Produto excluído do catálogo.');admTab('pr',null);}
+
+/* ---------- Admin ---------- */
+function openAdmin(){$('#infoTitle').textContent='Painel administrativo';$('#infoBody').innerHTML='<p>Acesso protegido. Senha da demonstração: <b style="font-family:var(--mono)">forja2024</b></p><div class="fld"><label>Senha</label><input id="admPw" type="password"></div><button class="btn btn-ac" onclick="admLogin()">Entrar no painel</button>';openModal('infoModal');}
+function admLogin(){if($('#admPw').value!=='forja2024'){toast('Senha incorreta.');return;}closeAllOverlays();$('#admin').classList.add('open');document.body.classList.add('modal-open');admTab('id',null);}
+function closeAdmin(){$('#admin').classList.remove('open');document.body.classList.remove('modal-open');}
+function admTab(t,btn){if(btn){$$('.adm-side .at').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+  const m=$('#admMain');
+  if(t==='id')m.innerHTML='<h2>Identidade da loja</h2><div class="adm-fld"><label>Nome da marca</label><input id="cfB" value="'+cfg.brand+'"></div><div class="adm-fld"><label>Linha acima do título (hero)</label><input id="cfK" value="'+cfg.kicker+'"></div><div class="frow" style="max-width:520px"><div class="adm-fld"><label>Título — linha 1</label><input id="cfA" value="'+cfg.h1a+'"></div><div class="adm-fld"><label>Linha 2 (contorno)</label><input id="cfB2" value="'+cfg.h1b+'"></div></div><div class="frow" style="max-width:520px"><div class="adm-fld"><label>Linha 3 (destaque)</label><input id="cfC" value="'+cfg.h1c+'"></div><div class="adm-fld"><label>Cor de acento</label><input type="color" id="cfAc" value="'+cfg.accent+'"></div></div><div class="adm-fld"><label>Faixa promocional do topo (separe ofertas com "—")</label><input id="cfT" value="'+(cfg.top||'')+'"></div><div class="adm-fld"><label>Imagem do hero (URL — opcional)</label><input id="cfH" value="'+(cfg.hero||'')+'" placeholder="https://..."></div><button class="btn btn-ac" onclick="admSaveCfg()">Salvar e aplicar</button><p class="adm-note" style="margin-top:20px">As alterações são aplicadas em tempo real e persistem no navegador. Em produção, esta seção grava na tabela <span style="font-family:var(--mono)">store_settings</span> do banco, com log de auditoria por operador.</p>';
+  if(t==='db'){
+    const rev=orders.reduce((s,o)=>s+o.total,0);
+    const tk=orders.length?rev/orders.length:0;
+    const cancel=orders.filter(o=>o.status==='Cancelado').length;
+    const cnt={};orders.forEach(o=>o.items.forEach(i=>{
+      const q=parseInt(i);const n=(i.split('× ')[1]||'').split(' (')[0];
+      if(q&&n)cnt[n]=(cnt[n]||0)+q;}));
+    const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const maxQ=top.length?top[0][1]:1;
+    const low=PRODUCTS.filter(p=>p.stock<30&&!p._hidden).sort((a,b)=>a.stock-b.stock);
+    m.innerHTML='<h2>Dashboard — dados locais reais</h2>'
+     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;max-width:900px">'
+     +'<div class="order-card"><span class="mono" style="color:var(--mut)">Faturamento</span><b style="font-family:var(--mono);font-size:24px">'+BRL(rev)+'</b></div>'
+     +'<div class="order-card"><span class="mono" style="color:var(--mut)">Pedidos</span><b style="font-family:var(--mono);font-size:24px">'+orders.length+'</b></div>'
+     +'<div class="order-card"><span class="mono" style="color:var(--mut)">Ticket médio</span><b style="font-family:var(--mono);font-size:24px">'+BRL(tk)+'</b></div>'
+     +'<div class="order-card"><span class="mono" style="color:var(--mut)">Cancelados</span><b style="font-family:var(--mono);font-size:24px">'+cancel+'</b></div>'
+     +'<div class="order-card"><span class="mono" style="color:var(--mut)">Carrinhos ativos</span><b style="font-family:var(--mono);font-size:24px">'+(cartQty()>0?1:0)+'</b></div></div>'
+     +'<h2 style="font-size:24px;margin-top:34px">Produtos mais vendidos (unidades)</h2>'
+     +(top.length?top.map(t2=>'<div style="max-width:560px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>'+t2[0]+'</span><b class="mono">'+t2[1]+' un</b></div><div style="height:6px;background:var(--sf2);margin-top:4px"><i style="display:block;height:100%;width:'+(t2[1]/maxQ*100)+'%;background:var(--ac)"></i></div></div>').join(''):'<p class="adm-note">Nenhuma venda registrada ainda. Faça um pedido na loja para popular o gráfico.</p>')
+     +'<h2 style="font-size:24px;margin-top:34px">Estoque baixo (&lt; 30 un)</h2>'
+     +(low.length?'<table class="adm-tb"><tr><th>Produto</th><th>SKU</th><th>Estoque</th></tr>'+low.map(p=>'<tr><td>'+p.name+'</td><td class="mono" style="color:var(--mut)">'+p.sku+'</td><td><b class="mono" style="color:'+(p.stock<20?'#E25B5B':'var(--acTxt)')+'">'+p.stock+'</b></td></tr>').join('')+'</table>':'<p class="adm-note">Nenhum produto em alerta.</p>')
+     +'<p class="adm-note" style="margin-top:22px">Nesta build os indicadores vêm dos pedidos gravados no navegador do visitante. Em produção, o mesmo painel consulta o PostgreSQL via agregações SQL — nunca números simulados.</p>';}
+  if(t==='pr'){
+    const vis=PRODUCTS.filter(p=>!p._hidden);
+    m.innerHTML='<h2>Produtos</h2>'
+     +'<div style="border:1px solid var(--ln);padding:18px;max-width:640px;margin-bottom:22px"><b style="font-family:var(--disp);font-size:20px;text-transform:uppercase;color:var(--tx)">Novo produto</b>'
+     +'<datalist id="catDL">'+CATS.map(c=>'<option value="'+c+'">').join('')+'</datalist>'
+     +'<div class="frow"><div class="adm-fld"><label>Nome</label><input id="npName" placeholder="Whey Protein..."></div><div class="adm-fld"><label>Categoria (pode criar nova)</label><input id="npCat" list="catDL" placeholder="Whey Protein"></div></div>'
+     +'<div class="frow"><div class="adm-fld"><label>Preço (R$)</label><input id="npPrice" type="number" step="0.01"></div><div class="adm-fld"><label>Preço antigo (opcional — cria oferta)</label><input id="npOld" type="number" step="0.01"></div></div>'
+     +'<div class="frow"><div class="adm-fld"><label>Estoque</label><input id="npStock" type="number" value="50"></div><div class="adm-fld"><label>Tipo de render</label><select id="npKind" style="width:100%;height:42px;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);color:var(--tx)"><option value="tub">Pote</option><option value="shaker">Shaker</option><option value="garrafa">Garrafa</option><option value="luva">Luva</option><option value="strap">Strap</option><option value="cinto">Cinto</option><option value="tee">Camiseta</option><option value="top">Top</option><option value="mochila">Mochila</option><option value="corda">Corda</option><option value="bar">Barra</option></select></div></div>'
+     +'<div class="frow"><div class="adm-fld"><label>Nome do sabor/variante</label><input id="npFl" placeholder="Chocolate"></div><div class="adm-fld"><label>Cor da embalagem</label><input id="npCol" type="color" value="#4A3223" style="height:42px;padding:4px"></div></div>'
+     +'<div class="frow"><div class="adm-fld"><label>Tamanho visual do pote</label><select id="npSize" style="width:100%;height:42px;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);color:var(--tx)"><option value="s">Pequeno</option><option value="l" selected>Médio</option><option value="xl">Grande</option></select></div><div class="adm-fld"><label>Descrição curta</label><input id="npDesc" placeholder="Uma linha sobre o produto"></div></div>'
+     +'<button class="btn btn-ac" onclick="admAddProduct()">Criar produto</button></div>'
+     +'<table class="adm-tb"><tr><th>Produto</th><th>Preço (R$)</th><th>Estoque</th><th></th></tr>'
+     +vis.map(p=>'<tr><td>'+p.name+'</td><td><input type="number" step="0.01" data-i="'+PRODUCTS.indexOf(p)+'" data-f="price" value="'+p.price+'"></td><td><input type="number" data-i="'+PRODUCTS.indexOf(p)+'" data-f="stock" value="'+p.stock+'"></td><td><button class="ci-rm" onclick="admDelProduct(\''+p.id+'\')">Excluir</button></td></tr>').join('')+'</table>'
+     +'<button class="btn btn-ac" style="margin-top:18px" onclick="admSavePr()">Salvar alterações</button>'
+     +'<button class="btn" style="margin-top:18px;margin-left:8px" onclick="dlCSV(\'produtos.csv\',[["nome","sku","categoria","preco","estoque"]].concat(PRODUCTS.filter(p=>!p._hidden).map(p=>[p.name,p.sku,p.cat,p.price,p.stock])))">Exportar CSV</button>'
+     +'<p class="adm-note" style="margin-top:16px">Criar, editar e excluir funciona imediatamente na loja e persiste no navegador. Nota: produtos "base" (nativos do código) ao serem excluídos ficam ocultos; em produção, tudo vive no banco e a exclusão é definitiva com log de auditoria.</p>';}
+  if(t==='or')m.innerHTML='<h2>Pedidos</h2><button class="btn" style="margin-bottom:16px" onclick="dlCSV(\'pedidos.csv\',[["numero","data","cliente","email","itens","total","frete","pagamento","status"]].concat(orders.map(o=>[o.num,o.date,o.name,o.email,o.items.join(" | "),o.total,o.ship,o.pay,o.status])))">Exportar CSV</button>'+(orders.length?orders.map((o,i)=>'<div class="order-card" style="margin-bottom:12px"><div class="oh"><b style="font-family:var(--mono)">'+o.num+' · '+BRL(o.total)+'</b><select onchange="admStatus('+i+',this.value)" style="background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);padding:4px 8px;color:var(--tx)">'+['Aguardando pagamento','Pagamento aprovado (demo)','Em separação','Enviado','Entregue','Cancelado'].map(s=>'<option '+(o.status===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div><span class="mono" style="color:var(--mut)">'+o.date+' · '+o.name+' · '+o.email+' · '+o.ship+' · '+o.pay+'</span>'+o.items.map(x=>'<span style="font-size:13px">— '+x+'</span>').join('')+'</div>').join(''):'<p class="adm-note">Nenhum pedido registrado. Faça uma compra na loja para vê-la aqui.</p>');
+  if(t==='cp'){
+    m.innerHTML='<h2>Cupons</h2><div class="frow" style="max-width:640px">'
+     +'<div class="adm-fld"><label>Código</label><input id="cpCode" placeholder="EXEMPLO10" style="text-transform:uppercase"></div>'
+     +'<div class="adm-fld"><label>Tipo</label><select id="cpType" style="width:100%;height:42px;background:var(--sf);border:1px solid var(--ln2);border-radius:var(--r);color:var(--tx)"><option value="pct">Percentual</option><option value="free">Frete grátis</option></select></div>'
+     +'<div class="adm-fld"><label>Valor (%)</label><input id="cpVal" type="number" min="1" max="90" value="10"></div></div>'
+     +'<button class="btn btn-ac" onclick="admAddCpn()">Criar cupom</button>'
+     +'<table class="adm-tb" style="margin-top:20px"><tr><th>Cupom</th><th>Efeito</th><th></th></tr>'
+     +Object.entries(COUPONS).map(c=>'<tr><td class="mono">'+c[0]+'</td><td>'+c[1].label+'</td><td><button class="ci-rm" onclick="admRmCpn(\''+c[0]+'\')">Excluir</button></td></tr>').join('')+'</table>'
+     +'<p class="adm-note" style="margin-top:16px">Cupons criados aqui funcionam imediatamente no carrinho. Em produção, a validação de <span style="font-family:var(--mono)">max_uses</span> e <span style="font-family:var(--mono)">expires_at</span> acontece na função transacional <span style="font-family:var(--mono)">place_order</span> — nunca no cliente.</p>';}
+  if(t==='ab')m.innerHTML='<h2>Sobre este painel</h2><p class="adm-note">Painel local de demonstração: gerencia identidade, produtos (criar/editar/excluir), estoque, pedidos e cupons sem tocar no código. A arquitetura de produção prevê perfis (administrador, gerente, operador, atendimento), dashboard com dados reais do PostgreSQL, gateways com webhooks, integração de frete e chatbot com IA em nuvem — todos exigindo credenciais e servidor, nunca simulados como ativos aqui.</p>';}
+function admSaveCfg(){cfg={brand:$('#cfB').value||'FORJA',kicker:$('#cfK').value,h1a:$('#cfA').value,
+  h1b:$('#cfB2').value,h1c:$('#cfC').value,accent:$('#cfAc').value,
+  top:$('#cfT').value,hero:$('#cfH').value.trim()};
+  store.set('cfg',cfg);applyCfg();renderBest();renderDrops();renderCatalog();renderPDPsafe();
+  $('#kitVisual').innerHTML='<div class="kit-strip"><div class="tub l" style="--tc:#4A3223"><div class="lb"><b>'+cfg.brand.toUpperCase()+'</b><em>WHEY CONCENTRADO</em><span>CHOCOLATE · 1 KG</span></div></div><div class="tub s" style="--tc:#EDEAE0"><div class="lb"><b>'+cfg.brand.toUpperCase()+'</b><em>CREATINA</em><span>250 G</span></div></div></div><div class="tub-sh" style="width:70%"></div>';
+  toast('Campanha atualizada e salva.');}
+function admSavePr(){$$('.adm-tb input').forEach(inp=>{const p=PRODUCTS[+inp.dataset.i];if(!p)return;if(inp.dataset.f==='price')p.price=parseFloat(inp.value)||p.price;else p.stock=parseInt(inp.value)||0;});
+  renderBest();renderDrops();renderCatalog();renderPDPsafe();toast('Produtos atualizados na vitrine.');}
+function renderPDPsafe(){if($('#pdpModal').classList.contains('open')&&pdp.id)renderPDP();}
+function admStatus(i,v){orders[i].status=v;store.set('orders',orders);toast('Status de '+orders[i].num+' → '+v);}
+function admAddCpn(){const code=($('#cpCode').value||'').trim().toUpperCase();
+  if(!code){toast('Informe um código.');return;}
+  if(COUPONS[code]){toast('Cupom já existe.');return;}
+  const ty=$('#cpType').value,v=parseInt($('#cpVal').value)||10;
+  COUPONS[code]=ty==='free'?{pct:0,free:true,label:'Frete grátis'}:{pct:v/100,label:v+'% OFF'};
+  store.set('coupons',COUPONS);toast('Cupom '+code+' criado e ativo.');admTab('cp',null);}
+function admRmCpn(code){delete COUPONS[code];store.set('coupons',COUPONS);toast('Cupom '+code+' removido.');admTab('cp',null);}
+function dlCSV(name,rows){const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=name;a.click();toast(name+' exportado.');}
+
+function toast(msg,actLbl,act){const d=document.createElement('div');d.className='toast';
+  d.innerHTML='<span>'+msg+'</span>'+(actLbl?'<button>'+actLbl+'</button>':'');
+  if(actLbl)d.querySelector('button').onclick=()=>{act();d.remove();};
+  $('#toasts').appendChild(d);setTimeout(()=>{d.style.opacity=0;d.style.transition='opacity .4s';setTimeout(()=>d.remove(),400)},4200);}
+
+function subNews(e){e.preventDefault();const em=$('#newsEmail').value;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){toast('E-mail inválido.');return false;}
+  store.set('newsletter',em);$('#newsEmail').disabled=true;$('#newsOk').style.display='block';toast('Inscrição confirmada. Cupom PRIMEIRA15 liberado.');return false;}
+function tickCount(){const now=new Date(),end=new Date(now);end.setHours(23,59,59,999);
+  const d=Math.max(0,end-now);const h=String(Math.floor(d/36e5)).padStart(2,'0'),m=String(Math.floor(d%36e5/6e4)).padStart(2,'0'),s=String(Math.floor(d%6e4/1e3)).padStart(2,'0');
+  $('#count').innerHTML='<div><b>'+h+'</b><span>horas</span></div><div><b>'+m+'</b><span>min</span></div><div><b>'+s+'</b><span>seg</span></div>';}
+function carScroll(d){$('#bestCar').scrollBy({left:d*310,behavior:'smooth'});}
+const REVIEWS=[[4.9,'"O whey dissolve de verdade, sem grumos. Já é o terceiro pote e o sabor continua idêntico."','Marina C. — 14 pedidos · São Paulo'],[4.8,'"Chegou em 2 dias com o SEDEX. Embalagem lacrada e lote novo. Confiança total."','Rafael T. — 9 pedidos · Belo Horizonte'],[5.0,'"A creatina mudou meu treino pesado. Rótulo honesto, sem promessa mágica. Recomendo."','Diego M. — 22 pedidos · Curitiba']];
+let revI=0;function revGo(d){revI=(revI+d+REVIEWS.length)%REVIEWS.length;renderRev();}
+function renderRev(){const r=REVIEWS[revI];$('#revStars').innerHTML=stars(r[0])+' <span class="mono" style="color:var(--mut)">verificado</span>';
+  $('#revText').textContent=r[1];$('#revAuthor').textContent=r[2];
+  $('#revBars').innerHTML=[['5 estrelas',84],['4 estrelas',12],['3 estrelas',3],['2 estrelas',1],['1 estrela',0]].map(b=>'<div class="rb"><span class="mono"><span>'+b[0]+'</span><span>'+b[1]+'%</span></span><div class="bar"><i style="width:'+b[1]+'%"></i></div></div>').join('');}
+
+(function init(){
+  setTheme(store.get('theme','dark'));
+  const cats=['WHEY PROTEIN','CREATINA','PRÉ-TREINO','BARRAS','VITAMINAS','ACESSÓRIOS','ROUPAS'];
+  $('#mq2in').innerHTML=Array(3).fill(cats.map((c,i)=>(i%2?'<em>'+c+'</em>':'<span>'+c+'</span>')).join('·')).join('·');
+  $('#hamb').innerHTML=ic('menu');$('#searchBtn').innerHTML=ic('search');
+  $('#themeBtn').innerHTML=ic(document.documentElement.dataset.theme==='dark'?'sun':'moon');
+  $$('.m-close').forEach(b=>b.innerHTML=ic('x',18));
+  $$('.car-nav button').forEach(b=>b.innerHTML=ic(b.getAttribute('aria-label')==='Anterior'?'left':'right'));
+  $('#chatFab').innerHTML=ic('chat');$('.chat-in button').innerHTML=ic('send');
+  $('#waFab').innerHTML=ic('wa',20);
+  $('#footShop').innerHTML=CATS.slice(0,7).map(c=>'<li><button onclick="goCat(\''+c+'\')">'+c+'</button></li>').join('');
+  $('#chatQuick').innerHTML=['Buscar creatina','Frete e prazo','Trocas','Cupom','Falar com humano'].map(t=>'<button onclick="chatSend(\''+t+'\')">'+t+'</button>').join('');
+  $('#kitVisual').innerHTML='<div class="kit-strip"><div class="tub l" style="--tc:#4A3223"><div class="lb"><b>'+cfg.brand.toUpperCase()+'</b><em>WHEY CONCENTRADO</em><span>CHOCOLATE · 1 KG</span></div></div><div class="tub s" style="--tc:#EDEAE0"><div class="lb"><b>'+cfg.brand.toUpperCase()+'</b><em>CREATINA</em><span>250 G</span></div></div><div class="tech" style="margin:0;width:96px"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="1.6">'+I.shaker+'</svg></div></div><div class="tub-sh" style="width:70%"></div>';
+  loadCustom();rebuildCats();
+  applyCfg();renderChips();renderCatalog();renderBest();renderDrops();renderCats();renderRev();renderBlog();renderBadges();renderFavs();tickCount();lgpdInit();
+  $('#footShop').innerHTML=CATS.slice(0,7).map(c=>'<li><button onclick="goCat(\''+c+'\')">'+c+'</button></li>').join('');
+  setInterval(tickCount,1000);
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
+  $$('.rv').forEach(el=>io.observe(el));
+  addEventListener('scroll',()=>{$('#header').classList.toggle('scrolled',scrollY>10);
+    if(!matchMedia('(prefers-reduced-motion:reduce)').matches){const h=$('#heroImg');if(h&&scrollY<900)h.style.transform='translateY('+scrollY*.08+'px)';}},{passive:true});
+  $('#searchBtn').addEventListener('click',()=>{const w=$('#searchWrap');w.classList.toggle('open');if(w.classList.contains('open'))$('#searchInput').focus();else closeSearch();});
+  $('#searchInput').addEventListener('input',renderSearch);
+  document.addEventListener('click',e=>{if(!$('#searchWrap').contains(e.target))$('#searchDrop').classList.remove('open');});
+  document.addEventListener('keydown',e=>{if(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){
+    e.preventDefault();$('#searchWrap').classList.add('open');$('#searchInput').focus();}});
+  if(cartQty()>0)setTimeout(()=>toast('Você deixou '+cartQty()+' item(ns) no carrinho.','Retomar',openCart),3000);
+})();
+</script>
+</body>
+</html>
