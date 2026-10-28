@@ -12816,7 +12816,7 @@ function _renderOSLinha(os){
     +'<div style="display:inline-flex;gap:3px;align-items:center">'
     +'<button type="button" class="ic-btn" onclick="verOS('+i+')" title="Ver detalhes"><i class="fas fa-eye"></i></button>'
     +'<button type="button" class="ic-btn" onclick="imprimirOS('+i+')" title="Imprimir OS"><i class="fas fa-print"></i></button>'
-    +((os.tipo_manutencao==='preventiva_troca_oleo')?'<button type="button" class="ic-btn" style="color:#e65100" onclick="imprimirOrdemTrocaOleo('+i+')" title="Imprimir Ordem de Troca de Óleo e Filtro"><i class="fas fa-oil-can"></i></button>':'')
+    +((os.tipo_manutencao==='preventiva_troca_oleo')?'<button type="button" class="ic-btn" style="color:#e65100" onclick="abrirOrdemTrocaOleo('+i+')" title="Ordem de Troca de Óleo e Filtro (preencher / imprimir)"><i class="fas fa-oil-can"></i></button>':'')
     +btnEditar+btnAprovar+btnStatus+btnReabrir+btnRetorno+btnDel
     +'</div></td></tr>';
 }
@@ -34464,15 +34464,112 @@ function imprimirOS(i){
   setTimeout(()=>w.print(),400);
 }
 
-// ── Ordem de Troca de Óleo e Filtro — checklist impresso no formato do
-// formulário de papel (MOTOR / TRANSMISSÃO / HIDRÁULICO / DIFERENCIAL / OUTROS)
-function _otofSecao(nome, itens, linhasExtra){
-  linhasExtra = linhasExtra||0;
-  const linhas = itens.concat(Array(linhasExtra).fill(''));
+// ── Ordem de Troca de Óleo e Filtro — checklist editável e impresso no formato
+// do formulário de papel (MOTOR / TRANSMISSÃO / HIDRÁULICO / DIFERENCIAL / OUTROS).
+// Os itens ficam salvos em os.itens com categoria 'troca_oleo:<grupo>', então
+// referência/quantidade digitadas uma vez ficam guardadas na OS e reaparecem
+// tanto na reimpressão quanto na tela "Itens/Serviços" da OS normal.
+const _OTOF_GRUPOS = [
+  {key:'motor', nome:'MOTOR', itens:['FILTRO DIESEL','FILTRO DIESEL','FILTRO DIESEL','ÓLEO MOTOR','FILTRO ÓLEO MOTOR','FILTRO AR 1º','FILTRO AR 2º']},
+  {key:'transmissao', nome:'TRANSMISSÃO', itens:['ÓLEO','FILTRO','FILTRO']},
+  {key:'hidraulico', nome:'HIDRÁULICO', itens:['ÓLEO','FILTRO','FILTRO']},
+  {key:'diferencial', nome:'DIFERENCIAL', itens:['ÓLEO DIFERENCIAL DIANTEIRO','ÓLEO DIFERENCIAL TRASEIRO','ÓLEO EIXO DIANTEIRO','CUBO DE RODA LD','CUBO DE RODA LE']},
+  {key:'outros', nome:'OUTROS', itens:['FILTRO SECADOR','FILTRO CABINE','FILTRO INTERNO CABINE','FILTRO AR-CONDICIONADO']}
+];
+
+function _otofItensGrupo(os, grupoKey){
+  return (os.itens||[]).filter(it=>it.categoria==='troca_oleo:'+grupoKey);
+}
+
+function _otofRowHTML(desc, ref, qtd){
+  return `<div class="list-row otof-row" style="gap:6px;align-items:center;padding:3px 0;display:flex">
+    <input class="fi" style="flex:2;min-width:140px;padding:5px 8px;font-size:12px" placeholder="Descrição" value="${safeAttr(desc||'')}" data-field="descricao">
+    <input class="fi" style="width:120px;padding:5px 8px;font-size:12px" placeholder="Referência" value="${safeAttr(ref||'')}" data-field="referencia">
+    <input class="fi" style="width:80px;padding:5px 8px;font-size:12px;text-align:center" placeholder="Qtd" value="${safeAttr(qtd!=null&&qtd!==''?String(qtd):'')}" data-field="quantidade">
+    <button type="button" class="ic-btn rd btn-xs" onclick="this.closest('.otof-row').remove()" title="Remover linha"><i class="fas fa-trash"></i></button>
+  </div>`;
+}
+
+function _otofSecaoModalHTML(os, grupo){
+  const salvos = _otofItensGrupo(os, grupo.key);
+  const linhas = salvos.length>0 ? salvos.map(it=>({d:it.descricao,r:it.referencia,q:it.quantidade})) : grupo.itens.map(d=>({d,r:'',q:''}));
+  return `<div style="margin-bottom:14px">
+    <div style="font-weight:800;font-size:11px;text-transform:uppercase;background:var(--bg);padding:6px 10px;border-radius:6px;margin-bottom:6px;letter-spacing:.5px">${grupo.nome}</div>
+    <div id="otof_list_${grupo.key}">${linhas.map(l=>_otofRowHTML(l.d,l.r,l.q)).join('')}</div>
+    <button type="button" class="btn btn-sm btn-o" onclick="_otofAddLinha('${grupo.key}')"><i class="fas fa-plus"></i> Linha</button>
+  </div>`;
+}
+
+function _otofAddLinha(grupoKey){
+  const list = document.getElementById('otof_list_'+grupoKey);
+  if(list) list.insertAdjacentHTML('beforeend', _otofRowHTML('','',''));
+}
+
+function abrirOrdemTrocaOleo(i){
+  const os = db.ordens_servico[i];
+  const eq = (Array.isArray(db?.equipamentos)?db.equipamentos:[]).find(e=>e.id===os.equipamento_id);
+  const isKm = (eq?.tipo_medida||'horas').toLowerCase()==='km';
+  const hodAtual = os.hodometro>0 ? os.hodometro : (isKm?(eq?.parametros?.km||0):(eq?.parametros?.horas||0));
+  openModal(`<i class="fas fa-oil-can" style="color:#e65100"></i> Ordem de Troca de Óleo e Filtro — OS #${os.numero}`,`
+  <div class="al-i alert" style="margin-bottom:12px"><i class="fas fa-info-circle"></i>
+    <strong>${esc(eq?.placa||'—')} — ${esc(eq?.modelo||'—')}</strong> &nbsp;|&nbsp; ${isKm?'KM':'Horímetro'} atual do equipamento: <strong>${fmt(isKm?eq?.parametros?.km:eq?.parametros?.horas)}</strong>
+  </div>
+  <div class="frow">
+    <div class="fg"><label>Data da Troca</label><input class="fi" type="date" id="otof_data" value="${String(os.data_abertura||today()).slice(0,10)}"></div>
+    <div class="fg"><label>${isKm?'KM':'Horímetro'} na Troca</label><input class="fi" type="number" step="0.1" id="otof_hod" value="${hodAtual||0}"></div>
+    <div class="fg"><label>Hora Inicial</label><input class="fi" type="time" id="otof_hi" value="${os.hora_inicio||''}"></div>
+    <div class="fg"><label>Hora Final</label><input class="fi" type="time" id="otof_hf" value="${os.hora_fim||''}"></div>
+  </div>
+  ${_OTOF_GRUPOS.map(g=>_otofSecaoModalHTML(os,g)).join('')}
+  <div class="fg"><label>Observações</label><textarea class="fta" id="otof_obs">${esc(os.checklist_oleo_obs||'')}</textarea></div>
+  <div class="mf">
+    <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-s" onclick="salvarOrdemTrocaOleo(${i},false)"><i class="fas fa-save"></i> Salvar</button>
+    <button class="btn btn-p" onclick="salvarOrdemTrocaOleo(${i},true)"><i class="fas fa-print"></i> Salvar e Imprimir</button>
+  </div>`,'lg');
+}
+
+function salvarOrdemTrocaOleo(i, imprimir){
+  const os = db.ordens_servico[i];
+  const outrosItens = (os.itens||[]).filter(it=>!String(it.categoria||'').startsWith('troca_oleo:'));
+  const novosItens = [];
+  _OTOF_GRUPOS.forEach(g=>{
+    document.getElementById('otof_list_'+g.key)?.querySelectorAll('.otof-row').forEach(row=>{
+      const get = f => row.querySelector(`[data-field="${f}"]`)?.value?.trim()||'';
+      const desc = get('descricao');
+      if(!desc) return;
+      novosItens.push({
+        descricao: desc,
+        referencia: get('referencia'),
+        quantidade: get('quantidade'),
+        unidade: 'un',
+        tipo: /ÓLEO|OLEO/i.test(desc) ? 'oleo' : 'filtro',
+        tipo_acao: 'troca',
+        categoria: 'troca_oleo:'+g.key,
+        obs: ''
+      });
+    });
+  });
+  os.itens = outrosItens.concat(novosItens);
+  os.data_abertura = document.getElementById('otof_data')?.value || os.data_abertura;
+  os.hodometro = parseFloat(document.getElementById('otof_hod')?.value)||os.hodometro||0;
+  os.hora_inicio = document.getElementById('otof_hi')?.value||'';
+  os.hora_fim = document.getElementById('otof_hf')?.value||'';
+  os.checklist_oleo_obs = document.getElementById('otof_obs')?.value||'';
+  sbSalvar('ordens_servico', os);
+  closeModal();
+  loadPage('os');
+  showToast(`Checklist de troca de óleo e filtro salvo! ${novosItens.length} item(ns).`,'success');
+  if(imprimir) setTimeout(()=>imprimirOrdemTrocaOleo(i),300);
+}
+
+function _otofSecaoImpressao(os, grupo){
+  const salvos = _otofItensGrupo(os, grupo.key);
+  const linhas = salvos.length>0 ? salvos.map(it=>({d:it.descricao,r:it.referencia,q:it.quantidade})) : grupo.itens.map(d=>({d,r:'',q:''}));
   return `
-  <tr><td colspan="4" class="otof-sec">${nome}</td></tr>
+  <tr><td colspan="4" class="otof-sec">${grupo.nome}</td></tr>
   <tr><td class="otof-num"></td><td class="otof-desc"><b>DESCRIÇÃO</b></td><td class="otof-ref"><b>REFERÊNCIA</b></td><td class="otof-qt"><b>QUANT.</b></td></tr>
-  ${linhas.map((desc,idx)=>`<tr><td class="otof-num">${idx+1}</td><td class="otof-desc">${desc||''}</td><td class="otof-ref">&nbsp;</td><td class="otof-qt">&nbsp;</td></tr>`).join('')}`;
+  ${linhas.map((l,idx)=>`<tr><td class="otof-num">${idx+1}</td><td class="otof-desc">${esc(l.d||'')}</td><td class="otof-ref">${esc(l.r||'')||'&nbsp;'}</td><td class="otof-qt">${esc(String(l.q??''))||'&nbsp;'}</td></tr>`).join('')}`;
 }
 
 function imprimirOrdemTrocaOleo(i){
@@ -34520,15 +34617,11 @@ function imprimirOrdemTrocaOleo(i){
       <td class="lbl" style="width:17.5%">${isKm?'HORI.':'KM'}:</td>
     </tr>
     <tr>
-      <td class="lbl" colspan="2">HORA INICIAL TROCA: ${os.hora_entrada||os.hora_inicio||''}</td>
-      <td class="lbl" colspan="2">HORA FINAL TROCA: ${os.hora_saida||os.hora_fim||''}</td>
+      <td class="lbl" colspan="2">HORA INICIAL TROCA: ${os.hora_inicio||''}</td>
+      <td class="lbl" colspan="2">HORA FINAL TROCA: ${os.hora_fim||''}</td>
     </tr>
-    ${_otofSecao('MOTOR', ['FILTRO DIESEL','FILTRO DIESEL','FILTRO DIESEL','ÓLEO MOTOR','FILTRO ÓLEO MOTOR','FILTRO AR 1º','FILTRO AR 2º'])}
-    ${_otofSecao('TRANSMISSÃO', ['ÓLEO','FILTRO','FILTRO'], 2)}
-    ${_otofSecao('HIDRÁULICO', ['ÓLEO','FILTRO','FILTRO'], 2)}
-    ${_otofSecao('DIFERENCIAL', ['ÓLEO DIFERENCIAL DIANTEIRO','ÓLEO DIFERENCIAL TRASEIRO','ÓLEO EIXO DIANTEIRO','CUBO DE RODA LD','CUBO DE RODA LE'], 2)}
-    ${_otofSecao('OUTROS', ['FILTRO SECADOR','FILTRO CABINE','FILTRO INTERNO CABINE','FILTRO AR-CONDICIONADO'], 4)}
-    <tr><td class="lbl" colspan="4">OBS.: ${esc(os.descricao||os.obs||'')}</td></tr>
+    ${_OTOF_GRUPOS.map(g=>_otofSecaoImpressao(os,g)).join('')}
+    <tr><td class="lbl" colspan="4">OBS.: ${esc(os.checklist_oleo_obs||os.descricao||os.obs||'')}</td></tr>
     <tr><td colspan="4">&nbsp;</td></tr>
     <tr><td colspan="4">&nbsp;</td></tr>
   </table>
