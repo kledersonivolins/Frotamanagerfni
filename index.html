@@ -3472,7 +3472,7 @@ function _realtimeAtualizarTela(table, eventType){
     documentos_veiculos: ['documentos'],
     mecanicos: ['mecanicos'],
     receitas: ['centro_custo'],
-    custos_extras: ['centro_custo'],
+    custos_extras: ['centro_custo','lavagem'],
     solicitacoes_pagamento: ['solicitacoes_pagamento'],
     rastreio_veiculos: ['rastreio_painel','rastreio_cadastro','rastreio_relatorio'],
     emprestimos_veiculos: ['emprestimos_lista','emprestimos_historico'],
@@ -3999,6 +3999,7 @@ const MENU = [
     { page:'manutencao', icon:'fa-wrench', label:'Histórico de Manutenção', min:'operador' },
     { page:'planos', icon:'fa-calendar-check', label:'Planos Preventivos', min:'operador' },
     { page:'painel_pcm', icon:'fa-gauge-high', label:'Painel PCM', min:'operador' },
+    { page:'lavagem', icon:'fa-soap', label:'Lavagem', min:'operador' },
     { page:'homem_hora', icon:'fa-user-clock', label:'Homem-Hora', min:'operador' },
     { page:'relatorios_manutencao', icon:'fa-chart-bar', label:'Relatórios de Manutenção', min:'visualizador' },
     { page:'apontamento', icon:'fa-hourglass-end', label:'Apontamento', min:'operador' },
@@ -4955,7 +4956,7 @@ async function delOcorrencia(i){if(!await _confirmar('Excluir esta ocorrência?'
 const PAGE_TITLES = {
   gestao_master:'🧭 Mapa Ideal / Evolução do SaaS',
   dashboard:'📊 Dashboard Gerencial', equipamentos:'🚗 Equipamentos',
-  mapa_chassi:'🔧 Mapa de Chassi', planos:'📅 Planos de Manutenção', painel_pcm:'📈 Painel PCM — Preventivas',
+  mapa_chassi:'🔧 Mapa de Chassi', planos:'📅 Planos de Manutenção', painel_pcm:'📈 Painel PCM — Preventivas', lavagem:'🧽 Lavagem de Veículos e Máquinas',
   modelos:'🗂️ Modelos de Equipamentos',
   centro_custo:'💰 Centro de Custo Operacional',
   importacao:'📥 Importar / Exportar Cadastros',
@@ -5204,6 +5205,7 @@ var _TODOS_MODULOS = [
   ["manutencao",              "Histórico de Manutenção"],
   ["planos",                  "Planos de Manutenção"],
   ["painel_pcm",              "Painel PCM"],
+  ["lavagem",                 "Lavagem"],
   ["homem_hora",              "Homem-Hora"],
   ["relatorios_manutencao",   "Relatórios de Manutenção"],
   ["relatorios_os",           "Relatórios de OS"],
@@ -6156,6 +6158,7 @@ const PAGE_FNS = {
   mapa_chassi: renderMapaChassi,
   planos: renderPlanos,
   painel_pcm: renderPainelPCM,
+  lavagem: renderLavagem,
   modelos: renderModelos,
   centro_custo: renderCentroCusto,
   centros_custo_cad: renderCentrosCustoCad,
@@ -10030,6 +10033,9 @@ function openModalEq(idx=null){
       <div class="fg"><label>Horas Total Atual</label><input class="fi" type="number" id="eq_h" value="${eq?.parametros?.horas||0}"></div>
     </div>
     <div class="frow">
+      <div class="fg"><label>Valor padrão da lavagem (R$) <span style="font-size:10px;color:var(--text3)">preenche sozinho em Manutenção → Lavagem</span></label><input class="fi" type="number" step="0.01" min="0" id="eq_vlav" value="${eq?.parametros?.valor_lavagem||''}" placeholder="0,00"></div>
+    </div>
+    <div class="frow">
       <div class="fg"><label>Próxima Revisão (KM)</label><input class="fi" type="number" id="eq_prkm" value="${eq?.parametros?.proxima_km||0}"></div>
       <div class="fg"><label>Prazo Revisão (Meses)</label><input class="fi" type="number" id="eq_prm" value="${eq?.parametros?.prazo_meses||0}"></div>
     </div>
@@ -10137,7 +10143,7 @@ function salvarEq(idx){
     transmissao:document.getElementById('eq_ttr').value, cambio:document.getElementById('eq_cam').value,
     hidraulico:{ tipo:document.getElementById('eq_htp').value, especificacao:document.getElementById('eq_hesp').value },
     combustiveis:{tanques,lista},
-    parametros:{ km:parseFloat(document.getElementById('eq_km').value)||0, horas:parseFloat(document.getElementById('eq_h').value)||0, proxima_km:parseFloat(document.getElementById('eq_prkm').value)||0, prazo_meses:parseInt(document.getElementById('eq_prm').value)||0, ano_fab:parseInt(document.getElementById('eq_afab').value)||2020, duracao:parseInt(document.getElementById('eq_dur').value)||10, conversao:parseFloat(document.getElementById('eq_conv').value)||0 }
+    parametros:{ km:parseFloat(document.getElementById('eq_km').value)||0, horas:parseFloat(document.getElementById('eq_h').value)||0, proxima_km:parseFloat(document.getElementById('eq_prkm').value)||0, prazo_meses:parseInt(document.getElementById('eq_prm').value)||0, ano_fab:parseInt(document.getElementById('eq_afab').value)||2020, duracao:parseInt(document.getElementById('eq_dur').value)||10, conversao:parseFloat(document.getElementById('eq_conv').value)||0, valor_lavagem:parseFloat(document.getElementById('eq_vlav')?.value)||0 }
   };
   if(idx!==null) db.equipamentos[idx]=eq; else db.equipamentos.push(eq);
   sbSalvar('equipamentos', eq);
@@ -11498,7 +11504,7 @@ function openModalUsuario(idx=null){
   const _MOD_GRUPOS = [
     { titulo: 'Dashboard', paginas: ['dashboard'] },
     { titulo: 'Equipamentos', paginas: ['equipamentos','modelos','modelos_pneus','mapa_chassi','disponibilidade','pneus','documentos'] },
-    { titulo: 'Manutenção / OS', paginas: ['os','manutencao','planos','painel_pcm','homem_hora','relatorios_manutencao','relatorios_os','relatorios_remonta','dashboard_os'] },
+    { titulo: 'Manutenção / OS', paginas: ['os','manutencao','planos','painel_pcm','lavagem','homem_hora','relatorios_manutencao','relatorios_os','relatorios_remonta','dashboard_os'] },
     { titulo: 'Combustível', paginas: ['combustivel','tanque','dashboard_combustivel','relatorios_combustivel'] },
     { titulo: 'Operações', paginas: ['operacoes','quadro_operacional','relatorios_operacoes','checklist_diario','chamados','ocorrencias','relatorios_ocorrencias'] },
     { titulo: 'Almoxarifado', paginas: ['almoxarifado','almox_movimentos','relatorios_almoxarifado'] },
@@ -34541,6 +34547,212 @@ function renderFormulario(){
 
   </div><!-- /formMecanico -->
   `}`;
+}
+
+// ═══════════════════════════════════════════════
+//  LAVAGEM — veículos e máquinas
+//  Cada lavagem é um custo extra (tipo "Lavagem/Higienização", origem_custo "lavagem"),
+//  então entra no Custo por Placa. Valor padrão por equipamento: parametros.valor_lavagem.
+// ═══════════════════════════════════════════════
+const LAVAGEM_TIPO = 'Lavagem/Higienização';
+function _lavEhLavagem(c){
+  if(!c || c.excluido===true || c.excluido==='true') return false;
+  return c.origem_custo==='lavagem' || /^lavage/i.test(String(c.tipo||''));
+}
+function _lavValorPadrao(eq){ return Number(eq?.parametros?.valor_lavagem)||0; }
+function _lavInicioMes(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01'; }
+// Lavagens do filtro (período fechado e equipamento opcional), mais recentes primeiro
+function _lavFiltrar(lista, f){
+  f = f || {};
+  return (Array.isArray(lista)?lista:[]).filter(c=>_lavEhLavagem(c)
+      && (!f.di || String(c.data||'').slice(0,10) >= f.di)
+      && (!f.df || String(c.data||'').slice(0,10) <= f.df)
+      && (!f.eq || String(c.equipamento_id)===String(f.eq)))
+    .sort((a,b)=>String(b.data||'').localeCompare(String(a.data||'')) || (Number(b.id)||0)-(Number(a.id)||0));
+}
+// Total geral e por equipamento (qtd, total, última lavagem)
+function _lavResumo(lista){
+  const porEq = {};
+  let total = 0;
+  (lista||[]).forEach(c=>{
+    const v = Math.abs(Number(c.valor)||0); total += v;
+    const k = String(c.equipamento_id);
+    const r = porEq[k] || (porEq[k] = { equipamento_id:c.equipamento_id, qtd:0, total:0, ultima:'' });
+    r.qtd++; r.total += v;
+    const d = String(c.data||'').slice(0,10); if(d > r.ultima) r.ultima = d;
+  });
+  return { total: Math.round(total*100)/100, qtd:(lista||[]).length,
+    porEq: Object.values(porEq).map(r=>({ ...r, total:Math.round(r.total*100)/100 })).sort((a,b)=>b.total-a.total) };
+}
+function _lavEq(id){ return (db.equipamentos||[]).find(e=>String(e.id)===String(id)); }
+function _lavEqNome(id){ const e=_lavEq(id); return e ? `${e.placa||''}${e.modelo?' — '+e.modelo:''}` : '—'; }
+function _lavFiltroAtual(){
+  return { di: window._lavFiltroDi || _lavInicioMes(), df: window._lavFiltroDf || today(), eq: window._lavFiltroEq || '' };
+}
+
+function renderLavagem(){
+  const canEdit = nivel('operador');
+  const f = _lavFiltroAtual();
+  const lista = _lavFiltrar(db.custos_extras, f);
+  const res = _lavResumo(lista);
+  const eqs = _eqsDaEmpresa().slice().sort((a,b)=>String(a.placa||'').localeCompare(String(b.placa||''),'pt-BR'));
+  const optsEq = eqs.map(e=>`<option value="${e.id}" ${String(f.eq)===String(e.id)?'selected':''}>${esc(e.placa||'')} — ${esc(e.modelo||'')}</option>`).join('');
+  const linhas = lista.map(c=>`<tr>
+      <td>${fmtDt(String(c.data||'').slice(0,10))}</td>
+      <td><b>${esc(_lavEqNome(c.equipamento_id))}</b></td>
+      <td style="text-align:right"><b>${money(Math.abs(Number(c.valor)||0))}</b></td>
+      <td>${esc(c.responsavel||'—')}</td>
+      <td>${esc(c.obs||'')}</td>
+      ${canEdit?`<td style="white-space:nowrap"><button class="ic-btn" title="Editar" onclick="openModalLavagem('${esc(String(c.id))}')"><i class="fas fa-edit"></i></button><button class="ic-btn rd" title="Excluir" onclick="excluirLavagem('${esc(String(c.id))}')"><i class="fas fa-trash"></i></button></td>`:''}
+    </tr>`).join('');
+  const linhasEq = res.porEq.map(r=>`<tr><td><b>${esc(_lavEqNome(r.equipamento_id))}</b></td><td style="text-align:center">${r.qtd}</td><td style="text-align:right">${money(r.total)}</td><td>${r.ultima?fmtDt(r.ultima):'—'}</td></tr>`).join('');
+  return `
+  <div class="card">
+    <div class="frow" style="align-items:end">
+      <div class="fg"><label>De</label><input class="fi" type="date" value="${f.di}" onchange="window._lavFiltroDi=this.value;loadPage('lavagem')"></div>
+      <div class="fg"><label>Até</label><input class="fi" type="date" value="${f.df}" onchange="window._lavFiltroDf=this.value;loadPage('lavagem')"></div>
+      <div class="fg"><label>Equipamento</label><select class="fs" onchange="window._lavFiltroEq=this.value;loadPage('lavagem')"><option value="">Todos</option>${optsEq}</select></div>
+      <div class="row10">
+        ${canEdit?`<button class="btn btn-p" onclick="openModalLavagem()"><i class="fas fa-plus"></i> Lançar lavagem</button>`:''}
+        <button class="btn btn-i" onclick="imprimirLavagem()"><i class="fas fa-print"></i> Imprimir / PDF</button>
+        <button class="btn btn-g" onclick="exportarLavagemExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+      <div class="stat"><label>Lavagens no período</label><div class="val">${res.qtd}</div></div>
+      <div class="stat"><label>Total no período</label><div class="val">${money(res.total)}</div></div>
+      <div class="stat"><label>Equipamentos lavados</label><div class="val">${res.porEq.length}</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><i class="fas fa-soap"></i> Lavagens</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Data</th><th>Equipamento</th><th style="text-align:right">Valor</th><th>Local / Lavador</th><th>Obs.</th>${canEdit?'<th>Ações</th>':''}</tr></thead>
+      <tbody>${linhas || `<tr><td colspan="6"><div class="empty"><i class="fas fa-soap"></i><p>Nenhuma lavagem no período</p></div></td></tr>`}</tbody>
+    </table></div>
+  </div>
+  ${res.porEq.length?`<div class="card">
+    <div class="card-title"><i class="fas fa-list"></i> Por equipamento</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Equipamento</th><th style="text-align:center">Lavagens</th><th style="text-align:right">Total</th><th>Última lavagem</th></tr></thead>
+      <tbody>${linhasEq}</tbody>
+    </table></div>
+  </div>`:''}`;
+}
+
+function openModalLavagem(id=null){
+  const c = id ? (db.custos_extras||[]).find(x=>String(x.id)===String(id)) : null;
+  const eqSel = c ? c.equipamento_id : (window._lavFiltroEq || '');
+  const eqs = _eqsDaEmpresa().slice().sort((a,b)=>String(a.placa||'').localeCompare(String(b.placa||''),'pt-BR'));
+  const optsEq = eqs.map(e=>{
+    const tipo = _eqTipoMedida(e)==='horas' ? 'máquina' : _eqTipoMedida(e)==='km' ? 'veículo' : '';
+    return `<option value="${e.id}" data-valor="${_lavValorPadrao(e)}" ${String(eqSel)===String(e.id)?'selected':''}>${esc(e.placa||'')} — ${esc(e.modelo||'')}${tipo?' ('+tipo+')':''}</option>`;
+  }).join('');
+  const optsCC = (db.centros_custo||[]).filter(x=>x.ativo!==false && !x.excluido).map(x=>`<option value="${x.id}" ${c&&String(c.centro_custo_id)===String(x.id)?'selected':''}>${esc(x.nome||'')}${x.codigo?' ('+esc(x.codigo)+')':''}</option>`).join('');
+  const valorIni = c ? Math.abs(Number(c.valor)||0) : (eqSel ? _lavValorPadrao(_lavEq(eqSel)) : 0);
+  openModal(`<i class="fas fa-soap" style="color:var(--primary)"></i> ${c?'Editar':'Lançar'} Lavagem`,`
+  <div class="frow">
+    <div class="fg"><label>Veículo / Máquina *</label><select class="fs" id="lav_eq" onchange="_lavAoTrocarEquip(this)"><option value="">Selecione...</option>${optsEq}</select></div>
+    <div class="fg"><label>Data da lavagem *</label><input class="fi" type="date" id="lav_dt" value="${c?String(c.data||'').slice(0,10):today()}"></div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label>Valor (R$) * <span id="lav_val_info" style="font-size:10px;color:var(--text3)">${!c&&valorIni?'valor padrão do cadastro':''}</span></label>
+      <input class="fi" type="number" step="0.01" min="0" id="lav_val" value="${valorIni||''}" placeholder="0,00" oninput="this.dataset.manual='1'"></div>
+    <div class="fg"><label>Centro de custo</label><select class="fs" id="lav_cc"><option value="">— Opcional —</option>${optsCC}</select></div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label>Local / Lavador</label><input class="fi" id="lav_resp" value="${esc(c?.responsavel||'')}" placeholder="Ex: Lava-jato, interno"></div>
+    <div class="fg"><label>Observações</label><input class="fi" id="lav_obs" value="${esc(c?.obs||'')}"></div>
+  </div>
+  <div class="mf">
+    <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-p" onclick="salvarLavagem(${c?`'${esc(String(c.id))}'`:'null'})"><i class="fas fa-save"></i> Salvar</button>
+  </div>`,'sm');
+}
+// Ao escolher a placa, puxa o valor padrão do cadastro (se o usuário ainda não digitou um valor)
+function _lavAoTrocarEquip(sel){
+  const inp = document.getElementById('lav_val'); if(!inp) return;
+  const v = Number(sel?.selectedOptions?.[0]?.dataset?.valor)||0;
+  const info = document.getElementById('lav_val_info');
+  if(inp.dataset.manual==='1') return;
+  inp.value = v ? v : '';
+  if(info) info.textContent = v ? 'valor padrão do cadastro' : 'sem valor padrão no cadastro';
+}
+
+async function salvarLavagem(id=null){
+  const eqId = document.getElementById('lav_eq')?.value;
+  const data = document.getElementById('lav_dt')?.value;
+  const valor = Math.abs(parseFloat(document.getElementById('lav_val')?.value)||0);
+  if(!eqId){ showToast('Selecione o veículo ou máquina','warning'); return; }
+  if(!data){ showToast('Informe a data da lavagem','warning'); return; }
+  if(!(valor>0)){ showToast('Informe o valor da lavagem','warning'); return; }
+  if(!await _osValidarVinculoCustoAtivo(eqId, valor)) return;
+  const eq = _lavEq(eqId);
+  db.custos_extras = db.custos_extras || [];
+  const antigo = id ? db.custos_extras.find(x=>String(x.id)===String(id)) : null;
+  const reg = Object.assign(antigo || { id:uid(), tenant:_sbTenant }, {
+    equipamento_id: eq ? eq.id : (Number(eqId)||eqId),
+    centro_custo_id: parseInt(document.getElementById('lav_cc')?.value)||null,
+    data, tipo: LAVAGEM_TIPO, origem_custo:'lavagem', vinculado_ativo:true,
+    descricao: 'Lavagem — '+(eq?.placa||''),
+    valor,
+    responsavel: document.getElementById('lav_resp')?.value.trim()||'',
+    obs: document.getElementById('lav_obs')?.value.trim()||''
+  });
+  if(!antigo) db.custos_extras.push(reg);
+  const ok = await sbSalvar('custos_extras', reg);
+  if(ok===false && _sbMode==='supabase'){ showToast('Não foi possível salvar a lavagem','danger'); return; }
+  closeModal(); loadPage('lavagem');
+  showToast(antigo?'Lavagem atualizada':'Lavagem lançada','success');
+}
+
+async function excluirLavagem(id){
+  const c = (db.custos_extras||[]).find(x=>String(x.id)===String(id));
+  if(!c) return;
+  if(!await _confirmar(`Excluir a lavagem de ${_lavEqNome(c.equipamento_id)} em ${fmtDt(String(c.data||'').slice(0,10))}?`,'danger')) return;
+  c.excluido = true; c.ativo = false;   // exclusão lógica (nunca apaga a linha)
+  await sbDeletar('custos_extras', c.id);
+  loadPage('lavagem'); showToast('Lavagem excluída','info');
+}
+
+function _lavLinhasRelatorio(){
+  const f = _lavFiltroAtual();
+  const lista = _lavFiltrar(db.custos_extras, f);
+  return { f, lista, res:_lavResumo(lista) };
+}
+function exportarLavagemExcel(){
+  const { lista, res } = _lavLinhasRelatorio();
+  if(!lista.length){ showToast('Nenhuma lavagem no período','warning'); return; }
+  const rows = lista.map(c=>{ const e=_lavEq(c.equipamento_id)||{}; return [
+    fmtDt(String(c.data||'').slice(0,10)), e.placa||'', e.modelo||'', Math.abs(Number(c.valor)||0),
+    ((db.centros_custo||[]).find(x=>String(x.id)===String(c.centro_custo_id))||{}).nome||'', c.responsavel||'', c.obs||'' ]; });
+  rows.push(['TOTAL','','',res.total,'','','']);
+  exportExcel('Lavagens', ['Data','Placa','Modelo','Valor (R$)','Centro de custo','Local / Lavador','Obs.'], rows);
+}
+function imprimirLavagem(){
+  const { f, lista, res } = _lavLinhasRelatorio();
+  if(!lista.length){ showToast('Nenhuma lavagem no período','warning'); return; }
+  const emp = (db.empresas||[])[0]?.nome || '';
+  const w = window.open('','_blank','width=1000,height=750');
+  if(!w){ showToast('Permita pop-ups para imprimir','warning'); return; }
+  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Lavagens</title>
+  <style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:16px 20px}@page{size:A4 portrait;margin:12mm}
+  h1{font-size:16px;margin:0}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #ccc;padding:5px 7px;text-align:left}
+  th{background:#3A3F42;color:#fff;font-size:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact}td.n,th.n{text-align:right}
+  .top{display:flex;justify-content:space-between;border-bottom:3px solid #3A3F42;padding-bottom:8px}.tot{margin-top:10px;font-size:13px;font-weight:700}
+  .np{margin-bottom:10px}@media print{.np{display:none}}</style></head><body>
+  <div class="np"><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
+  <div class="top"><div><h1>Relatório de Lavagens</h1><div>${esc(emp)}</div></div>
+  <div style="text-align:right">Período: ${fmtDt(f.di)} a ${fmtDt(f.df)}${f.eq?'<br>Equipamento: '+esc(_lavEqNome(f.eq)):''}<br>Gerado em ${new Date().toLocaleString('pt-BR')}</div></div>
+  <table><thead><tr><th>Data</th><th>Equipamento</th><th class="n">Valor</th><th>Local / Lavador</th><th>Obs.</th></tr></thead><tbody>
+  ${lista.map(c=>`<tr><td>${fmtDt(String(c.data||'').slice(0,10))}</td><td>${esc(_lavEqNome(c.equipamento_id))}</td><td class="n">${money(Math.abs(Number(c.valor)||0))}</td><td>${esc(c.responsavel||'')}</td><td>${esc(c.obs||'')}</td></tr>`).join('')}
+  </tbody></table>
+  <div class="tot">Total: ${money(res.total)} — ${res.qtd} lavagem(ns)</div>
+  <table><thead><tr><th>Equipamento</th><th class="n">Lavagens</th><th class="n">Total</th><th>Última</th></tr></thead><tbody>
+  ${res.porEq.map(r=>`<tr><td>${esc(_lavEqNome(r.equipamento_id))}</td><td class="n">${r.qtd}</td><td class="n">${money(r.total)}</td><td>${r.ultima?fmtDt(r.ultima):'—'}</td></tr>`).join('')}
+  </tbody></table>
+  <script>setTimeout(()=>window.print(),500);<\/script></body></html>`);
+  w.document.close();
 }
 
 function exportFormularioExcel(){
