@@ -18,7 +18,7 @@ function functionSource(name){
   throw new Error(`função incompleta: ${name}`);
 }
 const ctx=vm.createContext({Math,Number,String,Date,Array,Set,isNaN,isFinite,Object,JSON,parseInt,parseFloat});
-for(const f of ['_eqMedidas','_fichaTokens','_fichaMotivoForaFicha','_fichaTxt','_fichaNum','_fichaPlacaChave','_fichaNormDesc','_fichaEhFiltro','_fichaData','_fichaValorRotulo',
+for(const f of ['_eqTipoMedida','_eqMedidas','_ehFiltroTexto','_fichaTokens','_fichaMotivoForaFicha','_fichaTxt','_fichaNum','_fichaPlacaChave','_fichaNormDesc','_fichaEhFiltro','_fichaData','_fichaValorRotulo',
   '_fichaParseFicha','_fichaParseServicos','_fichaAnalisarAbas','_fichaAcharEquip','_fichaPlanejar']) vm.runInContext(functionSource(f),ctx);
 const J=v=>JSON.stringify(v);
 
@@ -162,5 +162,10 @@ const f=r.fichas[0];
   assert.equal(pl3.cadastro.km,undefined);
   assert.ok(!/medido em horas/.test(pl3.foraMotivo[40]||''));
   assert.match(functionSource('_fichaImportar'),/\.ficha-fora:checked/,'grava só os itens marcados na prévia');
+  // S3 sem tipo no cadastro: deduz horas, grava o tipo e zera o km
+  const pl4=ctx._fichaPlanejar(ficha,{id:7,placa:'S3',parametros:{km:19809000,horas:3116}},planos,{});
+  assert.equal(pl4.ehKm,false); assert.equal(pl4.cadastro.tipo_medida,'horas'); assert.equal(pl4.cadastro.km,0);
+  assert.match(pl4.foraMotivo[40],/medido em horas/);
+  assert.ok(ctx._fichaEhFiltro('FLEET LF3345') && ctx._fichaEhFiltro('UNIFILTER UA13302P') && !ctx._fichaEhFiltro('15W40 CK-4'));
   console.log('PASS: S3 — itens antigos duplicados/unidade errada sugeridos para desativar, km lixo zerado.');
 }
