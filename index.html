@@ -10023,82 +10023,110 @@ function _ccCarregarAbaEq(eqId){
 //  PLANOS DE MANUTENÇÃO ()
 // ═══════════════════════════════════════════════
 function renderPlanos(){
-  const norm = (v)=>String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const norm = (v)=>String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
   const canEdit = nivel('operador');
+  const hojeISO = today();
   const eqId = db.equipamentos[0]?.id || null;
-  let filtEq = window._filtPlanoEq || eqId;
+  const filtEq = window._filtPlanoEq || eqId;
   const eq = (Array.isArray(db?.equipamentos)?db.equipamentos:[]).find(e=>e.id==filtEq);
-  const planosEq = db.planos_manutencao.filter(p => p.equipamento_id == filtEq);
+  const planosEq = (db.planos_manutencao||[]).filter(p => p.equipamento_id == filtEq);
   const optsEq = _eqsDaEmpresa().map(e=>`<option value="${e.id}" ${filtEq==e.id?'selected':''}>${esc(e.placa||"")} — ${esc(e.modelo||"")}</option>`).join('');
-
-  const tab = window._planoTab || 'lubrificantes';
   const termo = norm(window._planoBusca || '');
+  const filtroEstado = window._planoFiltroEstado || '';
   const eqKm = Number(eq?.parametros?.km||0);
   const eqH = Number(eq?.parametros?.horas||0);
-  const labelGatilho = (p)=> String(p.tipo_gatilho||'km').toUpperCase().replace('_','/');
-  const isFiltro = (p)=>{
-    const t = norm(`${p.codigo||''} ${p.descricao||''} ${p.compartimento||''} ${(p.pecas||[]).map(x=>x.descricao).join(' ')}`);
-    return t.includes('filtro') || t.includes('tecfil') || t.includes('filtr');
-  };
-  const isLub = (p)=>{
-    const t = norm(`${p.codigo||''} ${p.descricao||''} ${p.compartimento||''} ${(p.pecas||[]).map(x=>x.descricao).join(' ')}`);
-    return !isFiltro(p) && (t.includes('oleo') || t.includes('lubr') || t.includes('motor') || t.includes('hidraul') || t.includes('transmiss') || t.includes('diferencial') || t.includes('cambio') || t.includes('direcao') || t.includes('engrax'));
-  };
-  const isOperacao = (p)=> !isFiltro(p) && !isLub(p);
-  const filtraBusca = (p)=> !termo || norm(`${p.codigo||''} ${p.descricao||''} ${p.compartimento||''}`).includes(termo);
-  const grupos = {
-    lubrificantes: planosEq.filter(p=>isLub(p)).filter(filtraBusca),
-    filtros: planosEq.filter(p=>isFiltro(p)).filter(filtraBusca),
-    operacoes: planosEq.filter(p=>isOperacao(p)).filter(filtraBusca),
-    tecnicas: planosEq.filter(filtraBusca),
-    historico: [
-      ...(db.planos_manutencao_historico||[]).filter(m=>String(m.equipamento_id)===String(filtEq)).map(m=>({
-        data:m.data_execucao||m.data||m.criado_em,
-        servico:m.descricao||m.servico||'Preventiva executada',
-        tipo:m.tipo||'preventiva',
-        km_execucao:m.km_execucao,
-        horas_execucao:m.horas_execucao,
-        hodometro:m.km_execucao||m.hodometro||m.ultimo_km,
-        horas:m.horas_execucao||m.horas||m.ultimo_horas,
-        responsavel:m.responsavel||m.executado_por||'—',
-        custo:m.custo||0,
-        obs:m.obs||m.observacao||'',
-        os_id:m.os_id,
-        plano_id:m.plano_id
-      })),
-      ...(db.manutencoes||[]).filter(m=>m.equipamento_id==filtEq)
-    ].filter(m=>!termo || norm(`${m.servico||m.descricao||''} ${m.tipo||''} ${m.responsavel||''} ${m.obs||''}`).includes(termo))
-  };
-  const ativosTab = grupos[tab] || grupos.lubrificantes;
-  const proxTxt = (p,s)=>{
-    if((p.intervalo_km||0)>0 && s.proxKm!==null) return `${fmt(s.proxKm)} km`;
-    if((p.intervalo_horas||0)>0 && s.proxH!==null) return `${s.proxH} h`;
-    if(p.intervalo_meses>0) return `${p.intervalo_meses} m`;
-    return '—';
-  };
-  const statusBadge = (s)=> s.vencido?'<span class="badge bd">Vencido</span>': s.alerta?'<span class="badge bw">Atenção</span>':'<span class="badge bs">OK</span>';
   const indice = (p)=> db.planos_manutencao.findIndex(x=>x.id===p.id);
-  const tabs = [
-    ['lubrificantes','Lubrificantes','fa-oil-can',grupos.lubrificantes.length],
-    ['filtros','Filtros','fa-filter',grupos.filtros.length],
-    ['operacoes','Operações','fa-stopwatch',grupos.operacoes.length],
-    ['tecnicas','Carac. Técnicas','fa-screwdriver-wrench',grupos.tecnicas.length],
-    ['historico','Histórico','fa-clock-rotate-left',grupos.historico.length]
+  const secKey = (k)=> `${filtEq}:${k}`;
+  const secAberta = (k)=> (window._planoSecoes||{})[secKey(k)] ?? (k!=='historico');
+
+  // Situação de todos os itens do equipamento (resumo usa o total, sem filtros)
+  const todos = planosOrdenados(planosEq, eq, hojeISO);
+  const cont = { vencido:0, atencao:0, ok:0, sem_dados:0 };
+  todos.forEach(x=>{ cont[x.s.estado]++; });
+  const passaBusca = (p)=> !termo || norm(`${p.codigo||''} ${p.descricao||''} ${p.compartimento||''} ${(p.pecas||[]).map(x=>x.descricao).join(' ')}`).includes(termo);
+  const visiveis = todos.filter(x=> passaBusca(x.p) && (!filtroEstado || x.s.estado===filtroEstado));
+
+  const secoes = [
+    { k:'lubrificantes', titulo:'Óleos e Lubrificantes', ic:'fa-oil-can' },
+    { k:'filtros',       titulo:'Filtros',               ic:'fa-filter' },
+    { k:'operacoes',     titulo:'Operações',             ic:'fa-stopwatch' }
   ];
-  const cardsResumo = (()=>{
-    const venc = planosEq.filter(p=>calcPlanoStatus(p,eq).vencido).length;
-    const alerta = planosEq.filter(p=>calcPlanoStatus(p,eq).alerta && !calcPlanoStatus(p,eq).vencido).length;
-    return `<div class="pm-cards">
-      <div><label>Total itens</label><b>${planosEq.length}</b><span>plano do ativo</span></div>
-      <div><label>Lubrificantes</label><b>${grupos.lubrificantes.length}</b><span>óleo / graxa / fluidos</span></div>
-      <div><label>Filtros</label><b>${grupos.filtros.length}</b><span>elementos filtrantes</span></div>
-      <div><label>Vencidos</label><b style="color:var(--danger)">${venc}</b><span>executar agora</span></div>
-      <div><label>Atenção</label><b style="color:var(--warning)">${alerta}</b><span>próximos do limite</span></div>
+
+  const aCadaTxt = (p)=>{
+    const a=[];
+    if(Number(p.intervalo_km)>0) a.push(`${fmt(p.intervalo_km)} km`);
+    if(Number(p.intervalo_horas)>0) a.push(`${fmt(p.intervalo_horas)} h`);
+    if(Number(p.intervalo_meses)>0) a.push(`${p.intervalo_meses} m`);
+    return a.length ? a.join(' · ') : '—';
+  };
+  const ultimaTxt = (p)=>{
+    const a=[];
+    if(Number(p.ultimo_km)>0) a.push(`${fmt(p.ultimo_km)} km`);
+    if(Number(p.ultimo_horas)>0) a.push(`${fmt(p.ultimo_horas)} h`);
+    if(p.ultima_data) a.push(fmtDt(p.ultima_data));
+    return a.length ? a.join(' · ') : '—';
+  };
+  const detalhesHtml = (p)=>{
+    const pecas = (p.pecas||[]);
+    const pec = pecas.find(x=>norm(x.unidade||'')==='l'||norm(x.descricao||'').includes('oleo'));
+    const cap = pec?.quantidade || p.capacidade_litros;
+    const item = (rot,val)=> val ? `<div><label>${rot}</label><b>${val}</b></div>` : '';
+    return `<div class="pm-det-grid">
+      ${item('Capacidade', cap?`${esc(String(cap))} L`:'')}
+      ${item('Gatilho', p.tipo_gatilho?esc(String(p.tipo_gatilho).toUpperCase().replace('_','/')):'')}
+      ${item('Amostragem', (p.amostragem_km>0||p.amostragem_horas>0)?esc([p.amostragem_km>0?fmt(p.amostragem_km)+' km':'',p.amostragem_horas>0?p.amostragem_horas+' h':''].filter(Boolean).join(' · ')):'')}
+      ${item('% Remonta', p.remonta_perc?`${esc(String(p.remonta_perc))}%`:'')}
+      ${item('Limpeza', (p.limpeza_km>0||p.limpeza_horas>0)?esc([p.limpeza_km>0?fmt(p.limpeza_km)+' km':'',p.limpeza_horas>0?p.limpeza_horas+' h':''].filter(Boolean).join(' · ')):'')}
+      ${item('Especificação', p.especificacao?esc(p.especificacao):'')}
+      ${item('Peças', pecas.length?pecas.map(x=>`${esc(x.descricao||'')}${x.referencia?' ('+esc(x.referencia)+')':''}${x.quantidade?' × '+esc(String(x.quantidade))+' '+esc(x.unidade||''):''}`).join('<br>'):'')}
+    </div>${(!cap && !p.tipo_gatilho && !pecas.length && !p.amostragem_km && !p.amostragem_horas && !p.remonta_perc && !p.limpeza_km && !p.limpeza_horas && !p.especificacao)?'<small>Sem detalhes cadastrados para este item.</small>':''}`;
+  };
+  const linhaHtml = ({p,s})=>{
+    const idx = indice(p);
+    const pid = esc(String(p.id));
+    const acoes = `<button class="ic-btn" title="Ver detalhes" onclick="togglePlanoDetalhe('${pid}')"><i class="fas fa-circle-info"></i></button>`
+      + (canEdit ? `<button class="ic-btn" title="Editar" onclick="openModalPlano(${idx})"><i class="fas fa-edit"></i></button><button class="ic-btn gr" title="Registrar execução" onclick="openModalExecPlano(${idx})"><i class="fas fa-check"></i></button><button class="ic-btn rd" title="Excluir" onclick="delPlano(${idx})"><i class="fas fa-trash"></i></button>` : '');
+    return `<tr class="pm-row ${s.estado}" data-estado="${s.estado}">
+      <td data-label="Item"><b>${esc(p.codigo||'')}</b> ${esc(p.descricao||'—')}<small>${esc(p.compartimento||'')}</small></td>
+      <td data-label="A cada">${esc(aCadaTxt(p))}</td>
+      <td data-label="Última">${esc(ultimaTxt(p))}</td>
+      <td data-label="Próxima"><b>${esc(s.proxima)}</b></td>
+      <td data-label="Situação"><div class="pm-bar ${s.estado}"><i style="width:${Math.max(0,Math.min(100,s.pct))}%"></i></div><span class="pm-sit ${s.estado}">${esc(s.texto)}</span></td>
+      <td data-label="Ações" class="pm-acoes">${acoes}</td>
+    </tr>
+    <tr class="pm-det" id="pm-det-${pid}" style="display:none"><td colspan="6">${detalhesHtml(p)}</td></tr>`;
+  };
+  const secaoHtml = (sc)=>{
+    const itens = visiveis.filter(x=>planoClasse(x.p)===sc.k);
+    const total = todos.filter(x=>planoClasse(x.p)===sc.k).length;
+    const aberta = secAberta(sc.k);
+    const corpo = !aberta ? '' : itens.length
+      ? `<div class="pm-wrap"><table class="pm-table"><thead><tr><th>Item</th><th>A cada</th><th>Última</th><th>Próxima</th><th>Situação</th><th>Ações</th></tr></thead><tbody>${itens.map(linhaHtml).join('')}</tbody></table></div>`
+      : `<div class="empty pm-vazio"><p>Nenhum item${(termo||filtroEstado)?' com este filtro':' nesta seção'}</p></div>`;
+    return `<div class="pm-sec" data-sec="${sc.k}">
+      <div class="pm-sec-head" onclick="togglePlanoSecao('${secKey(sc.k)}', ${aberta})"><span><i class="fas ${sc.ic}"></i> <b>${sc.titulo}</b> <span class="pm-count">${(termo||filtroEstado)?`${itens.length} de ${total}`:total}</span></span><i class="fas fa-chevron-${aberta?'up':'down'}"></i></div>
+      ${corpo}
     </div>`;
-  })();
-  const tabelaLub = (dados)=> dados.length?`<table class="pm-table"><thead><tr><th>Cód.</th><th>Compartimento</th><th>Lubrificante / Serviço</th><th>Capac. L</th><th>Troca KM</th><th>Troca H</th><th>Amost. KM</th><th>Amost. H</th><th>% Remonta</th><th>Próximo</th><th>Status</th>${canEdit?'<th>Ações</th>':''}</tr></thead><tbody>${dados.map(p=>{const s=calcPlanoStatus(p,eq); const idx=indice(p); const pec=(p.pecas||[]).find(x=>norm(x.unidade||'')==='l'||norm(x.descricao||'').includes('oleo')); return `<tr class="${s.vencido?'vencido':s.alerta?'alerta':''}"><td><b>${esc(p.codigo||'')}</b></td><td>${esc(p.compartimento||'—')}</td><td><b>${esc(p.descricao||'—')}</b><small>${esc((p.pecas||[]).map(x=>x.descricao).slice(0,2).join(' • '))}</small></td><td>${pec?.quantidade||p.capacidade_litros||'—'}</td><td>${p.intervalo_km>0?fmt(p.intervalo_km):'—'}</td><td>${p.intervalo_horas>0?p.intervalo_horas:'—'}</td><td>${p.amostragem_km>0?fmt(p.amostragem_km):'—'}</td><td>${p.amostragem_horas>0?p.amostragem_horas:'—'}</td><td>${p.remonta_perc?`${p.remonta_perc}%`:'—'}</td><td><b>${proxTxt(p,s)}</b></td><td>${statusBadge(s)}</td>${canEdit?`<td><button class="ic-btn" onclick="openModalPlano(${idx})"><i class="fas fa-edit"></i></button><button class="ic-btn gr" onclick="openModalExecPlano(${idx})"><i class="fas fa-check"></i></button><button class="ic-btn rd" onclick="delPlano(${idx})"><i class="fas fa-trash"></i></button></td>`:''}</tr>`}).join('')}</tbody></table>`:`<div class="empty"><i class="fas fa-oil-can"></i><p>Nenhum item nesta aba</p></div>`;
-  const tabelaFiltros = (dados)=> dados.length?`<table class="pm-table"><thead><tr><th>Cód.</th><th>Filtro</th><th>Compartimento</th><th>Troca KM</th><th>Troca H</th><th>Limpeza KM</th><th>Limpeza H</th><th>Especificação</th><th>Próximo</th><th>Status</th>${canEdit?'<th>Ações</th>':''}</tr></thead><tbody>${dados.map(p=>{const s=calcPlanoStatus(p,eq); const idx=indice(p); const pec=(p.pecas||[])[0]||{}; return `<tr class="${s.vencido?'vencido':s.alerta?'alerta':''}"><td><b>${esc(p.codigo||'')}</b></td><td><b>${esc(p.descricao||'—')}</b><small>${esc(pec.descricao||'')}</small></td><td>${esc(p.compartimento||'—')}</td><td>${p.intervalo_km>0?fmt(p.intervalo_km):'—'}</td><td>${p.intervalo_horas>0?p.intervalo_horas:'—'}</td><td>${p.limpeza_km||'—'}</td><td>${p.limpeza_horas||'—'}</td><td>${esc(pec.referencia||p.especificacao||'—')}</td><td><b>${proxTxt(p,s)}</b></td><td>${statusBadge(s)}</td>${canEdit?`<td><button class="ic-btn" onclick="openModalPlano(${idx})"><i class="fas fa-edit"></i></button><button class="ic-btn gr" onclick="openModalExecPlano(${idx})"><i class="fas fa-check"></i></button><button class="ic-btn rd" onclick="delPlano(${idx})"><i class="fas fa-trash"></i></button></td>`:''}</tr>`}).join('')}</tbody></table>`:`<div class="empty"><i class="fas fa-filter"></i><p>Nenhum filtro cadastrado</p></div>`;
-  const tabelaOperacoes = (dados)=> dados.length?`<table class="pm-table"><thead><tr><th>Cód.</th><th>Operação</th><th>Compartimento</th><th>Gatilho</th><th>Intervalo KM</th><th>Intervalo H</th><th>Último KM</th><th>Última H</th><th>Próximo</th><th>Status</th>${canEdit?'<th>Ações</th>':''}</tr></thead><tbody>${dados.map(p=>{const s=calcPlanoStatus(p,eq); const idx=indice(p); return `<tr class="${s.vencido?'vencido':s.alerta?'alerta':''}"><td><b>${esc(p.codigo||'')}</b></td><td><b>${esc(p.descricao||'—')}</b></td><td>${esc(p.compartimento||'—')}</td><td><span class="badge bp">${labelGatilho(p)}</span></td><td>${p.intervalo_km>0?fmt(p.intervalo_km):'—'}</td><td>${p.intervalo_horas>0?p.intervalo_horas:'—'}</td><td>${p.ultimo_km>0?fmt(p.ultimo_km):'—'}</td><td>${p.ultimo_horas>0?p.ultimo_horas:'—'}</td><td><b>${proxTxt(p,s)}</b></td><td>${statusBadge(s)}</td>${canEdit?`<td><button class="ic-btn" onclick="openModalPlano(${idx})"><i class="fas fa-edit"></i></button><button class="ic-btn gr" onclick="openModalExecPlano(${idx})"><i class="fas fa-check"></i></button><button class="ic-btn rd" onclick="delPlano(${idx})"><i class="fas fa-trash"></i></button></td>`:''}</tr>`}).join('')}</tbody></table>`:`<div class="empty"><i class="fas fa-stopwatch"></i><p>Nenhuma operação cadastrada</p></div>`;
+  };
+
+  // Histórico (igual ao que a tela já mostrava)
+  const historico = [
+    ...(db.planos_manutencao_historico||[]).filter(m=>String(m.equipamento_id)===String(filtEq)).map(m=>({
+      data:m.data_execucao||m.data||m.criado_em,
+      servico:m.descricao||m.servico||'Preventiva executada',
+      tipo:m.tipo||'preventiva',
+      km_execucao:m.km_execucao,
+      horas_execucao:m.horas_execucao,
+      hodometro:m.km_execucao||m.hodometro||m.ultimo_km,
+      horas:m.horas_execucao||m.horas||m.ultimo_horas,
+      responsavel:m.responsavel||m.executado_por||'—',
+      custo:m.custo||0,
+      obs:m.obs||m.observacao||'',
+      os_id:m.os_id,
+      plano_id:m.plano_id
+    })),
+    ...(db.manutencoes||[]).filter(m=>m.equipamento_id==filtEq)
+  ].filter(m=>!termo || norm(`${m.servico||m.descricao||''} ${m.tipo||''} ${m.responsavel||''} ${m.obs||''}`).includes(termo));
   const histMedidaTxt = (m)=>{
     const km = Number(m.km_execucao ?? m.hodometro ?? m.ultimo_km ?? 0);
     const h = Number(m.horas_execucao ?? m.horas ?? m.ultimo_horas ?? m.horimetro ?? 0);
@@ -10107,32 +10135,80 @@ function renderPlanos(){
     if(h>0) partes.push(`${fmt(h)} h`);
     return partes.length ? partes.join(' / ') : '—';
   };
-  const tabelaHistorico = (dados)=> dados.length?`<table class="pm-table"><thead><tr><th>Data</th><th>Serviço</th><th>Tipo</th><th>OS</th><th>KM/Horímetro executado</th><th>Responsável</th><th>Custo</th><th>Obs.</th></tr></thead><tbody>${dados.slice(0,80).map(m=>`<tr><td>${fmtDt(m.data||m.criado_em||'')}</td><td><b>${esc(m.servico||m.descricao||'—')}</b></td><td>${esc(m.tipo||'—')}</td><td>${m.os_id?('#'+m.os_id):'—'}</td><td><b>${histMedidaTxt(m)}</b></td><td>${esc(m.responsavel||'—')}</td><td>${money(m.custo||0)}</td><td>${esc(m.obs||'')}</td></tr>`).join('')}</tbody></table>`:`<div class="empty"><i class="fas fa-clock-rotate-left"></i><p>Sem histórico para este equipamento</p></div>`;
-  const corpo = tab==='filtros'?tabelaFiltros(ativosTab):tab==='historico'?tabelaHistorico(ativosTab):tab==='operacoes'||tab==='tecnicas'?tabelaOperacoes(ativosTab):tabelaLub(ativosTab);
+  const histAberta = secAberta('historico');
+  const histCorpo = !histAberta ? '' : historico.length
+    ? `<div class="pm-wrap"><table class="pm-table"><thead><tr><th>Data</th><th>Serviço</th><th>Tipo</th><th>OS</th><th>KM/Horímetro executado</th><th>Responsável</th><th>Custo</th><th>Obs.</th></tr></thead><tbody>${historico.slice(0,80).map(m=>`<tr><td>${fmtDt(m.data||m.criado_em||'')}</td><td><b>${esc(m.servico||m.descricao||'—')}</b></td><td>${esc(m.tipo||'—')}</td><td>${m.os_id?('#'+esc(String(m.os_id))):'—'}</td><td><b>${histMedidaTxt(m)}</b></td><td>${esc(m.responsavel||'—')}</td><td>${money(m.custo||0)}</td><td>${esc(m.obs||'')}</td></tr>`).join('')}</tbody></table></div>`
+    : `<div class="empty pm-vazio"><p>Sem histórico para este equipamento</p></div>`;
+  const histHtml = `<div class="pm-sec" data-sec="historico">
+      <div class="pm-sec-head" onclick="togglePlanoSecao('${secKey('historico')}', ${histAberta})"><span><i class="fas fa-clock-rotate-left"></i> <b>Histórico</b> <span class="pm-count">${historico.length}</span></span><i class="fas fa-chevron-${histAberta?'up':'down'}"></i></div>
+      ${histCorpo}
+    </div>`;
+
+  const resumoBtn = (estado, rot, cls)=> `<button class="pm-chip ${cls} ${filtroEstado===estado?'active':''}" onclick="setPlanoFiltro('${estado}')"><b>${cont[estado]}</b> ${rot}</button>`;
+  const corpoPrincipal = planosEq.length
+    ? secoes.map(secaoHtml).join('')
+    : `<div class="pm-sec"><div class="empty pm-vazio"><i class="fas fa-oil-can"></i><p>Nenhum plano cadastrado para este equipamento</p></div></div>`;
 
   return `
   <style>
     .pm-toolbar{background:#fff;border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:var(--shadow-sm)}
-    .pm-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.pm-tab{border:1px solid var(--border);background:#f8fafc;color:var(--text2);border-radius:10px;padding:9px 12px;font-weight:800;font-size:12px;cursor:pointer}.pm-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
-    .pm-cards{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin:12px 0}.pm-cards>div{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px}.pm-cards label{display:block;font-size:10px;text-transform:uppercase;font-weight:900;color:var(--text3);letter-spacing:.5px}.pm-cards b{display:block;font-size:22px;color:var(--primary);margin-top:4px}.pm-cards span{font-size:11px;color:var(--text2)}
-    .pm-panel{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm)}.pm-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f8fafc;border-bottom:1px solid var(--border)}.pm-head h3{margin:0;font-size:15px}.pm-wrap{overflow:auto;max-height:58vh}.pm-table{width:100%;border-collapse:collapse;font-size:12px}.pm-table th{position:sticky;top:0;background:#edf2f7;color:#34445a;text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.5px;z-index:1}.pm-table td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}.pm-table tr:hover{background:#f8fbff}.pm-table tr.vencido{background:#fff1f2}.pm-table tr.alerta{background:#fffbeb}.pm-table small{display:block;color:var(--text3);font-size:10px;margin-top:3px}.pm-help{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--text2)}.pm-help span{padding:4px 9px;border-radius:999px;background:#fff;border:1px solid var(--border)}
-    @media(max-width:900px){.pm-cards{grid-template-columns:repeat(2,1fr)}.pm-table{font-size:11px}.pm-tabs{overflow:auto;flex-wrap:nowrap}.pm-tab{white-space:nowrap}}
+    .pm-resumo{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .pm-chip{border:1px solid var(--border);background:#f8fafc;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text2)}
+    .pm-chip b{font-size:15px;margin-right:4px}
+    .pm-chip.vencido b{color:var(--danger)}.pm-chip.atencao b{color:var(--warning)}.pm-chip.ok b{color:var(--success)}
+    .pm-chip.active{border-color:var(--primary);background:var(--primary-light)}
+    .pm-sec{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);margin-bottom:12px}
+    .pm-sec-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#f8fafc;cursor:pointer;font-size:14px}
+    .pm-sec-head i.fas:first-child{margin-right:4px}.pm-count{margin-left:6px;padding:2px 9px;border-radius:999px;background:#e2e8f0;font-size:11px;font-weight:800}
+    .pm-wrap{overflow:auto;max-height:60vh}.pm-table{width:100%;border-collapse:collapse;font-size:12px}
+    .pm-table th{position:sticky;top:0;background:#edf2f7;color:#34445a;text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.5px;z-index:1}
+    .pm-table td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
+    .pm-table small{display:block;color:var(--text3);font-size:10px;margin-top:3px}
+    .pm-row.vencido{background:#fff1f2}.pm-row.atencao{background:#fffbeb}
+    .pm-bar{height:6px;border-radius:99px;background:#e2e8f0;overflow:hidden;margin-bottom:4px;min-width:90px}.pm-bar i{display:block;height:100%;border-radius:99px;background:var(--success)}
+    .pm-bar.atencao i{background:var(--warning)}.pm-bar.vencido i{background:var(--danger)}.pm-bar.sem_dados i{background:#94a3b8}
+    .pm-sit{font-weight:700;font-size:12px}.pm-sit.vencido{color:var(--danger)}.pm-sit.atencao{color:#b45309}.pm-sit.sem_dados{color:var(--text3)}
+    .pm-acoes{white-space:nowrap}
+    .pm-det td{background:#f8fafc}.pm-det-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+    .pm-det-grid label{display:block;font-size:10px;text-transform:uppercase;font-weight:900;color:var(--text3);letter-spacing:.5px}.pm-det-grid b{font-size:12px;font-weight:600}
+    .pm-vazio{padding:18px}
+    .pm-help{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--text2)}.pm-help span{padding:4px 9px;border-radius:999px;background:#fff;border:1px solid var(--border)}
+    @media(max-width:900px){
+      .pm-table,.pm-table tbody{display:block}.pm-table{min-width:0!important;width:100%}.pm-table thead{display:none}
+      .pm-row{display:block;padding:10px 12px;border-bottom:1px solid var(--border)}
+      .pm-row td{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:4px 0;border:0}
+      .pm-row td::before{content:attr(data-label);font-weight:800;font-size:10px;text-transform:uppercase;color:var(--text3);flex:0 0 70px}
+      .pm-row td[data-label="Item"]{display:block}.pm-row td[data-label="Item"]::before{display:none}
+      .pm-det{display:block}.pm-det td{display:block;padding:10px 12px}
+    }
   </style>
   <div class="pm-toolbar">
     <div class="frow" style="align-items:end">
       <div class="fg"><label>Equipamento</label><select class="fs" onchange="window._filtPlanoEq=parseInt(this.value);loadPage('planos')">${optsEq}</select></div>
       <div class="fg"><label>Buscar item</label><input class="fi" placeholder="Código, filtro, óleo, compartimento..." value="${esc(window._planoBusca||'')}" oninput="window._planoBusca=this.value;loadPage('planos')"></div>
-      <div class="row10">${canEdit?`<button class="btn btn-p" onclick="openModalPlano()"><i class="fas fa-plus"></i> Inserir</button><button class="btn btn-s" onclick="openModalRegistrarPlano()"><i class="fas fa-check-double"></i> Registrar execução</button><button class="btn btn-g" onclick="openModalImportarFicha()"><i class="fas fa-file-import"></i> Importar ficha</button>`:''}</div>
+      <div class="row10"><button class="btn btn-sm btn-o" onclick="window._planoBusca='';window._planoFiltroEstado='';loadPage('planos')"><i class="fas fa-eraser"></i> Limpar</button>${canEdit?`<button class="btn btn-p" onclick="openModalPlano()"><i class="fas fa-plus"></i> Inserir</button><button class="btn btn-s" onclick="openModalRegistrarPlano()"><i class="fas fa-check-double"></i> Registrar execução</button><button class="btn btn-g" onclick="openModalImportarFicha()"><i class="fas fa-file-import"></i> Importar ficha</button>`:''}</div>
     </div>
     ${eq?`<div style="margin-top:10px;background:var(--primary-light);padding:8px 14px;border-radius:10px;font-size:13px"><strong>KM Atual:</strong> ${fmt(eqKm)} &nbsp;|&nbsp; <strong>Horas:</strong> ${fmt(eqH)}</div>`:''}
-    ${cardsResumo}
-    <div class="pm-tabs">${tabs.map(t=>`<button class="pm-tab ${tab===t[0]?'active':''}" onclick="window._planoTab='${t[0]}';loadPage('planos')"><i class="fas ${t[2]}"></i> ${t[1]} <b>${t[3]}</b></button>`).join('')}</div>
+    <div class="pm-resumo">${resumoBtn('vencido','vencidos','vencido')}${resumoBtn('atencao','atenção','atencao')}${resumoBtn('ok','em dia','ok')}</div>
   </div>
-  <div class="pm-panel">
-    <div class="pm-head"><h3><i class="fas ${tabs.find(t=>t[0]===tab)?.[2]||'fa-list'}"></i> ${tabs.find(t=>t[0]===tab)?.[1]||'Lubrificantes'}</h3><div class="row10"><button class="btn btn-sm btn-o" onclick="window._planoBusca='';loadPage('planos')"><i class="fas fa-eraser"></i> Limpar</button></div></div>
-    <div class="pm-wrap">${corpo}</div>
-  </div>
-  <div class="pm-help"><span>🔴 Vencido</span><span>🟡 Atenção ≥ 80%</span><span>🟢 OK</span><span>Separado estilo Sienge: Lubrificantes / Filtros / Operações</span></div>`;
+  ${corpoPrincipal}
+  ${histHtml}
+  <div class="pm-help"><span>🔴 Vencido</span><span>🟡 Atenção ≥ 80%</span><span>🟢 Em dia</span></div>`;
+}
+
+// ── Planos Preventivos: interação da tela ──
+function setPlanoFiltro(estado){
+  window._planoFiltroEstado = (window._planoFiltroEstado===estado) ? '' : (estado||'');
+  loadPage('planos');
+}
+function togglePlanoSecao(chave, abertaAgora){
+  window._planoSecoes = window._planoSecoes || {};
+  window._planoSecoes[chave] = !abertaAgora;
+  loadPage('planos');
+}
+function togglePlanoDetalhe(planoId){
+  const el = document.getElementById('pm-det-'+planoId);
+  if(el) el.style.display = (el.style.display==='none') ? '' : 'none';
 }
 function openModalPlano(idx=null){
   const p = idx!==null ? db.planos_manutencao[idx] : null;
