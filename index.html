@@ -6792,6 +6792,11 @@ function calcPlanoStatus(p, eq){
 // ═══════════════════════════════════════════════
 //  OS PREVENTIVA AUTOMÁTICA
 // ═══════════════════════════════════════════════
+// Item que só aparece vencido porque a última execução nunca foi registrada (base 0, sem data):
+// não dá para saber o real — o painel mostra "SEM REGISTRO" e a OS automática não é gerada
+function _planoSemRegistro(p, s){
+  return !!(s && s.vencido && !(+p.ultimo_km>0) && !(+p.ultimo_horas>0) && !p.ultima_data);
+}
 // ── Helpers da OS preventiva automática ──
 // Próximo número = maior número existente + 1 (não length+1, que repete após exclusões)
 function _proximoNumeroOS(){
@@ -6821,6 +6826,7 @@ function gerarOSPreventivas(modoSilencioso=false){
     if(!eq) return;
     const s=calcPlanoStatus(p,eq);
     if(!s.vencido && !s.alerta) return;
+    if(_planoSemRegistro(p,s)) return;
     // Verificar se já existe OS aberta/andamento para este plano específico
     const jaAberta=db.ordens_servico.some(o=>
       o.plano_id===p.id && (o.status==='aberta'||o.status==='em_andamento')
@@ -6886,8 +6892,8 @@ function gerarOSPreventivas(modoSilencioso=false){
 //  Só leitura: não grava nada. Fontes: planos_manutencao (última execução e intervalo),
 //  equipamentos.parametros (leitura atual), movimentos_combustivel (média diária de uso) e OS abertas.
 // ═══════════════════════════════════════════════
-function _pcmOrd(n){ return ({vencida:0,vencendo:1,atencao:2,em_dia:3})[n] ?? 9; }
-function _pcmRotulo(n){ return ({vencida:'VENCIDA',vencendo:'VENCENDO',atencao:'ATENÇÃO',em_dia:'EM DIA'})[n] || '—'; }
+function _pcmOrd(n){ return ({vencida:0,vencendo:1,atencao:2,sem_registro:3,em_dia:4})[n] ?? 9; }
+function _pcmRotulo(n){ return ({vencida:'VENCIDA',vencendo:'VENCENDO',atencao:'ATENÇÃO',sem_registro:'SEM REGISTRO',em_dia:'EM DIA'})[n] || '—'; }
 function _pcmIso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 // Média diária de uso (km/h por dia) pelos abastecimentos: últimos 30 dias; se faltar dado, tenta 90.
@@ -6939,9 +6945,12 @@ function _pcmAnalisar(hoje){
     const media = _pcmMediaDiaria(eq, hoje);
     const itens = planos.map(p=>{
       const s = calcPlanoStatus(p, eq);
-      return { p, s, proj:_pcmProjetar(s, eq, media, hoje) };
-    }).sort((a,b)=>_pcmOrd(a.s.nivel)-_pcmOrd(b.s.nivel) || b.s.pctReal-a.s.pctReal);
+      const semReg = _planoSemRegistro(p, s);
+      return { p, s, nivel: semReg ? 'sem_registro' : s.nivel, proj: semReg ? null : _pcmProjetar(s, eq, media, hoje) };
+    }).sort((a,b)=>_pcmOrd(a.nivel)-_pcmOrd(b.nivel) || b.s.pctReal-a.s.pctReal);
     const pior = itens[0];
+    // próximo a vencer = menor nº de dias previsto (ignora itens sem registro e sem projeção)
+    const proximo = itens.filter(x=>x.proj).sort((a,b)=>a.proj.dias-b.proj.dias || b.s.pctReal-a.s.pctReal)[0] || null;
     const osAbertas = (db.ordens_servico||[]).filter(o=>String(o.equipamento_id)===String(eq.id) && !_isOSExcluida(o)
       && o.tipo==='Preventiva' && ['aberta','em_andamento','oficina_externa'].includes(o.status));
     const suspeitas = [];
@@ -6951,10 +6960,10 @@ function _pcmAnalisar(hoje){
     });
     const pend = (db.movimentos_combustivel||[]).filter(m=>String(m.equipamento_id)===String(eq.id) && !m.excluido && m.inconsistencia==='pendente').length;
     if(pend>0) suspeitas.push(`${pend} abastecimento(s) pendente(s) de conferência (podem ter km/horímetro errado)`);
-    rows.push({ eq, ehKm, un:ehKm?'km':'h', leitura, media, itens, pior, nivel:pior.s.nivel, osAbertas, suspeitas, ultAbast:_ultimoAbastecimento(eq.id) });
+    rows.push({ eq, ehKm, un:ehKm?'km':'h', leitura, media, itens, pior, proximo, nivel:pior.nivel, osAbertas, suspeitas, ultAbast:_ultimoAbastecimento(eq.id) });
   });
   rows.sort((a,b)=>_pcmOrd(a.nivel)-_pcmOrd(b.nivel) || b.pior.s.pctReal-a.pior.s.pctReal);
-  const resumo = { total:rows.length, em_dia:0, atencao:0, vencendo:0, vencida:0, semPlano };
+  const resumo = { total:rows.length, em_dia:0, atencao:0, vencendo:0, vencida:0, sem_registro:0, semPlano };
   rows.forEach(r=>{ resumo[r.nivel]++; });
   return { rows, resumo };
 }
@@ -6986,7 +6995,7 @@ function _pcmUltimaTxt(p){
   return a.join(' · ') || '<span style="color:var(--text3)">não informada</span>';
 }
 function _pcmBadge(nivel){
-  const cls = {vencida:'pcm-b-venc', vencendo:'pcm-b-vcdo', atencao:'pcm-b-aten', em_dia:'pcm-b-ok'}[nivel] || 'pcm-b-ok';
+  const cls = {vencida:'pcm-b-venc', vencendo:'pcm-b-vcdo', atencao:'pcm-b-aten', sem_registro:'pcm-b-sr', em_dia:'pcm-b-ok'}[nivel] || 'pcm-b-ok';
   return `<span class="pcm-b ${cls}">${_pcmRotulo(nivel)}</span>`;
 }
 
@@ -6996,15 +7005,19 @@ function renderPainelPCM(){
   const { rows, resumo } = _pcmAnalisar(hoje);
   const filtro = window._pcmFiltro || 'todos';
   const termo = norm(window._pcmBusca||'');
+  const ordem = window._pcmOrdem || 'criticos';
   const vis = rows.filter(r=>(filtro==='todos' || r.nivel===filtro)
     && (!termo || norm(`${r.eq.placa||''} ${r.eq.modelo||''} ${r.eq.prefixo||''}`).includes(termo)));
+  if(ordem==='proximos') vis.sort((a,b)=>(a.proximo?a.proximo.proj.dias:Infinity)-(b.proximo?b.proximo.proj.dias:Infinity) || _pcmOrd(a.nivel)-_pcmOrd(b.nivel));
+  const destaque = r=> ordem==='proximos' ? (r.proximo || r.pior) : r.pior;
 
   const card = (k, rot, val, cor, sub)=>`<div class="pcm-card ${filtro===k?'sel':''}" onclick="window._pcmFiltro='${k}';loadPage('painel_pcm')">
       <label>${rot}</label><b style="color:${cor}">${val}</b><span>${sub}</span></div>`;
 
   // ── Ações recomendadas ──
-  const precisaOS = rows.filter(r=>r.nivel!=='em_dia' && !r.osAbertas.length);
-  const parada7   = rows.filter(r=>r.pior.proj && r.pior.proj.dias>0 && r.pior.proj.dias<=7);
+  const precisaOS = rows.filter(r=>['vencida','vencendo','atencao'].includes(r.nivel) && !r.osAbertas.length);
+  const parada7   = rows.filter(r=>r.proximo && r.proximo.proj.dias>0 && r.proximo.proj.dias<=7);
+  const semReg    = rows.filter(r=>r.itens.some(x=>x.nivel==='sem_registro'));
   const comSusp   = rows.filter(r=>r.suspeitas.length);
   const semMedia  = rows.filter(r=>!r.media);
   const lista = arr=>arr.slice(0,12).map(r=>esc(r.eq.placa||r.eq.modelo||'')).join(', ') + (arr.length>12?` e mais ${arr.length-12}`:'');
@@ -7012,19 +7025,20 @@ function renderPainelPCM(){
   if(precisaOS.length) acoes.push(`<li><b>Abrir OS preventiva</b> (${precisaOS.length} sem OS aberta): ${lista(precisaOS)}
       ${nivel('operador')?`<button class="btn btn-sm btn-te" style="margin-left:8px" onclick="_pcmGerarOS()"><i class="fas fa-robot"></i> Gerar OS Preventivas</button>`:''}</li>`);
   if(parada7.length) acoes.push(`<li><b>Programar parada</b> (vencem em até 7 dias): ${lista(parada7)}</li>`);
+  if(semReg.length) acoes.push(`<li><b>Registrar última execução</b> (itens nunca lançados — status real desconhecido): ${lista(semReg)} — use "Registrar execução" em Planos ou reimporte a ficha</li>`);
   if(comSusp.length) acoes.push(`<li><b>Verificar leitura suspeita</b>: ${lista(comSusp)} — abra o equipamento para ver o motivo</li>`);
   if(semMedia.length) acoes.push(`<li><b>Sem média de uso</b> (poucos abastecimentos com km/horímetro): ${lista(semMedia)} — a data prevista só usa o calendário</li>`);
   if(!acoes.length) acoes.push('<li>Nenhuma ação pendente. ✅</li>');
 
   const linhas = vis.map((r,i)=>{
-    const { eq, pior } = r;
+    const { eq } = r; const pior = destaque(r);
     const osTxt = r.osAbertas.length ? r.osAbertas.map(o=>'#'+esc(o.numero||'')).join(', ') : '<span style="color:var(--text3)">—</span>';
     const mediaTxt = r.media ? `${fmt(Math.round(r.media.media*10)/10)} ${r.un}/dia<small>${r.media.registros} abast. · ${r.media.dias} d</small>` : '<span style="color:var(--text3)">sem dados</span>';
-    const detItens = r.itens.map(({p,s,proj})=>`<tr class="pcm-${s.nivel}">
+    const detItens = r.itens.map(({p,s,proj,nivel:nv})=>`<tr class="pcm-${nv}">
         <td>${esc(p.codigo||'')}</td><td><b>${esc(p.descricao||'—')}</b><small>${esc(p.compartimento||'')}</small></td>
         <td>${_pcmIntervaloTxt(p)}</td><td>${_pcmUltimaTxt(p)}</td>
         <td>${s.proxKm!==null?fmt(s.proxKm)+' km':''}${s.proxKm!==null&&s.proxH!==null?' / ':''}${s.proxH!==null?fmt(s.proxH)+' h':''}${s.proxData?(s.proxKm!==null||s.proxH!==null?' / ':'')+fmtDt(s.proxData):''}${s.proxKm===null&&s.proxH===null&&!s.proxData?'—':''}</td>
-        <td>${_pcmSaldoTxt(s)}</td><td>${s.pctReal}%</td><td>${_pcmPrevTxt(proj)}</td><td>${_pcmBadge(s.nivel)}</td></tr>`).join('');
+        <td>${nv==='sem_registro'?'<span style="color:var(--text3)">sem registro</span>':_pcmSaldoTxt(s)}</td><td>${nv==='sem_registro'?'—':s.pctReal+'%'}</td><td>${nv==='sem_registro'?'—':_pcmPrevTxt(proj)}</td><td>${_pcmBadge(nv)}</td></tr>`).join('');
     const fonte = `Leitura atual: cadastro do equipamento (${fmt(r.leitura)} ${r.un})`
       + (r.ultAbast ? ` · último abastecimento com ${fmt(r.ultAbast.hodometro)} em ${fmtDt(String(r.ultAbast.data||'').slice(0,10))}` : '')
       + (r.media ? ` · média: ${r.media.registros} abastecimentos de ${fmtDt(r.media.de)} a ${fmtDt(r.media.ate)} (${fmt(r.media.rodado)} ${r.un} rodados)` : ' · média de uso indisponível')
@@ -7034,7 +7048,7 @@ function renderPainelPCM(){
         <td>${fmt(r.leitura)} ${r.un}${r.suspeitas.length?' <span title="Leitura suspeita — veja os detalhes" style="color:#e65100">⚠</span>':''}</td>
         <td>${mediaTxt}</td>
         <td><b>${esc(pior.p.descricao||pior.p.codigo||'—')}</b><small>${r.itens.length} item(ns) no plano</small></td>
-        <td>${_pcmSaldoTxt(pior.s)}</td><td>${pior.s.pctReal}%</td><td>${_pcmPrevTxt(pior.proj)}</td>
+        <td>${pior.nivel==='sem_registro'?'sem registro':_pcmSaldoTxt(pior.s)}</td><td>${pior.nivel==='sem_registro'?'—':pior.s.pctReal+'%'}</td><td>${pior.nivel==='sem_registro'?'—':_pcmPrevTxt(pior.proj)}</td>
         <td>${_pcmBadge(r.nivel)}</td><td>${osTxt}</td></tr>
       <tr id="pcmd${i}" class="pcm-det"><td colspan="9"><div class="pcm-detbox">
         <table class="pcm-sub"><thead><tr><th>Cód.</th><th>Item</th><th>Intervalo</th><th>Última execução</th><th>Próxima</th><th>Saldo</th><th>%</th><th>Previsão</th><th>Status</th></tr></thead><tbody>${detItens}</tbody></table>
@@ -7044,7 +7058,7 @@ function renderPainelPCM(){
 
   return `
   <style>
-    .pcm-cards{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin-bottom:14px}
+    .pcm-cards{display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:10px;margin-bottom:14px}
     .pcm-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;cursor:pointer;box-shadow:var(--shadow-sm)}
     .pcm-card.sel{outline:2px solid var(--primary)}
     .pcm-card label{display:block;font-size:10px;text-transform:uppercase;font-weight:900;color:var(--text3);letter-spacing:.5px;cursor:pointer}
@@ -7064,7 +7078,7 @@ function renderPainelPCM(){
     .pcm-susp{margin-top:8px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:8px 12px;font-size:12px}.pcm-susp ul{margin:4px 0 0;padding-left:18px}
     .pcm-fonte{margin-top:8px;font-size:11px;color:var(--text3)}
     .pcm-b{display:inline-block;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.4px}
-    .pcm-b-venc{background:#b71c1c;color:#fff}.pcm-b-vcdo{background:#e65100;color:#fff}.pcm-b-aten{background:#fbc02d;color:#4a3b00}.pcm-b-ok{background:#2e7d32;color:#fff}
+    .pcm-b-venc{background:#b71c1c;color:#fff}.pcm-b-vcdo{background:#e65100;color:#fff}.pcm-b-aten{background:#fbc02d;color:#4a3b00}.pcm-b-ok{background:#2e7d32;color:#fff}.pcm-b-sr{background:#607d8b;color:#fff}.pcm-sem_registro{background:#f5f7f9}
     @media(max-width:900px){.pcm-cards{grid-template-columns:repeat(2,1fr)}}
   </style>
   <div class="pcm-cards">
@@ -7073,16 +7087,20 @@ function renderPainelPCM(){
     ${card('atencao','Atenção',resumo.atencao,'#b58900',PLANO_LIM_ATENCAO+'% a '+(PLANO_LIM_VENCENDO-1)+'%')}
     ${card('vencendo','Vencendo',resumo.vencendo,'#e65100',PLANO_LIM_VENCENDO+'% a 99%')}
     ${card('vencida','Vencidos',resumo.vencida,'#b71c1c','100% ou mais')}
+    ${card('sem_registro','Sem registro',resumo.sem_registro,'#607d8b','última troca nunca lançada')}
   </div>
   <div class="pcm-acoes"><h4><i class="fas fa-list-check"></i> Ações recomendadas</h4><ul>${acoes.join('')}</ul></div>
   <div class="pcm-bar">
     <div class="fg" style="margin:0"><label>Status</label><select class="fs" onchange="window._pcmFiltro=this.value;loadPage('painel_pcm')">
-      ${[['todos','Todos'],['vencida','Vencidos'],['vencendo','Vencendo'],['atencao','Atenção'],['em_dia','Em dia']].map(([v,t])=>`<option value="${v}" ${filtro===v?'selected':''}>${t}</option>`).join('')}</select></div>
+      ${[['todos','Todos'],['vencida','Vencidos'],['vencendo','Vencendo'],['atencao','Atenção'],['sem_registro','Sem registro'],['em_dia','Em dia']].map(([v,t])=>`<option value="${v}" ${filtro===v?'selected':''}>${t}</option>`).join('')}</select></div>
     <div class="fg" style="margin:0"><label>Buscar placa / modelo</label><input class="fi" value="${esc(window._pcmBusca||'')}" placeholder="Digite e tecle Enter" onchange="window._pcmBusca=this.value;loadPage('painel_pcm')"></div>
+    <div class="fg" style="margin:0"><label>Ordenar</label><select class="fs" onchange="window._pcmOrdem=this.value;loadPage('painel_pcm')">
+      <option value="criticos" ${ordem==='criticos'?'selected':''}>Mais críticos</option><option value="proximos" ${ordem==='proximos'?'selected':''}>Mais próximos de vencer (data)</option></select></div>
     <button class="btn btn-o" onclick="_pcmExportarCSV()"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+    ${nivel('operador')?'<button class="btn btn-g" onclick="openModalImportarFicha()"><i class="fas fa-file-import"></i> Importar ficha (.xlsx)</button>':''}
     <span style="font-size:11px;color:var(--text3)">Clique na linha para ver todos os itens, a origem de cada número e o que verificar.</span>
   </div>
-  <div class="pcm-wrap"><table class="pcm-t"><thead><tr><th>Equipamento</th><th>Leitura atual</th><th>Uso médio</th><th>Item mais crítico</th><th>Saldo</th><th>% consumido</th><th>Previsão</th><th>Status</th><th>OS preventiva aberta</th></tr></thead>
+  <div class="pcm-wrap"><table class="pcm-t"><thead><tr><th>Equipamento</th><th>Leitura atual</th><th>Uso médio</th><th>${ordem==='proximos'?'Próximo a vencer':'Item mais crítico'}</th><th>Saldo</th><th>% consumido</th><th>Previsão</th><th>Status do equipamento</th><th>OS preventiva aberta</th></tr></thead>
     <tbody>${linhas || '<tr><td colspan="9"><div class="empty"><i class="fas fa-gauge-high"></i><p>Nenhum equipamento neste filtro</p></div></td></tr>'}</tbody></table></div>`;
 }
 
@@ -7096,10 +7114,10 @@ function _pcmExportarCSV(){
   const cel = v=>'"'+String(v ?? '').replace(/"/g,'""')+'"';
   const cab = ['Placa','Modelo','Medida','Leitura atual','Uso médio/dia','Código','Item','Intervalo','Última execução','Saldo','% consumido','Previsão','Dias até vencer','Status','OS preventiva aberta'];
   const out = [cab.map(cel).join(';')];
-  rows.forEach(r=>r.itens.forEach(({p,s,proj})=>{
+  rows.forEach(r=>r.itens.forEach(({p,s,proj,nivel:nv})=>{
     out.push([r.eq.placa, r.eq.modelo, r.un, r.leitura, r.media?Math.round(r.media.media*10)/10:'', p.codigo, p.descricao,
       _pcmIntervaloTxt(p), _pcmUltimaTxt(p).replace(/<[^>]+>/g,''), _pcmSaldoTxt(s), s.pctReal, proj?fmtDt(proj.data):'', proj?proj.dias:'',
-      _pcmRotulo(s.nivel), r.osAbertas.map(o=>'#'+o.numero).join(', ')].map(cel).join(';'));
+      _pcmRotulo(nv), r.osAbertas.map(o=>'#'+o.numero).join(', ')].map(cel).join(';'));
   }));
   const blob = new Blob(['﻿'+out.join('\r\n')], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a');
@@ -10594,251 +10612,332 @@ function confirmarExecLote(idxList){
 //  Lê plano de manutenção da planilha CUSTEIO DE OPERAÇÃO E MANUTENÇÃO
 // ═══════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════
+//  IMPORTAR FICHA DE CUSTEIO (.xlsx) → plano preventivo + cadastro do equipamento
+//  A planilha tem uma aba por mês: "<MÊS> F" (ficha: leituras + óleos/filtros) e "<MÊS> V" (serviços/peças).
+//  Usa a ficha MAIS RECENTE pela leitura de km/horímetro (o nome/ordem das abas não é confiável).
+//  Nada é gravado antes da confirmação na prévia.
+// ═══════════════════════════════════════════════
+function _fichaTxt(v){ return v===null||v===undefined ? '' : String(v).trim(); }
+function _fichaNum(v){ return typeof v==='number' && isFinite(v) ? v : (typeof v==='string' && /^\s*\d+([.,]\d+)?\s*$/.test(v) ? parseFloat(v.replace(',','.')) : null); }
+// Chave de placa: sem hífen/espaço e com Mercosul convertida para o padrão antigo (OVW3E65 = OVW3465)
+function _fichaPlacaChave(p){
+  let s = String(p||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(/^[A-Z]{3}\d[A-J]\d{2}$/.test(s)) s = s.slice(0,4) + ('ABCDEFGHIJ'.indexOf(s[4])) + s.slice(5);
+  return s;
+}
+function _fichaNormDesc(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim(); }
+function _fichaEhFiltro(desc){ return /\b(WEGA|TECFIL|MANN|DONALD\w*|FRAM|FLEETGUARD|BOSCH|BALDWIN|MAHLE|FILTRO)\b/i.test(desc); }
+function _fichaData(v){
+  if(v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
+  if(typeof v==='number' && v>20000 && v<80000){ const d=new Date(Math.round((v-25569)*86400000)); return d.toISOString().slice(0,10); }
+  const t = _fichaTxt(v);
+  const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  return m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : '';
+}
+
+// Valor de um rótulo do cabeçalho ("MARCA/MODELO:") — primeiro a célula logo abaixo, depois à direita
+function _fichaValorRotulo(L, re, maxLin){
+  for(let r=0; r<Math.min(maxLin||8, L.length); r++){
+    const row = L[r]||[];
+    for(let c=0; c<row.length; c++){
+      const t = _fichaTxt(row[c]);
+      if(!t || !re.test(t)) continue;
+      const resto = t.split(':').slice(1).join(':').trim();
+      if(resto) return resto;
+      for(let c2=c; c2<=c+2; c2++){ const v=_fichaTxt((L[r+1]||[])[c2]); if(v && !/:\s*$/.test(v)) return v; }
+      for(let c2=c+1; c2<row.length; c2++){ const v=_fichaTxt(row[c2]); if(v){ if(/:\s*$/.test(v)) break; return v; } }
+    }
+  }
+  return '';
+}
+
+function _fichaParseFicha(nome, L, ordem){
+  const hdr = L.findIndex(row=>{ const s=_fichaNormDesc((row||[]).join(' ')); return s.includes('PERIODO') && (s.includes('OLEOS') || s.includes('FILTROS')); });
+  if(hdr<0) return null;
+  // Leitura: maior número da linha "LEITURA(S) DIRETA"; senão da linha "ACUMULADOS"
+  const leituraDaLinha = re=>{
+    for(let r=0; r<hdr; r++){
+      const row=L[r]||[];
+      if(row.slice(0,8).some(v=>re.test(_fichaNormDesc(v)))){
+        const nums=row.map(_fichaNum).filter(n=>n!==null && n>0);
+        if(nums.length) return Math.max(...nums);
+      }
+    }
+    return 0;
+  };
+  const leitura = leituraDaLinha(/LEITURA/) || leituraDaLinha(/ACUMULAD/);
+  const cab = L.slice(0, Math.min(hdr,8)).map(row=>(row||[]).map(_fichaTxt).filter(Boolean).join(' ')).join(' ');
+  const mPlaca = cab.match(/PLACA\s*:?\s*([A-Z]{3})[\s-]?(\d[A-Z0-9]\d{2})/i);
+  const ativoFixo = _fichaValorRotulo(L, /ATIVO\s*FIXO/i);
+  const mAtivo = ativoFixo.match(/^([A-Z]{3})[\s-]?(\d[A-Z0-9]\d{2})$/i);
+  const placa = mPlaca ? (mPlaca[1]+mPlaca[2]).toUpperCase() : (mAtivo ? (mAtivo[1]+mAtivo[2]).toUpperCase() : '');
+  let chassi = '';
+  L.slice(0, Math.min(hdr,8)).forEach(row=>(row||[]).forEach(v=>{ const t=_fichaTxt(v).toUpperCase(); if(!chassi && /^[A-HJ-NPR-Z0-9]{17}$/.test(t) && /\d/.test(t) && /[A-Z]/.test(t)) chassi=t; }));
+  const ano = _fichaValorRotulo(L, /^ANO\s*:?$/i);
+  const mAno = ano.match(/(\d{4})\s*\/\s*(\d{4})/) || ano.match(/(\d{4})/);
+
+  // Itens: A=intervalo, B=última troca, C=próxima, D=óleo/filtro, F=compartimento, G=capacidade
+  const brutos = [];
+  for(let r=hdr+1; r<L.length; r++){
+    const row=L[r]||[];
+    const desc=_fichaTxt(row[3]);
+    if(!desc) continue;
+    brutos.push({ linha:r+1, descricao:desc, intervalo:_fichaNum(row[0])||0, ultimo:_fichaNum(row[1])||0, comp:_fichaTxt(row[5]), cap:_fichaNum(row[6]) });
+  }
+  // Compartimento vem só na 1ª linha do bloco: linhas seguidas com o mesmo intervalo e a mesma última troca
+  // formam um bloco (ex.: óleo do motor + filtros); o item sem compartimento herda o do bloco (acima, depois abaixo)
+  let bloco = 0;
+  brutos.forEach((it,i)=>{
+    const ant = brutos[i-1];
+    if(i>0 && !(it.linha===ant.linha+1 && it.intervalo===ant.intervalo && it.ultimo===ant.ultimo)) bloco++;
+    it.bloco = bloco;
+  });
+  brutos.forEach((it,i)=>{
+    if(it.comp) return;
+    for(let j=i-1; j>=0 && brutos[j].bloco===it.bloco; j--) if(brutos[j].comp){ it.comp=brutos[j].comp; return; }
+    for(let j=i+1; j<brutos.length && brutos[j].bloco===it.bloco; j++) if(brutos[j].comp){ it.comp=brutos[j].comp; return; }
+  });
+  const itens=[], ignorados=[];
+  brutos.forEach(it=>{
+    if(!(it.intervalo>0)){ ignorados.push({descricao:it.descricao, compartimento:it.comp, motivo:'sem intervalo de troca'}); return; }
+    const filtro=_fichaEhFiltro(it.descricao);
+    itens.push({ descricao:it.descricao, compartimento:it.comp, intervalo:it.intervalo, ultimo:it.ultimo,
+      capacidade:it.cap, unidade: filtro ? 'un' : 'L', linha:it.linha });
+  });
+  return { tipo:'ficha', nome, ordem, leitura, placa, ativoFixo, chassi,
+    mesAno:_fichaValorRotulo(L, /M[EÊ]S\s*\/\s*ANO/i), equipamento:_fichaValorRotulo(L, /^EQUIPAMENTO\s*:?$/i),
+    modelo:_fichaValorRotulo(L, /MARCA\s*\/\s*MODELO/i), anoFab: mAno ? parseInt(mAno[1]) : null, anoMod: mAno ? parseInt(mAno[2]||mAno[1]) : null,
+    itens, ignorados };
+}
+
+function _fichaParseServicos(nome, L){
+  const hdr = L.findIndex(row=>_fichaNormDesc((row||[]).join(' ')).includes('TIPO SERVICO'));
+  if(hdr<0) return null;
+  const servicos=[], pecas=[];
+  for(let r=hdr+1; r<L.length; r++){
+    const row=L[r]||[];
+    if(/^TOTAL/i.test(_fichaTxt(row[0])) || /^TOTAL/i.test(_fichaTxt(row[6]))) break;
+    const s=_fichaTxt(row[3]);
+    if(s) servicos.push({ data:_fichaData(row[1]), medida:_fichaNum(row[2]), descricao:s, valor:_fichaNum(row[4])||0 });
+    const p=_fichaTxt(row[9]);
+    if(p) pecas.push({ data:_fichaData(row[7]), descricao:p, referencia:_fichaTxt(row[10]), quantidade:_fichaNum(row[12])||0, total:_fichaNum(row[14])||0 });
+  }
+  return { tipo:'servicos', nome, servicos, pecas };
+}
+
+// abas = [{nome, linhas:[[...]]}] (linhas no formato de XLSX.utils.sheet_to_json(header:1))
+function _fichaAnalisarAbas(abas){
+  const base = n=>String(n||'').trim().replace(/\s+[FV]$/i,'').trim().toUpperCase();
+  const fichas=[], servicos={};
+  (abas||[]).forEach((a,i)=>{
+    const f=_fichaParseFicha(a.nome, a.linhas||[], i);
+    if(f){ fichas.push(f); return; }
+    const s=_fichaParseServicos(a.nome, a.linhas||[]);
+    if(s) servicos[base(a.nome)]=s;
+  });
+  // mais recente primeiro: maior leitura; empate → aba mais à direita
+  fichas.sort((a,b)=>(b.leitura-a.leitura) || (b.ordem-a.ordem));
+  fichas.forEach(f=>{ f.servicosAba = servicos[base(f.nome)] || null; });
+  return { fichas, servicos };
+}
+
+function _fichaAcharEquip(ficha, eqs){
+  const chaves = [ficha.placa, ficha.ativoFixo].map(_fichaPlacaChave).filter(k=>k.length>=7);
+  if(!chaves.length) return null;
+  return (eqs||[]).find(e=>[e.placa, e.placa_anterior].some(p=>p && chaves.includes(_fichaPlacaChave(p)))) || null;
+}
+
+// O que a importação vai fazer — sem gravar nada (usado na prévia e na confirmação)
+function _fichaPlanejar(ficha, eq, planos, opts){
+  opts = opts || {};
+  const ehKm = String(eq?.tipo_medida||'horas').toLowerCase()==='km';
+  const cInt = ehKm ? 'intervalo_km' : 'intervalo_horas';
+  const cUlt = ehKm ? 'ultimo_km' : 'ultimo_horas';
+  const atual = Number(ehKm ? eq?.parametros?.km : eq?.parametros?.horas) || 0;
+  const doEq = (planos||[]).filter(p=>String(p.equipamento_id)===String(eq?.id) && !p.excluido);
+  const usados = new Set();
+  const novos=[], atualizar=[], iguais=[];
+  ficha.itens.forEach(it=>{
+    const k=_fichaNormDesc(it.descricao);
+    const ex = doEq.find(p=>!usados.has(p.id) && _fichaNormDesc(p.descricao)===k);
+    if(!ex){ novos.push({ item:it }); return; }
+    usados.add(ex.id);
+    const mudancas = {}, notas = [];
+    if(Number(ex[cInt]||0)!==it.intervalo) mudancas[cInt]=it.intervalo;
+    if(it.ultimo>0){
+      if(it.ultimo>Number(ex[cUlt]||0)) mudancas[cUlt]=it.ultimo;
+      else if(it.ultimo<Number(ex[cUlt]||0)) notas.push(`app já tem troca mais recente (${ex[cUlt]})`);
+    }
+    if(!ex.compartimento && it.compartimento) mudancas.compartimento=it.compartimento;
+    if(ex.ativo===false) mudancas.ativo=true;
+    (Object.keys(mudancas).length ? atualizar : iguais).push({ plano:ex, item:it, mudancas, notas });
+  });
+  const fora = doEq.filter(p=>!usados.has(p.id) && p.ativo!==false);
+  const cadastro = {}, avisos = [];
+  if(ficha.leitura>0){
+    if(ficha.leitura>atual) cadastro[ehKm?'km':'horas']=ficha.leitura;
+    else if(ficha.leitura<atual) avisos.push(`Leitura da ficha (${ficha.leitura}) é menor que a do cadastro (${atual}) — mantida a do cadastro.`);
+  }
+  if(!eq?.chassi && ficha.chassi) cadastro.chassi=ficha.chassi;
+  if(!eq?.ano_fabricacao && ficha.anoFab) cadastro.ano_fabricacao=ficha.anoFab;
+  if(!eq?.ano_modelo && ficha.anoMod) cadastro.ano_modelo=ficha.anoMod;
+  const leituraRef = Math.max(atual, ficha.leitura||0);
+  return { ehKm, cInt, cUlt, atual, leituraRef, novos, atualizar, iguais, fora, cadastro, avisos, desativarFora: !!opts.desativarFora };
+}
+
+let _fichaDados = null;   // resultado de _fichaAnalisarAbas
+let _fichaSelIdx = 0;
+
 function openModalImportarFicha(){
+  _fichaDados = null; _fichaSelIdx = 0;
   openModal('<i class="fas fa-file-import" style="color:#2e7d32"></i> Importar Ficha de Manutenção',`
   <div class="al-i alert" style="margin-bottom:14px">
     <i class="fas fa-info-circle"></i>
-    <div>
-      Selecione a planilha <strong>FICHA DE CUSTEIO</strong> (formato Excel .xlsx).<br>
-      O sistema vai ler as <strong style="color:#e65100">células amarelas</strong> com o plano de manutenção
-      (óleo, filtros, intervalos de troca) e criar os itens do plano.<br>
-      <span style="font-size:11px;color:#666">Você poderá vincular ao equipamento após a importação.</span>
-    </div>
+    <div>Selecione a planilha <strong>FICHA DE CUSTEIO</strong> (.xlsx). O sistema usa a <strong>ficha mais recente</strong>
+      (maior KM/horímetro), vincula pela placa e mostra uma prévia: <b>plano preventivo</b> (intervalos e última troca)
+      e <b>cadastro</b> (leitura atual, chassi, ano). Nada é gravado antes de você confirmar.</div>
   </div>
-  <div class="fg">
-    <label>Arquivo Excel da Ficha (.xlsx)</label>
-    <input type="file" class="fi" id="ficha_file" accept=".xlsx,.xls" onchange="_fichaPreview(this)">
-  </div>
-  <div id="ficha_preview" style="display:none">
-    <div class="sec-title"><i class="fas fa-table"></i> Equipamento detectado</div>
-    <div id="ficha_equip_info" style="font-size:13px;margin-bottom:12px"></div>
-    <div class="sec-title"><i class="fas fa-list"></i> Itens do plano</div>
-    <div id="ficha_itens_wrap" style="max-height:260px;overflow-y:auto;margin-bottom:10px"></div>
-    <div class="fg">
-      <label>Vincular ao equipamento (opcional — pode fazer depois)</label>
-      <select class="fs" id="ficha_eq_id">
-        <option value="">— Não vincular agora —</option>
-        ${(typeof _eqsDaEmpresa==='function' ? _eqsDaEmpresa() : _ckListaEquipamentos()).map(e=>`<option value="${e.id}">${esc(e.placa||"")} — ${esc(e.modelo||"")}</option>`).join('')}
-      </select>
-    </div>
-  </div>
+  <div class="fg"><label>Arquivo Excel da Ficha (.xlsx)</label>
+    <input type="file" class="fi" id="ficha_file" accept=".xlsx,.xls" onchange="_fichaPreview(this)"></div>
+  <div id="ficha_preview" style="display:none"></div>
   <div class="mf">
     <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
-    <button class="btn btn-g" id="btn_confirmar_ficha" style="display:none" onclick="_fichaImportar()">
-      <i class="fas fa-check"></i> Importar Plano
-    </button>
-  </div>`,'sm');
+    <button class="btn btn-g" id="btn_confirmar_ficha" style="display:none" onclick="_fichaImportar()"><i class="fas fa-check"></i> Importar e vincular</button>
+  </div>`,'lg');
 }
-
-let _fichaItens = [];
-let _fichaPlaca = '';
 
 function _fichaPreview(input){
   const file = input.files[0];
   if(!file) return;
   const reader = new FileReader();
   reader.onload = function(e){
-    try {
-      const wb = XLSX.read(e.target.result, { type:'array', cellStyles:true });
-
-      // Procurar aba com dados de manutenção (primeira aba ou a que tem células amarelas)
-      let ws = null;
-      let abaNome = '';
-      for(const nome of wb.SheetNames){
-        const s = wb.Sheets[nome];
-        // Verificar se tem células com fundo amarelo
-        const temAmarelo = Object.entries(s).some(([key, cell]) => {
-          if(key.startsWith('!')) return false;
-          return cell.s && cell.s.fgColor && 
-                 (cell.s.fgColor.rgb === 'FFFFFF00' || cell.s.fgColor.rgb === 'FFFF00');
-        });
-        if(temAmarelo){ ws = s; abaNome = nome; break; }
-      }
-
-      // Fallback: usar primeira aba
-      if(!ws){ ws = wb.Sheets[wb.SheetNames[0]]; abaNome = wb.SheetNames[0]; }
-
-      // Extrair info do equipamento (cabeçalho)
-      let placa = '', modelo = '', ativoFixo = '', marca = '';
-      const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:null, raw:true });
-
-      // Varrer as primeiras 6 linhas procurando placa/modelo
-      for(let r = 0; r < Math.min(6, raw.length); r++){
-        const row = raw[r];
-        for(let col = 0; col < row.length; col++){
-          const val = String(row[col]||'');
-          if(val.toUpperCase().includes('PLACA')){
-            // Próxima célula com valor ou na mesma célula
-            const m = val.match(/PLACA\s+([A-Z]{2,3}\s*\d{3,4}[A-Z0-9]*)/i);
-            if(m) placa = m[1].replace(/\s+/g,'');
-          }
-          if(val.toUpperCase().includes('ATIVO FIXO')){
-            // Valor ativo fixo costuma ser na mesma linha alguns cols à frente
-            for(let c2=col+1; c2<Math.min(col+5,row.length);c2++){
-              if(row[c2]){ ativoFixo=String(row[c2]).trim(); break; }
-            }
-          }
-          if(val.match(/VOLVO|MERCEDES|SCANIA|IVECO|VOLKSWAGEN|VW|VM\s+\d|CAMINHÃO/i) && !modelo){
-            modelo = val.trim().substring(0,40);
-          }
-        }
-        // Linha com marca/modelo geralmente tem VOLVO VM 330 etc
-        const linhaStr = row.filter(Boolean).join(' ');
-        const mModelo = linhaStr.match(/(VOLVO|MERCEDES|SCANIA|IVECO|VW)\s+[A-Z0-9 ]+/i);
-        if(mModelo && !modelo) modelo = mModelo[0].trim().substring(0,40);
-        const mPlaca = linhaStr.match(/PLACA\s+([A-Z]{3}\s*\d{4})/i);
-        if(mPlaca && !placa) placa = mPlaca[1].replace(/\s+/g,'');
-      }
-
-      _fichaPlaca = placa;
-
-      // Extrair itens do plano de manutenção (células amarelas = plano de troca)
-      _fichaItens = [];
-      let headerRow = -1;
-
-      // Encontrar linha de cabeçalho do plano (PERÍODO TROCA, ÓLEOS E FILTROS, etc)
-      for(let r = 0; r < raw.length; r++){
-        const row = raw[r];
-        const rowStr = row.filter(Boolean).join(' ').toUpperCase();
-        if(rowStr.includes('PERÍODO') || rowStr.includes('PERIODO') || rowStr.includes('ÓLEOS E FILTROS')){
-          headerRow = r;
-          break;
-        }
-      }
-
-      if(headerRow < 0){
-        showToast('Formato não reconhecido. Verifique se é a ficha correta.','warning');
-        return;
-      }
-
-      // Processar linhas após o cabeçalho
-      for(let r = headerRow + 1; r < raw.length; r++){
-        const row = raw[r];
-        if(!row || !row.length) continue;
-
-        const colA = row[0]; // Período/intervalo
-        const colB = row[1]; // Último realizado
-        const colD = row[3]; // Descrição do item
-        const colF = row[5]; // Compartimento
-        const colG = row[6]; // Capacidade
-
-        // Linha de dados válida: tem descrição e intervalo numérico
-        if(!colD) continue;
-        const descricao = String(colD).trim();
-        if(!descricao || descricao.toUpperCase().includes('ÓLEOS') || descricao.toUpperCase().includes('PERÍODO')) continue;
-
-        const intervalo = (typeof colA === 'number' && colA > 0) ? colA : 0;
-        const ultimoKm  = (typeof colB === 'number' && colB > 0) ? colB : 0;
-        const compartimento = colF ? String(colF).trim() : '';
-        const capacidade = colG ? String(colG).trim() : '';
-
-        _fichaItens.push({ descricao, intervalo_km: intervalo, ultimo_km: ultimoKm, compartimento, capacidade });
-      }
-
-      // Atualizar preview
-      document.getElementById('ficha_equip_info').innerHTML = `
-        <div style="display:flex;gap:16px;flex-wrap:wrap">
-          <div class="stat bi" style="flex:1;min-width:120px"><label>Placa detectada</label><div class="val" style="font-size:16px">${placa||'Não detectada'}</div></div>
-          <div class="stat bp" style="flex:1;min-width:120px"><label>Modelo</label><div class="val" style="font-size:13px">${modelo||'—'}</div></div>
-          <div class="stat gr" style="flex:1;min-width:80px"><label>Itens</label><div class="val">${_fichaItens.length}</div></div>
-          <div class="stat or" style="flex:1;min-width:80px"><label>Aba</label><div class="val" style="font-size:11px">${esc(abaNome||"")}</div></div>
-        </div>`;
-
-      // Auto-selecionar equipamento se placa bater
-      if(placa){
-        const eq = (Array.isArray(db?.equipamentos)?db.equipamentos:[]).find(e => e.placa && e.placa.replace(/[-.\s]/g,'').toLowerCase() === placa.toLowerCase());
-        if(eq){
-          const sel = document.getElementById('ficha_eq_id');
-          if(sel) sel.value = eq.id;
-        }
-      }
-
-      // Tabela de itens
-      if(_fichaItens.length === 0){
-        document.getElementById('ficha_itens_wrap').innerHTML = '<div class="al-w alert"><i class="fas fa-exclamation-triangle"></i> Nenhum item de plano encontrado. Verifique se o arquivo tem a aba com células amarelas.</div>';
-      } else {
-        document.getElementById('ficha_itens_wrap').innerHTML = `
-          <table style="font-size:11px;width:100%;border-collapse:collapse">
-            <thead><tr style="background:#f0f4ff">
-              <th style="padding:5px 8px;text-align:left">Descrição</th>
-              <th style="padding:5px 8px;text-align:left">Compartimento</th>
-              <th style="padding:5px 8px;text-align:right">Intervalo (km)</th>
-              <th style="padding:5px 8px;text-align:right">Último km</th>
-              <th style="padding:5px 8px;text-align:right">Cap.</th>
-            </tr></thead>
-            <tbody>${_fichaItens.map(it=>`<tr style="border-bottom:1px solid #eee">
-              <td style="padding:4px 8px"><strong>${esc(it.descricao||"")}</strong></td>
-              <td style="padding:4px 8px;color:#666">${it.compartimento||'—'}</td>
-              <td style="padding:4px 8px;text-align:right">${it.intervalo_km>0?fmt(it.intervalo_km)+' km':'—'}</td>
-              <td style="padding:4px 8px;text-align:right">${it.ultimo_km>0?fmt(it.ultimo_km):'—'}</td>
-              <td style="padding:4px 8px;text-align:right">${it.capacidade||'—'}</td>
-            </tr>`).join('')}</tbody>
-          </table>`;
-      }
-
-      document.getElementById('ficha_preview').style.display = 'block';
-      document.getElementById('btn_confirmar_ficha').style.display = _fichaItens.length > 0 ? 'flex' : 'none';
-
-    } catch(err){
-      showToast('Erro ao ler o arquivo: ' + err.message, 'danger');
-      console.error(err);
-    }
+    try{
+      const wb = XLSX.read(e.target.result, { type:'array', cellDates:true });
+      const abas = wb.SheetNames.map(nome=>({ nome, linhas:XLSX.utils.sheet_to_json(wb.Sheets[nome], { header:1, defval:null, raw:true }) }));
+      _fichaDados = _fichaAnalisarAbas(abas);
+      if(!_fichaDados.fichas.length){ showToast('Nenhuma aba de ficha encontrada (cabeçalho "PERÍODO TROCA / ÓLEOS E FILTROS").','warning'); return; }
+      _fichaSelIdx = 0;
+      const f = _fichaDados.fichas[0];
+      const eq = _fichaAcharEquip(f, _eqsDaEmpresa());
+      window._fichaEqSel = eq ? eq.id : '';
+      _fichaRenderPreview();
+    }catch(err){ showToast('Erro ao ler o arquivo: '+err.message,'danger'); console.error(err); }
   };
   reader.readAsArrayBuffer(file);
 }
 
-function _fichaImportar(){
-  if(!_fichaItens.length){ showToast('Nenhum item para importar','warning'); return; }
-
-  const eqId = parseInt(document.getElementById('ficha_eq_id')?.value)||null;
-  let inseridos = 0;
-
-  _fichaItens.forEach(it => {
-    // Verificar se já existe item igual para o mesmo equipamento (evita duplicata)
-    const jaExiste = eqId && db.planos_manutencao.some(p =>
-      p.equipamento_id == eqId &&
-      p.descricao && p.descricao.toLowerCase() === it.descricao.toLowerCase()
-    );
-    if(jaExiste) return;
-
-    const item = {
-      id: uid(),
-      tenant: _sbTenant,
-      equipamento_id: eqId || null,
-      codigo: 'IMP-' + String(db.planos_manutencao.length + inseridos + 1).padStart(3,'0'),
-      descricao: it.descricao,
-      compartimento: it.compartimento,
-      tipo_gatilho: it.intervalo_km > 0 ? 'km' : 'meses',
-      intervalo_km: it.intervalo_km || 0,
-      intervalo_horas: 0,
-      intervalo_meses: 0,
-      amostragem_km: 0,
-      amostragem_horas: 0,
-      ultimo_km: it.ultimo_km || 0,
-      ultimo_horas: 0,
-      ultima_data: '',
-      pecas: it.capacidade ? [{ descricao: it.descricao, quantidade: parseFloat(it.capacidade)||1 }] : [],
-      ativo: true,
-      modelo_origem: 'Importação Ficha — ' + (_fichaPlaca||''),
-      obs_importacao: it.capacidade ? 'Cap: ' + it.capacidade : ''
-    };
-
-    db.planos_manutencao.push(item);
-    sbSalvar('planos_manutencao', item);
-    inseridos++;
-  });
-
-  _fichaItens = [];
-  closeModal();
-
-  if(eqId){
-    window._filtPlanoEq = eqId;
-    loadPage('planos');
+function _fichaRenderPreview(){
+  const box = document.getElementById('ficha_preview');
+  if(!box || !_fichaDados) return;
+  const f = _fichaDados.fichas[_fichaSelIdx];
+  const eqs = _eqsDaEmpresa();
+  const eq = eqs.find(e=>String(e.id)===String(window._fichaEqSel||''));
+  const achado = _fichaAcharEquip(f, eqs);
+  const desatChk = document.getElementById('ficha_desativar')?.checked || false;
+  const optsAba = _fichaDados.fichas.map((x,i)=>`<option value="${i}" ${i===_fichaSelIdx?'selected':''}>${esc(x.nome)} — leitura ${fmt(x.leitura)}${i===0?' (mais recente)':''}</option>`).join('');
+  const optsEq = eqs.map(e=>`<option value="${e.id}" ${eq&&String(eq.id)===String(e.id)?'selected':''}>${esc(e.placa||'')} — ${esc(e.modelo||'')}</option>`).join('');
+  let corpo = '';
+  if(!eq){
+    corpo = `<div class="al-w alert"><i class="fas fa-exclamation-triangle"></i> ${f.placa?`Placa <b>${esc(f.placa)}</b> não encontrada no cadastro.`:'Placa não detectada na ficha.'} Selecione o equipamento acima para ver a prévia.</div>`;
   } else {
-    loadPage('planos');
+    const pl = _fichaPlanejar(f, eq, db.planos_manutencao, { desativarFora: desatChk });
+    const un = pl.ehKm ? 'km' : 'h';
+    const cadTxt = Object.entries(pl.cadastro).map(([k,v])=>{
+      const rot={km:'KM atual',horas:'Horímetro atual',chassi:'Chassi',ano_fabricacao:'Ano fabricação',ano_modelo:'Ano modelo'}[k]||k;
+      const antes = k==='km'?fmt(eq.parametros?.km||0):k==='horas'?fmt(eq.parametros?.horas||0):(eq[k]||'vazio');
+      return `<li>${rot}: ${esc(String(antes))} → <b>${esc(k==='km'||k==='horas'?fmt(v):String(v))}</b></li>`;
+    }).join('');
+    const linha = (st, cor, it, extra)=>{
+      const prox = it.ultimo>0 ? it.ultimo+it.intervalo : null;
+      const saldo = prox!==null ? prox-pl.leituraRef : null;
+      return `<tr style="border-bottom:1px solid #eee"><td style="padding:4px 6px"><span class="badge" style="background:${cor};color:#fff">${st}</span></td>
+        <td style="padding:4px 6px;color:#555">${esc(it.compartimento||'—')}</td><td style="padding:4px 6px"><b>${esc(it.descricao)}</b></td>
+        <td style="padding:4px 6px;text-align:right">${fmt(it.intervalo)} ${un}</td>
+        <td style="padding:4px 6px;text-align:right">${it.ultimo>0?fmt(it.ultimo):'<span style="color:#e65100">sem registro</span>'}</td>
+        <td style="padding:4px 6px;text-align:right">${prox!==null?fmt(prox):'—'}</td>
+        <td style="padding:4px 6px;text-align:right;${saldo!==null&&saldo<=0?'color:#b71c1c;font-weight:700':''}">${saldo!==null?fmt(saldo):'—'}</td>
+        <td style="padding:4px 6px;font-size:10px;color:#555">${extra||''}</td></tr>`;
+    };
+    const rotMud = m=>Object.entries(m).map(([k,v])=>({intervalo_km:'intervalo',intervalo_horas:'intervalo',ultimo_km:'última troca',ultimo_horas:'última troca',compartimento:'compartimento',ativo:'reativar'}[k]||k)+(k==='ativo'?'':' → '+v)).join(', ');
+    const linhas = [
+      ...pl.novos.map(x=>linha('Novo','#2e7d32',x.item,'')),
+      ...pl.atualizar.map(x=>linha('Atualizar','#1565c0',x.item,esc(rotMud(x.mudancas))+(x.notas.length?' · '+esc(x.notas.join('; ')):''))),
+      ...pl.iguais.map(x=>linha('Igual','#78909c',x.item,esc(x.notas.join('; ')))),
+    ].join('');
+    const serv = f.servicosAba;
+    corpo = `
+      ${pl.avisos.map(a=>`<div class="al-w alert" style="margin-bottom:8px"><i class="fas fa-exclamation-triangle"></i> ${esc(a)}</div>`).join('')}
+      <div class="sec-title"><i class="fas fa-truck"></i> Cadastro do equipamento</div>
+      <div style="font-size:12px;margin-bottom:10px">${cadTxt?`<ul style="margin:0;padding-left:18px">${cadTxt}</ul>`:'Nada a alterar no cadastro.'}</div>
+      <div class="sec-title"><i class="fas fa-calendar-check"></i> Plano preventivo — ${pl.novos.length} novo(s), ${pl.atualizar.length} a atualizar, ${pl.iguais.length} igual(is)</div>
+      <div style="font-size:11px;color:#666;margin-bottom:4px">Saldo calculado com a leitura ${fmt(pl.leituraRef)} ${un}.</div>
+      <div style="max-height:300px;overflow:auto;margin-bottom:10px"><table style="font-size:11px;width:100%;border-collapse:collapse">
+        <thead><tr style="background:#f0f4ff;text-align:left"><th style="padding:5px 6px"></th><th style="padding:5px 6px">Compartimento</th><th style="padding:5px 6px">Item</th><th style="padding:5px 6px;text-align:right">Intervalo</th><th style="padding:5px 6px;text-align:right">Última troca</th><th style="padding:5px 6px;text-align:right">Próxima</th><th style="padding:5px 6px;text-align:right">Saldo</th><th style="padding:5px 6px">O que muda</th></tr></thead>
+        <tbody>${linhas}</tbody></table></div>
+      ${f.ignorados.length?`<div style="font-size:11px;color:#666;margin-bottom:8px">Ignorados (sem intervalo de troca): ${f.ignorados.map(x=>esc(x.descricao+(x.compartimento?' / '+x.compartimento:''))).join(', ')}</div>`:''}
+      ${pl.fora.length?`<div class="al-w alert" style="margin-bottom:8px;display:block"><b>${pl.fora.length} item(ns) do plano atual não estão nesta ficha:</b> ${pl.fora.map(p=>esc(p.descricao||p.codigo||'')).join(', ')}
+        <label style="display:flex;gap:6px;align-items:center;margin-top:6px;font-weight:700"><input type="checkbox" id="ficha_desativar" ${desatChk?'checked':''}> Desativar esses itens (não apaga — fica no histórico)</label></div>`:''}
+      ${serv&&serv.servicos.length?`<div class="sec-title"><i class="fas fa-wrench"></i> Serviços na aba ${esc(serv.nome.trim())} (só consulta, não importa)</div>
+        <div style="font-size:11px;margin-bottom:8px">${serv.servicos.map(s=>`${s.data?fmtDt(s.data):'—'} · ${esc(s.descricao)}${s.valor?' · '+money(s.valor):''}`).join('<br>')}</div>`:''}`;
   }
+  box.innerHTML = `
+    <div class="frow">
+      <div class="fg"><label>Aba da ficha</label><select class="fs" onchange="_fichaSelIdx=parseInt(this.value);_fichaRenderPreview()">${optsAba}</select></div>
+      <div class="fg"><label>Vincular ao equipamento *</label><select class="fs" id="ficha_eq_id" onchange="window._fichaEqSel=this.value;_fichaRenderPreview()"><option value="">— Selecione —</option>${optsEq}</select></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-bottom:10px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:8px 12px">
+      <span><b>Placa:</b> ${esc(f.placa||'—')}${achado&&eq&&String(achado.id)===String(eq.id)?' <span style="color:#2e7d32">✔ encontrada</span>':''}</span>
+      <span><b>Modelo:</b> ${esc(f.modelo||'—')}</span><span><b>Ano:</b> ${f.anoFab||'—'}${f.anoMod&&f.anoMod!==f.anoFab?'/'+f.anoMod:''}</span>
+      <span><b>Chassi:</b> ${esc(f.chassi||'—')}</span><span><b>Mês:</b> ${esc(f.mesAno||'—')}</span><span><b>Leitura:</b> ${fmt(f.leitura)}</span>
+    </div>
+    ${corpo}`;
+  box.style.display='block';
+  const btn=document.getElementById('btn_confirmar_ficha');
+  if(btn) btn.style.display = eq ? 'flex' : 'none';
+  const chk=document.getElementById('ficha_desativar');
+  if(chk) chk.onchange=()=>_fichaRenderPreview();
+}
 
-  showToast(`${inseridos} item(s) de plano importados!${eqId?' Vinculados ao equipamento.':' Sem vínculo — vincule depois em Planos de Manutenção.'}`, 'success');
+function _fichaImportar(){
+  if(!_fichaDados){ showToast('Selecione o arquivo da ficha','warning'); return; }
+  const f = _fichaDados.fichas[_fichaSelIdx];
+  const eq = (db.equipamentos||[]).find(e=>String(e.id)===String(document.getElementById('ficha_eq_id')?.value||''));
+  if(!eq){ showToast('Selecione o equipamento para vincular','warning'); return; }
+  const pl = _fichaPlanejar(f, eq, db.planos_manutencao, { desativarFora: !!document.getElementById('ficha_desativar')?.checked });
+  const nota = `Ficha "${f.nome.trim()}" importada em ${today()}`;
+  let seq = (db.planos_manutencao||[]).filter(p=>String(p.equipamento_id)===String(eq.id)).length;
+  pl.novos.forEach(({item})=>{
+    seq++;
+    const p = { id:uid(), tenant:_sbTenant, equipamento_id:eq.id, codigo:'FIC-'+String(seq).padStart(3,'0'),
+      descricao:item.descricao, compartimento:item.compartimento, tipo_gatilho: pl.ehKm?'km':'horas',
+      intervalo_km: pl.ehKm?item.intervalo:0, intervalo_horas: pl.ehKm?0:item.intervalo, intervalo_meses:0,
+      amostragem_km:0, amostragem_horas:0,
+      ultimo_km: pl.ehKm?item.ultimo:0, ultimo_horas: pl.ehKm?0:item.ultimo, ultima_data:'',
+      pecas: [{ descricao:item.descricao, referencia:'', quantidade:item.capacidade||1, unidade:item.unidade }],
+      ativo:true, modelo_origem:'Importação Ficha — '+(f.placa||eq.placa||''), obs_importacao:nota };
+    db.planos_manutencao.push(p); sbSalvar('planos_manutencao', p);
+  });
+  pl.atualizar.forEach(({plano, mudancas})=>{
+    Object.assign(plano, mudancas, { obs_importacao: nota });
+    sbSalvar('planos_manutencao', plano);
+  });
+  if(pl.desativarFora) pl.fora.forEach(p=>{ p.ativo=false; p.obs_importacao=nota+' — desativado (fora da ficha)'; sbSalvar('planos_manutencao', p); });
+  if(Object.keys(pl.cadastro).length){
+    if(!eq.parametros) eq.parametros={};
+    const { km, horas, ...resto } = pl.cadastro;
+    if(km) eq.parametros.km = km;
+    if(horas) eq.parametros.horas = horas;
+    Object.assign(eq, resto);
+    sbSalvar('equipamentos', eq);
+  }
+  _fichaDados = null;
+  closeModal();
+  window._pcmBusca=''; window._pcmFiltro='todos'; window._pcmOrdem='proximos';
+  loadPage('painel_pcm');
+  showToast(`Ficha vinculada a ${eq.placa||eq.modelo}: ${pl.novos.length} item(ns) novo(s), ${pl.atualizar.length} atualizado(s)${pl.desativarFora&&pl.fora.length?`, ${pl.fora.length} desativado(s)`:''}${Object.keys(pl.cadastro).length?', cadastro atualizado':''}.`,'success');
 }
 
 async function delPlano(i){

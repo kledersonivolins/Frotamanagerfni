@@ -34,7 +34,7 @@ const ctx=vm.createContext({ Math,Number,String,Date,Array,Set,isNaN,Object,
   fmt:n=>String(n), fmtDt:d=>d, esc:v=>String(v??''),
   _isOSExcluida:o=>!!o?.excluido, _ultimoAbastecimento:()=>null,
   db:{}, _eqsDaEmpresa:()=>ctx.db.equipamentos });
-for(const f of ['calcPlanoStatus','_pcmOrd','_pcmRotulo','_pcmIso','_pcmMediaDiaria','_pcmProjetar','_pcmAnalisar','_proximoNumeroOS','_osEqEhKm','_osMedidorEquip','_centroCustoPadraoPreventiva'])
+for(const f of ['calcPlanoStatus','_planoSemRegistro','_pcmOrd','_pcmRotulo','_pcmIso','_pcmMediaDiaria','_pcmProjetar','_pcmAnalisar','_proximoNumeroOS','_osEqEhKm','_osMedidorEquip','_centroCustoPadraoPreventiva'])
   vm.runInContext(functionSource(f),ctx);
 assert.equal(ctx.PLANO_LIM_ATENCAO,90); assert.equal(ctx.PLANO_LIM_VENCENDO,95);
 
@@ -137,7 +137,8 @@ assert.equal(ctx.PLANO_LIM_ATENCAO,90); assert.equal(ctx.PLANO_LIM_VENCENDO,95);
     {id:11,equipamento_id:1,descricao:'Filtro de ar',intervalo_km:20000,ultimo_km:0,ativo:true},
     {id:20,equipamento_id:2,descricao:'Óleo motor',intervalo_km:10000,ultimo_km:0,ativo:true},
     {id:21,equipamento_id:2,descricao:'Item inativo',intervalo_km:100,ultimo_km:0,ativo:false},
-    {id:30,equipamento_id:3,descricao:'Óleo hidráulico',intervalo_horas:250,ultimo_horas:0,ativo:true},
+    {id:30,equipamento_id:3,descricao:'Óleo hidráulico',intervalo_horas:250,ultimo_horas:10,ativo:true},
+    {id:32,equipamento_id:2,descricao:'Filtro secador',intervalo_km:500,ultimo_km:0,ativo:true},
     {id:31,equipamento_id:3,descricao:'Item suspeito',intervalo_horas:500,ultimo_horas:900,ativo:true},
   ];
   ctx.db.ordens_servico=[{numero:'0001',equipamento_id:1,tipo:'Preventiva',status:'aberta'},{numero:'0002',equipamento_id:2,tipo:'Corretiva',status:'aberta'}];
@@ -147,15 +148,23 @@ assert.equal(ctx.PLANO_LIM_ATENCAO,90); assert.equal(ctx.PLANO_LIM_VENCENDO,95);
   ];
   const { rows, resumo } = ctx._pcmAnalisar(hoje);
   assert.equal(JSON.stringify(rows.map(r=>r.eq.placa)),JSON.stringify(['CCC3C33','AAA1A11','BBB2B22']),'ordenado do mais crítico para o menos');
-  assert.equal(JSON.stringify(rows.map(r=>r.nivel)),JSON.stringify(['vencida','vencendo','em_dia']));
-  assert.equal(resumo.total,3); assert.equal(resumo.vencida,1); assert.equal(resumo.vencendo,1); assert.equal(resumo.em_dia,1); assert.equal(resumo.atencao,0);
+  assert.equal(JSON.stringify(rows.map(r=>r.nivel)),JSON.stringify(['vencida','vencendo','sem_registro']));
+  assert.equal(resumo.total,3); assert.equal(resumo.vencida,1); assert.equal(resumo.vencendo,1); assert.equal(resumo.em_dia,0); assert.equal(resumo.atencao,0);
   assert.equal(resumo.semPlano,1,'equipamento sem plano é contado à parte; excluído é ignorado');
   const caminhao=rows[1];
   assert.equal(caminhao.pior.p.descricao,'Óleo motor'); assert.equal(caminhao.pior.s.saldoKm,400);
   assert.equal(Math.round(caminhao.media.media),50); assert.equal(caminhao.pior.proj.dias,8);
   assert.equal(caminhao.osAbertas.length,1,'OS preventiva aberta aparece');
   assert.equal(rows[2].osAbertas.length,0,'OS corretiva não conta como preventiva aberta');
-  assert.equal(rows[2].itens.length,1,'item inativo é ignorado');
+  assert.equal(rows[2].itens.length,2,'item inativo é ignorado');
+  // item que "venceu" só por nunca ter registro não vira VENCIDA: fica SEM REGISTRO e não define o status do equipamento
+  const carro=rows[2];
+  assert.equal(carro.itens.find(x=>x.p.descricao==='Filtro secador').nivel,'sem_registro');
+  assert.equal(carro.itens.find(x=>x.p.descricao==='Filtro secador').proj,null);
+  assert.equal(carro.nivel,'sem_registro','pior nível do carro é SEM REGISTRO (o óleo está em dia)');
+  assert.equal(resumo.sem_registro,1);
+  // próximo a vencer = menor prazo previsto
+  assert.equal(caminhao.proximo.p.descricao,'Óleo motor'); assert.equal(caminhao.proximo.proj.dias,8);
   assert.ok(rows[0].suspeitas.some(t=>t.includes('Item suspeito')),'última execução > leitura atual é sinalizada');
   assert.ok(rows[2].suspeitas.some(t=>t.includes('pendente')),'abastecimento pendente é sinalizado');
   console.log('PASS: análise da frota — prioridade, resumo, OS aberta e leituras suspeitas.');
@@ -175,5 +184,13 @@ assert.equal(ctx.PLANO_LIM_ATENCAO,90); assert.equal(ctx.PLANO_LIM_VENCENDO,95);
   assert.match(gen,/tipo_manutencao:'preventiva_planejada'/); assert.match(gen,/_proximoNumeroOS\(\)/);
   assert.match(gen,/centro_custo_id:_centroCustoPadraoPreventiva\(\)/);
   assert.doesNotMatch(gen,/db\.ordens_servico\.length\+1/);
+  assert.match(gen,/if\(_planoSemRegistro\(p,s\)\) return;/,'OS automática não é gerada para item sem registro');
+  // _planoSemRegistro: só quando venceu com base 0 e sem data
+  const st=(p,km)=>ctx.calcPlanoStatus(p,{parametros:{km}});
+  const p0={intervalo_km:10000,ultimo_km:0};
+  assert.equal(ctx._planoSemRegistro(p0,st(p0,12000)),true);
+  assert.equal(ctx._planoSemRegistro(p0,st(p0,5000)),false,'veículo novo em dia não é sem registro');
+  assert.equal(ctx._planoSemRegistro({...p0,ultimo_km:1000},st({...p0,ultimo_km:1000},12000)),false);
+  assert.equal(ctx._planoSemRegistro({...p0,ultima_data:'2026-01-01'},st({...p0,ultima_data:'2026-01-01'},12000)),false);
   console.log('PASS: OS preventiva automática usa max+1, tipo_manutencao válido, centro de custo e medidor do equipamento.');
 }
