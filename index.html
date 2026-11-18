@@ -2526,9 +2526,10 @@ function validarPlaca(placa){
   const p = String(placa).toUpperCase().replace(/[\s-]/g,'');
   // Antiga: AAA9999 | Mercosul: AAA9A99
   if(/^[A-Z]{3}[0-9]{4}$/.test(p) || /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(p)) return true;
-  // Equipamentos sem placa real (máquinas, geradores, empilhadeiras) usam código interno
-  // (ex: "EMP-01", "GER001") — aceita alfanumérico de 3 a 15 caracteres.
-  return /^[A-Z0-9]{3,15}$/.test(p);
+  // Equipamentos sem placa real (máquinas, geradores, empilhadeiras) usam código/nomenclatura
+  // interna (ex: "S3", "EMP-01", "GER001") — aceita alfanumérico de 1 a 20 caracteres,
+  // com ponto, barra e sublinhado. Não pode barrar nomenclatura curta como "S3".
+  return /^[A-Z0-9._\/]{1,20}$/.test(p);
 }
 
 function validarCPF(cpf){
