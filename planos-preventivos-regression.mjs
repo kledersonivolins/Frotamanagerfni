@@ -16,17 +16,22 @@ function extrair(nome) {
   }
   throw new Error(`chaves desbalanceadas em ${nome}`);
 }
+function constante(nome) {
+  const m = html.match(new RegExp(`const ${nome}\\s*=\\s*(\\d+)`));
+  assert.ok(m, `constante ${nome} não encontrada`);
+  return Number(m[1]);
+}
 
+const PLANO_LIM_ATENCAO = constante('PLANO_LIM_ATENCAO');
+const PLANO_LIM_VENCENDO = constante('PLANO_LIM_VENCENDO');
 const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
-const norm = (v) => String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
-const codigo = ['calcPlanoStatus', 'planoClasse', 'planoSituacao', 'planosOrdenados'].map(extrair).join('\n');
+const codigoBase = ['esc', 'calcPlanoStatus', '_planoSemRegistro', 'planoClasse', 'planoSituacao', 'planosOrdenados'].map(extrair).join('\n');
 const { planoClasse, planoSituacao, planosOrdenados } = new Function(
-  'fmt', 'norm',
-  `${codigo}; return { planoClasse, planoSituacao, planosOrdenados };`
-)(fmt, norm);
+  'fmt', 'PLANO_LIM_ATENCAO', 'PLANO_LIM_VENCENDO',
+  `${codigoBase}; return { planoClasse, planoSituacao, planosOrdenados };`
+)(fmt, PLANO_LIM_ATENCAO, PLANO_LIM_VENCENDO);
 
-const HOJE = '2026-11-18';
 const eq = { parametros: { km: 12340, horas: 1205 } };
 
 // ── classe ──
@@ -34,64 +39,77 @@ assert.equal(planoClasse({ descricao: 'Filtro de ar' }), 'filtros');
 assert.equal(planoClasse({ descricao: 'Óleo motor 15W40' }), 'lubrificantes');
 assert.equal(planoClasse({ descricao: 'Reaperto de parafusos' }), 'operacoes');
 
-// ── situação por horas ──
-let s = planoSituacao({ intervalo_horas: 250, ultimo_horas: 900 }, eq, HOJE);
+// ── horas ──
+let s = planoSituacao({ intervalo_horas: 250, ultimo_horas: 900 }, eq);
 assert.equal(s.estado, 'vencido');
 assert.equal(s.texto, 'vencido há 55 h');
 assert.equal(s.proxima, '1.150 h');
 
-s = planoSituacao({ intervalo_horas: 2000, ultimo_horas: 800 }, eq, HOJE);
+s = planoSituacao({ intervalo_horas: 2000, ultimo_horas: 800 }, eq);
 assert.equal(s.estado, 'ok');
 assert.equal(s.texto, 'faltam 1.595 h');
 
-// ── situação por km (atenção ≥ 80 %) ──
-s = planoSituacao({ intervalo_km: 15000, ultimo_km: 0 }, eq, HOJE);
+// ── km: atenção (≥ limite de atenção) e vencendo (≥ limite de vencendo) ──
+s = planoSituacao({ intervalo_km: 13000, ultimo_km: 0 }, eq);          // 94,9 %
 assert.equal(s.estado, 'atencao');
-assert.equal(s.texto, 'faltam 2.660 km');
+assert.equal(s.texto, 'faltam 660 km');
+s = planoSituacao({ intervalo_km: 12500, ultimo_km: 0 }, eq);          // 98,7 %
+assert.equal(s.estado, 'vencendo');
+assert.equal(s.texto, 'faltam 160 km');
+s = planoSituacao({ intervalo_km: 15000, ultimo_km: 0 }, eq);          // 82,3 %
+assert.equal(s.estado, 'ok');
 
-// ── só meses ──
-s = planoSituacao({ intervalo_meses: 6, ultima_data: '2026-01-10' }, eq, HOJE);
+// ── sem registro de execução: vencido só porque nunca foi registrado ──
+s = planoSituacao({ intervalo_horas: 250 }, eq);
+assert.equal(s.estado, 'sem_registro');
+assert.equal(s.texto, 'sem registro de execução');
+assert.ok(!/vencido há/.test(s.texto));
+
+// ── só meses (calcPlanoStatus já trata meses) ──
+s = planoSituacao({ intervalo_meses: 6, ultima_data: '2026-01-10' }, eq);
 assert.equal(s.estado, 'vencido');
-assert.match(s.texto, /^vencido há \d+ dias$/);
+assert.match(s.texto, /^vencido há [\d.]+ dias$/);
 assert.equal(s.proxima, '10/07/2026');
 
 // ── bordas (Review Focus 2, 3, 4) ──
-s = planoSituacao({ intervalo_meses: 6 }, eq, HOJE);
+s = planoSituacao({ intervalo_meses: 6 }, eq);
 assert.equal(s.estado, 'sem_dados');
 assert.equal(s.texto, 'sem data base');
 
-s = planoSituacao({}, eq, HOJE);
+s = planoSituacao({}, eq);
 assert.equal(s.estado, 'sem_dados');
 assert.equal(s.texto, '—');
 assert.equal(s.pct, 0);
 
-assert.doesNotThrow(() => planoSituacao({ intervalo_km: 100, ultimo_km: 0 }, {}, HOJE));
-assert.doesNotThrow(() => planoSituacao({ intervalo_km: 100, ultimo_km: 0 }, null, HOJE));
+assert.doesNotThrow(() => planoSituacao({ intervalo_km: 100, ultimo_km: 0 }, {}));
+assert.doesNotThrow(() => planoSituacao({ intervalo_km: 100, ultimo_km: 0 }, null));
 
-// ── ordenação: vencido > atenção > ok > sem_dados; empate por pct desc ──
+// ── ordenação (mesma do Painel PCM): vencido > vencendo > atenção > sem registro > ok > sem dados ──
 const lista = [
   { id: 1, descricao: 'ok-baixo', intervalo_horas: 2000, ultimo_horas: 800 },
   { id: 2, descricao: 'sem dados' },
   { id: 3, descricao: 'vencido', intervalo_horas: 250, ultimo_horas: 900 },
-  { id: 4, descricao: 'atencao', intervalo_km: 15000, ultimo_km: 0 },
+  { id: 4, descricao: 'atencao', intervalo_km: 13000, ultimo_km: 0 },
   { id: 5, descricao: 'ok-alto', intervalo_horas: 1000, ultimo_horas: 600 },
+  { id: 6, descricao: 'sem registro', intervalo_horas: 300 },
+  { id: 7, descricao: 'vencendo', intervalo_km: 12500, ultimo_km: 0 },
 ];
-const ord = planosOrdenados(lista, eq, HOJE).map((x) => x.p.id);
-assert.deepEqual(ord, [3, 4, 5, 1, 2]);
-
+const ord = planosOrdenados(lista, eq).map((x) => x.p.id);
+assert.deepEqual(ord, [3, 7, 4, 6, 5, 1, 2]);
 
 // ═════════════ Tela (renderPlanos) ═════════════
-const codigoTela = ['esc', 'calcPlanoStatus', 'planoClasse', 'planoSituacao', 'planosOrdenados',
+const codigoTela = ['esc', 'calcPlanoStatus', '_planoSemRegistro', 'planoClasse', 'planoSituacao', 'planosOrdenados',
   'renderPlanos', 'setPlanoFiltro', 'togglePlanoSecao', 'togglePlanoDetalhe'].map(extrair).join('\n');
 
 function montarTela(db, win = {}) {
   const chamadas = [];
   const doc = { _els: {}, getElementById(id) { return this._els[id] || null; } };
   const api = new Function(
-    'db', 'window', 'document', 'fmt', 'fmtDt', 'money', 'today', 'nivel', '_eqsDaEmpresa', 'loadPage',
+    'db', 'window', 'document', 'fmt', 'fmtDt', 'money', 'nivel', '_eqsDaEmpresa', 'loadPage',
+    'PLANO_LIM_ATENCAO', 'PLANO_LIM_VENCENDO',
     `${codigoTela}; return { renderPlanos, setPlanoFiltro, togglePlanoSecao, togglePlanoDetalhe };`
-  )(db, win, doc, fmt, (d) => d, (v) => 'R$ ' + v, () => HOJE, () => true,
-    () => db.equipamentos, (pg) => chamadas.push(pg));
+  )(db, win, doc, fmt, (d) => d, (v) => 'R$ ' + v, () => true,
+    () => db.equipamentos, (pg) => chamadas.push(pg), PLANO_LIM_ATENCAO, PLANO_LIM_VENCENDO);
   return { ...api, chamadas, doc, win };
 }
 
@@ -101,8 +119,9 @@ const dbBase = () => ({
   planos_manutencao: [
     { id: 11, equipamento_id: 1, codigo: 'L1', descricao: 'Óleo <b>motor</b> & cia', compartimento: 'Motor', intervalo_horas: 250, ultimo_horas: 900 },
     { id: 12, equipamento_id: 1, codigo: 'F1', descricao: 'Filtro de ar', intervalo_horas: 2000, ultimo_horas: 800 },
-    { id: 13, equipamento_id: 1, codigo: 'O1', descricao: 'Reaperto de parafusos', intervalo_km: 15000, ultimo_km: 0 },
+    { id: 13, equipamento_id: 1, codigo: 'O1', descricao: 'Reaperto de parafusos', intervalo_km: 13000, ultimo_km: 0 },
     { id: 14, equipamento_id: 1, codigo: 'O2', descricao: 'Item sem intervalo' },
+    { id: 15, equipamento_id: 1, codigo: 'O3', descricao: 'Inspeção nunca registrada', intervalo_horas: 300 },
     { id: 21, equipamento_id: 2, codigo: 'X', descricao: 'Plano do outro equipamento' },
   ],
   manutencoes: [], planos_manutencao_historico: [],
@@ -114,29 +133,29 @@ let out = t.renderPlanos();
 for (const sec of ['data-sec="lubrificantes"', 'data-sec="filtros"', 'data-sec="operacoes"', 'data-sec="historico"']) {
   assert.ok(out.includes(sec), `faltou a seção ${sec}`);
 }
-for (const d of ['Filtro de ar', 'Reaperto de parafusos', 'Item sem intervalo']) {
+for (const d of ['Filtro de ar', 'Reaperto de parafusos', 'Item sem intervalo', 'Inspeção nunca registrada']) {
   assert.ok(out.includes(d), `item sumiu da página: ${d}`);
 }
 assert.ok(!out.includes('Plano do outro equipamento'), 'plano de outro equipamento apareceu');
 assert.ok(!/pm-tab(?![a-z])|Carac\. Técnicas|Sienge/.test(out), 'sobrou aba/texto antigo');
 assert.ok(out.includes('vencido há 55 h'));
 assert.ok(out.includes('faltam 1.595 h'));
+assert.ok(out.includes('sem registro de execução'));
+// legenda usa os limites reais
+assert.ok(out.includes(`Vencendo ≥ ${PLANO_LIM_VENCENDO}%`) && out.includes(`Atenção ≥ ${PLANO_LIM_ATENCAO}%`));
 // Review Focus 5: HTML escapado
 assert.ok(out.includes('Óleo &lt;b&gt;motor&lt;/b&gt; &amp; cia'));
 assert.ok(!out.includes('<b>motor</b>'));
 // Review Focus 2: nunca NaN
 assert.ok(!/NaN|undefined/.test(out), 'apareceu NaN/undefined na tela');
-// resumo: 1 vencido, 1 atenção, 1 em dia
-assert.match(out, /class="pm-chip vencido[^"]*"[^>]*><b>1<\/b>/);
-assert.match(out, /class="pm-chip atencao[^"]*"[^>]*><b>1<\/b>/);
-assert.match(out, /class="pm-chip ok[^"]*"[^>]*><b>1<\/b>/);
-// ordem dentro da seção de operações: atenção (km 82 %) antes de "sem dados"
-assert.ok(out.indexOf('Reaperto de parafusos') < out.indexOf('Item sem intervalo'));
+// resumo: 1 vencido, 0 vencendo, 1 atenção, 1 sem registro, 1 em dia
+const chip = (est, n) => assert.match(out, new RegExp(`class="pm-chip ${est}[^"]*"[^>]*><b>${n}</b>`), `chip ${est} deveria ser ${n}`);
+chip('vencido', 1); chip('vencendo', 0); chip('atencao', 1); chip('sem_registro', 1); chip('ok', 1);
+// ordem dentro da seção de operações: atenção antes de sem registro antes de "sem dados"
+assert.ok(out.indexOf('Reaperto de parafusos') < out.indexOf('Inspeção nunca registrada'));
+assert.ok(out.indexOf('Inspeção nunca registrada') < out.indexOf('Item sem intervalo'));
 
 // Review Focus 1: equipamento sem planos
-t = montarTela(dbBase(), { _filtPlanoEq: 2 });
-t.win._filtPlanoEq = 2;
-t.renderPlanos(); // não pode lançar
 const db0 = dbBase(); db0.planos_manutencao = [];
 out = montarTela(db0, { _filtPlanoEq: 1 }).renderPlanos();
 assert.ok(out.includes('Nenhum plano cadastrado para este equipamento'));

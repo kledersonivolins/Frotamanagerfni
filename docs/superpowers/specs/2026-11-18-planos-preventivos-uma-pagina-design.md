@@ -41,9 +41,11 @@ Klederson quer continuar vendo **um equipamento por vez**, com tudo dele junto e
 
 ## Decisões minhas (para conferir)
 - "Ver detalhes" para Amostragem/Remonta/Limpeza (Klederson ainda não respondeu se usa no dia a dia).
-- Itens só com intervalo em **meses** e `ultima_data`: `calcPlanoStatus` ignora meses (hoje aparecem sempre "OK").
-  Nesta tela mostro "próxima em dd/mm/aaaa" e calculo a situação só aqui, sem alterar `calcPlanoStatus`.
-  Efeito: alguns itens que hoje aparecem "OK" podem aparecer como vencidos nesta tela. Dashboard e alertas ficam como estão.
+- **Atualização após o PR #8 (Painel PCM):** a situação passou a seguir `calcPlanoStatus` da `main`, que agora calcula meses
+  e tem 4 níveis (vencido, vencendo ≥ `PLANO_LIM_VENCENDO`, atenção ≥ `PLANO_LIM_ATENCAO`, em dia). A tela usa os mesmos
+  estados e a mesma ordem do Painel PCM, mais "sem registro de execução" (item vencido só porque nunca foi registrado,
+  igual ao `_planoSemRegistro` do PCM) e "sem dados" (sem intervalo ou sem data base). Isso substitui a decisão anterior
+  de calcular meses só nesta tela. Resumo com 5 chips: vencidos, vencendo, atenção, sem registro, em dia.
 - Seções recolhidas/abertas lembradas por equipamento só durante a sessão (sem gravar no banco).
 
 ## Deixado para quem for construir
