@@ -18,7 +18,7 @@ function functionSource(name){
   throw new Error(`função incompleta: ${name}`);
 }
 const ctx=vm.createContext({Math,Number,String,Date,Array,Set,isNaN,isFinite,Object,JSON,parseInt,parseFloat});
-for(const f of ['_fichaTxt','_fichaNum','_fichaPlacaChave','_fichaNormDesc','_fichaEhFiltro','_fichaData','_fichaValorRotulo',
+for(const f of ['_eqMedidas','_fichaTokens','_fichaMotivoForaFicha','_fichaTxt','_fichaNum','_fichaPlacaChave','_fichaNormDesc','_fichaEhFiltro','_fichaData','_fichaValorRotulo',
   '_fichaParseFicha','_fichaParseServicos','_fichaAnalisarAbas','_fichaAcharEquip','_fichaPlanejar']) vm.runInContext(functionSource(f),ctx);
 const J=v=>JSON.stringify(v);
 
@@ -131,4 +131,36 @@ const f=r.fichas[0];
   assert.match(functionSource('renderPainelPCM'),/openModalImportarFicha\(\)/);
   assert.match(functionSource('renderPainelPCM'),/value="proximos"/,'ordenar por mais próximos');
   console.log('PASS: importação vinculada e acessível pelo Painel PCM.');
+}
+
+// ── Caso real S3 (empilhadeira, horas): itens antigos PM0xx em km ficam de fora e vêm sugeridos para desativar ──
+{
+  const eq={id:7,placa:'S3',tipo_medida:'horas',parametros:{km:19809000,horas:3116}};
+  const ficha={leitura:3116,itens:[
+    {descricao:'15W40 CK-4',compartimento:'MOTOR CUMMINS 4B3.9 (2302171)',intervalo:250,ultimo:2997},
+    {descricao:'HYDRA HV 68',compartimento:'HIDRAULICO',intervalo:2000,ultimo:2471},
+    {descricao:'ATF TDX DERON III',compartimento:'TRANS YQX 100',intervalo:750,ultimo:2471},
+    {descricao:'DIF DIANT',compartimento:'80W90 GL5',intervalo:1000,ultimo:3109},
+    {descricao:'CUBO LD',compartimento:'80W90 GL5',intervalo:1000,ultimo:3109},
+  ]};
+  const planos=[
+    {id:40,equipamento_id:7,codigo:'PM040',descricao:'OLEO CUBO',compartimento:'CUBO LE',intervalo_km:1000,ultimo_horas:2418,ultima_data:'2026-04-29',ativo:true},
+    {id:32,equipamento_id:7,codigo:'PM032',descricao:'OLEO HIDRAULICO',compartimento:'Sistema Hidráulico',intervalo_horas:2000,ultimo_horas:2418,ativo:true},
+    {id:50,equipamento_id:7,codigo:'PM050',descricao:'GRAXA PINOS',compartimento:'CHASSI',intervalo_horas:50,ultimo_horas:3100,ativo:true},
+  ];
+  const pl=ctx._fichaPlanejar(ficha,eq,planos,{});
+  assert.equal(J(pl.fora.map(p=>p.id).sort()),J([32,40,50]));
+  assert.match(pl.foraMotivo[40],/km, mas o equipamento é medido em horas/);
+  assert.match(pl.foraMotivo[32],/mesmo compartimento/);
+  assert.equal(pl.foraMotivo[50],undefined,'item legítimo sem duplicado não vem marcado');
+  assert.equal(pl.cadastro.km,0,'zera o km lixo de máquina medida em horas');
+  assert.equal(pl.desativarIds.size,0,'sem escolha explícita não desativa nada');
+  const pl2=ctx._fichaPlanejar(ficha,eq,planos,{desativarIds:['40','32']});
+  assert.equal(J([...pl2.desativarIds].sort()),J(['32','40']));
+  // veículo sem tipo informado: não zera km nem acusa unidade
+  const pl3=ctx._fichaPlanejar(ficha,{id:7,parametros:{km:5000,horas:10}},planos,{});
+  assert.equal(pl3.cadastro.km,undefined);
+  assert.ok(!/medido em horas/.test(pl3.foraMotivo[40]||''));
+  assert.match(functionSource('_fichaImportar'),/\.ficha-fora:checked/,'grava só os itens marcados na prévia');
+  console.log('PASS: S3 — itens antigos duplicados/unidade errada sugeridos para desativar, km lixo zerado.');
 }

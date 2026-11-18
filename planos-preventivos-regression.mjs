@@ -26,7 +26,7 @@ const PLANO_LIM_ATENCAO = constante('PLANO_LIM_ATENCAO');
 const PLANO_LIM_VENCENDO = constante('PLANO_LIM_VENCENDO');
 const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-const codigoBase = ['esc', 'calcPlanoStatus', '_planoSemRegistro', 'planoClasse', 'planoSituacao', 'planosOrdenados'].map(extrair).join('\n');
+const codigoBase = ['esc', '_eqMedidas', 'calcPlanoStatus', '_planoSemRegistro', 'planoClasse', 'planoSituacao', 'planosOrdenados'].map(extrair).join('\n');
 const { planoClasse, planoSituacao, planosOrdenados } = new Function(
   'fmt', 'PLANO_LIM_ATENCAO', 'PLANO_LIM_VENCENDO',
   `${codigoBase}; return { planoClasse, planoSituacao, planosOrdenados };`
@@ -98,7 +98,7 @@ const ord = planosOrdenados(lista, eq).map((x) => x.p.id);
 assert.deepEqual(ord, [3, 7, 4, 6, 5, 1, 2]);
 
 // ═════════════ Tela (renderPlanos) ═════════════
-const codigoTela = ['esc', 'calcPlanoStatus', '_planoSemRegistro', 'planoClasse', 'planoSituacao', 'planosOrdenados',
+const codigoTela = ['esc', '_eqMedidas', 'calcPlanoStatus', '_planoSemRegistro', 'planoClasse', 'planoSituacao', 'planosOrdenados',
   'renderPlanos', 'abrirFormulario', 'setPlanoFiltro', 'togglePlanoSecao', 'togglePlanoDetalhe'].map(extrair).join('\n');
 
 function montarTela(db, win = {}) {
@@ -203,5 +203,27 @@ t.abrirFormulario('1');
 assert.equal(t.win._fmEq, 1);
 assert.deepEqual(t.chamadas, ['formulario']);
 assert.ok(extrair('renderPainelPCM').includes('abrirFormulario('), 'faltou o botão do formulário no Painel PCM');
+
+// ── tipo de medida: máquina em horas ignora km (caso real da S3: km lixo 19.809.000 no cadastro) ──
+const S3 = { tipo_medida: 'horas', parametros: { km: 19809000, horas: 3116 } };
+s = planoSituacao({ intervalo_km: 1000, ultimo_horas: 2418, ultima_data: '2026-04-29' }, S3);
+assert.equal(s.estado, 'sem_dados');
+assert.equal(s.texto, 'intervalo em km, mas o equipamento é medido em horas');
+assert.ok(!/19\.80/.test(JSON.stringify(s)), 'km lixo vazou para a situação');
+s = planoSituacao({ intervalo_horas: 250, ultimo_horas: 2997 }, S3);
+assert.equal(s.estado, 'ok');
+assert.equal(s.texto, 'faltam 131 h');
+// item com km e meses numa máquina em horas: vale só o calendário
+s = planoSituacao({ intervalo_km: 250, intervalo_meses: 6, ultima_data: '2026-04-29' }, S3);
+assert.match(s.texto, /dias$/);
+// veículo em km ignora horas
+s = planoSituacao({ intervalo_horas: 250, ultimo_horas: 0 }, { tipo_medida: 'km', parametros: { km: 5000, horas: 99999 } });
+assert.equal(s.estado, 'sem_dados');
+// sem tipo informado: mantém os dois (não perde vencimentos de cadastros antigos)
+assert.equal(planoSituacao({ intervalo_km: 1000, ultimo_km: 100 }, { parametros: { km: 5000 } }).estado, 'vencido');
+// faixa de leitura da tela mostra só horas para a S3
+const dbS3 = dbBase(); dbS3.equipamentos[0] = { ...EQ1, tipo_medida: 'horas', parametros: { km: 19809000, horas: 3116 } };
+out = montarTela(dbS3, { _filtPlanoEq: 1 }).renderPlanos();
+assert.ok(!out.includes('19.809.000') && out.includes('<strong>Horas:</strong> 3.116'));
 
 console.log('planos-preventivos OK');
