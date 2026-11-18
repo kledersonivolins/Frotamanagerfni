@@ -3997,6 +3997,7 @@ const MENU = [
     { page:'os', icon:'fa-clipboard-list', label:'Ordens de Serviço', min:'operador' },
     { page:'manutencao', icon:'fa-wrench', label:'Histórico de Manutenção', min:'operador' },
     { page:'planos', icon:'fa-calendar-check', label:'Planos Preventivos', min:'operador' },
+    { page:'painel_pcm', icon:'fa-gauge-high', label:'Painel PCM', min:'operador' },
     { page:'homem_hora', icon:'fa-user-clock', label:'Homem-Hora', min:'operador' },
     { page:'relatorios_manutencao', icon:'fa-chart-bar', label:'Relatórios de Manutenção', min:'visualizador' },
     { page:'apontamento', icon:'fa-hourglass-end', label:'Apontamento', min:'operador' },
@@ -4953,7 +4954,7 @@ async function delOcorrencia(i){if(!await _confirmar('Excluir esta ocorrência?'
 const PAGE_TITLES = {
   gestao_master:'🧭 Mapa Ideal / Evolução do SaaS',
   dashboard:'📊 Dashboard Gerencial', equipamentos:'🚗 Equipamentos',
-  mapa_chassi:'🔧 Mapa de Chassi', planos:'📅 Planos de Manutenção',
+  mapa_chassi:'🔧 Mapa de Chassi', planos:'📅 Planos de Manutenção', painel_pcm:'📈 Painel PCM — Preventivas',
   modelos:'🗂️ Modelos de Equipamentos',
   centro_custo:'💰 Centro de Custo Operacional',
   importacao:'📥 Importar / Exportar Cadastros',
@@ -5201,6 +5202,7 @@ var _TODOS_MODULOS = [
   ["os",                      "Ordens de Serviço"],
   ["manutencao",              "Histórico de Manutenção"],
   ["planos",                  "Planos de Manutenção"],
+  ["painel_pcm",              "Painel PCM"],
   ["homem_hora",              "Homem-Hora"],
   ["relatorios_manutencao",   "Relatórios de Manutenção"],
   ["relatorios_os",           "Relatórios de OS"],
@@ -6152,6 +6154,7 @@ const PAGE_FNS = {
   agendar_manutencao: renderAgendarManutencao,
   mapa_chassi: renderMapaChassi,
   planos: renderPlanos,
+  painel_pcm: renderPainelPCM,
   modelos: renderModelos,
   centro_custo: renderCentroCusto,
   centros_custo_cad: renderCentrosCustoCad,
@@ -6223,7 +6226,7 @@ const PAGE_FNS = {
 function _skeletonFor(pg){
   const stat=function(n){return Array(n).fill('<div class="sk-block sk-stat"></div>').join('');};
   const rows=function(n,cls){cls=cls||'sk-row';return Array(n).fill('<div class="sk-block '+cls+'"></div>').join('');};
-  const dashPages=['dashboard','gestao_master','quadro_operacional','disponibilidade',
+  const dashPages=['dashboard','painel_pcm','gestao_master','quadro_operacional','disponibilidade',
     'dashboard_os','dashboard_combustivel','relatorios','relatorios_os',
     'relatorios_combustivel','relatorios_manutencao','relatorios_financeiro',
     'custos_extras','relatorios_despesas','despesas_dashboard'];
@@ -6728,39 +6731,84 @@ function switchTab(e, id){
 // ═══════════════════════════════════════════════
 //  PLANO DE MANUTENÇÃO — lógica
 // ═══════════════════════════════════════════════
+// Limites (% do intervalo consumido) — 4 níveis: EM DIA < 90 ≤ ATENÇÃO < 95 ≤ VENCENDO < 100 ≤ VENCIDA
+const PLANO_LIM_ATENCAO  = 90;
+const PLANO_LIM_VENCENDO = 95;
 function calcPlanoStatus(p, eq){
   const kmAtual = eq?.parametros?.km || 0;
   const hAtual  = eq?.parametros?.horas || 0;
 
-  let vencidoKm = false, vencidoH = false;
-  let proxKm = null, proxH = null;
-  let pctKm = 0, pctH = 0;
+  let vencidoKm = false, vencidoH = false, vencidoM = false;
+  let proxKm = null, proxH = null, proxData = null;
+  let pctKm = 0, pctH = 0, pctM = 0;
+  let realKm = 0, realH = 0, realM = 0;           // % real, sem arredondar nem limitar a 100
+  let saldoKm = null, saldoH = null, saldoDias = null;
 
   if(p.intervalo_km > 0){
     const base = p.ultimo_km || 0;
     proxKm = base + p.intervalo_km;
     const delta = kmAtual - base;
-    pctKm = Math.min(100, Math.round(delta / p.intervalo_km * 100));
+    realKm = delta / p.intervalo_km * 100;
+    pctKm = Math.min(100, Math.round(realKm));
+    saldoKm = proxKm - kmAtual;                    // saldo = intervalo - (leitura atual - última execução)
     if(kmAtual >= proxKm) vencidoKm = true;
   }
   if(p.intervalo_horas > 0){
     const base = p.ultimo_horas || 0;
     proxH = base + p.intervalo_horas;
     const delta = hAtual - base;
-    pctH = Math.min(100, Math.round(delta / p.intervalo_horas * 100));
+    realH = delta / p.intervalo_horas * 100;
+    pctH = Math.min(100, Math.round(realH));
+    saldoH = proxH - hAtual;
     if(hAtual >= proxH) vencidoH = true;
   }
+  // Intervalo em meses: só conta quando há data da última execução
+  if(p.intervalo_meses > 0 && p.ultima_data){
+    const ini = new Date(String(p.ultima_data).slice(0,10)+'T12:00:00');
+    if(!isNaN(ini.getTime())){
+      const venc = new Date(ini); venc.setMonth(venc.getMonth() + Number(p.intervalo_meses));
+      const hoje = new Date(); hoje.setHours(12,0,0,0);
+      const totalDias = (venc - ini) / 86400000;
+      saldoDias = Math.round((venc - hoje) / 86400000);
+      realM = totalDias > 0 ? (hoje - ini) / 86400000 / totalDias * 100 : 0;
+      pctM = Math.min(100, Math.round(realM));
+      proxData = venc.toISOString().slice(0,10);
+      if(saldoDias <= 0) vencidoM = true;
+    }
+  }
 
-  const vencido = vencidoKm || vencidoH;
-  const pct = Math.max(pctKm, pctH);
-  const alerta = !vencido && pct >= 80;
+  const vencido = vencidoKm || vencidoH || vencidoM;
+  const pct = Math.max(pctKm, pctH, pctM);
+  const pctReal = Math.max(realKm, realH, realM);
+  const vencendo = !vencido && pctReal >= PLANO_LIM_VENCENDO;
+  const atencao  = !vencido && !vencendo && pctReal >= PLANO_LIM_ATENCAO;
+  const alerta = atencao || vencendo;              // compatível com quem já usava "alerta"
+  const nivel = vencido ? 'vencida' : vencendo ? 'vencendo' : atencao ? 'atencao' : 'em_dia';
 
-  return { vencido, alerta, ok: !vencido && !alerta, pct, proxKm, proxH, pctKm, pctH };
+  return { vencido, alerta, ok: !vencido && !alerta, pct, proxKm, proxH, pctKm, pctH,
+           vencendo, atencao, nivel, pctReal: Math.round(pctReal*10)/10, pctM, proxData, saldoKm, saldoH, saldoDias };
 }
 
 // ═══════════════════════════════════════════════
 //  OS PREVENTIVA AUTOMÁTICA
 // ═══════════════════════════════════════════════
+// ── Helpers da OS preventiva automática ──
+// Próximo número = maior número existente + 1 (não length+1, que repete após exclusões)
+function _proximoNumeroOS(){
+  const max=(db.ordens_servico||[]).reduce((m,o)=>{
+    const n=parseInt(String(o.numero||'').replace(/\D/g,''),10);
+    return Number.isFinite(n)&&n>m?n:m;
+  },0);
+  return String(max+1).padStart(4,'0');
+}
+function _osEqEhKm(eq){ return String(eq?.tipo_medida||'horas').toLowerCase()==='km'; }
+function _osMedidorEquip(eq){ return Number(_osEqEhKm(eq) ? (eq?.parametros?.km||0) : (eq?.parametros?.horas||0)) || 0; }
+// Centro de custo da preventiva automática: "OFICINA" (se cadastrado); senão fica vazio para o operador preencher
+function _centroCustoPadraoPreventiva(){
+  const cc=(db.centros_custo||[]).find(c=>c.ativo!==false && String(c.nome||'').trim().toUpperCase()==='OFICINA');
+  return cc ? cc.id : null;
+}
+
 function gerarOSPreventivas(modoSilencioso=false){
   let criadas=0, jaExistem=0;
   const hoje=today();
@@ -6786,7 +6834,7 @@ function gerarOSPreventivas(modoSilencioso=false){
 
   // Gerar UMA OS por equipamento com todos os planos agrupados
   Object.values(porEquipamento).forEach(({eq, planos, itens})=>{
-    const n=(db.ordens_servico.length+1).toString().padStart(4,'0');
+    const n=_proximoNumeroOS();
     const temVencido = planos.some(({s})=>s.vencido);
     const descPlanos = planos.map(({p,s})=>
       `• ${esc(p.descricao||"")} (${p.compartimento}) — ${s.vencido?'VENCIDO':'ALERTA '+s.pct+'%'}`
@@ -6795,13 +6843,19 @@ function gerarOSPreventivas(modoSilencioso=false){
       id:uid(),
       numero:n,
       equipamento_id:eq.id,
+      empresa_id:eq.empresa_id||_empresaAtiva?.id||null,
       tipo:'Preventiva',
-      tipo_manutencao:'preventiva',
+      tipo_abertura:'OS',
+      tipo_manutencao:'preventiva_planejada',
       origem:'automatica',
+      centro_custo_id:_centroCustoPadraoPreventiva(),
       plano_id: planos.length===1 ? planos[0].p.id : null,
       data_abertura:hoje,
       data_previsao:'',
-      hodometro:eq.parametros?.km||0,
+      // medidor conforme o tipo do equipamento: km OU horas (nunca os dois)
+      hodometro:_osMedidorEquip(eq),
+      km_abertura:_osMedidorEquip(eq)>0 && _osEqEhKm(eq) ? _osMedidorEquip(eq) : null,
+      horimetro_abertura:_osMedidorEquip(eq)>0 && !_osEqEhKm(eq) ? _osMedidorEquip(eq) : null,
       motivo: temVencido ? `${planos.length} plano(s) VENCIDO(S)` : `${planos.length} plano(s) em ALERTA`,
       agente:'Preventiva Programada',
       oficina:'',
@@ -6825,6 +6879,233 @@ function gerarOSPreventivas(modoSilencioso=false){
     loadPage('os');
   }
   return criadas;
+}
+
+// ═══════════════════════════════════════════════
+//  PAINEL PCM — preventivas: resumo, prioridade, saldo e projeção de data
+//  Só leitura: não grava nada. Fontes: planos_manutencao (última execução e intervalo),
+//  equipamentos.parametros (leitura atual), movimentos_combustivel (média diária de uso) e OS abertas.
+// ═══════════════════════════════════════════════
+function _pcmOrd(n){ return ({vencida:0,vencendo:1,atencao:2,em_dia:3})[n] ?? 9; }
+function _pcmRotulo(n){ return ({vencida:'VENCIDA',vencendo:'VENCENDO',atencao:'ATENÇÃO',em_dia:'EM DIA'})[n] || '—'; }
+function _pcmIso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+// Média diária de uso (km/h por dia) pelos abastecimentos: últimos 30 dias; se faltar dado, tenta 90.
+// Ignora lançamentos excluídos, pendentes de conferência ou rejeitados.
+function _pcmMediaDiaria(eq, hoje){
+  hoje = hoje || new Date();
+  const movs = (db.movimentos_combustivel||[]).filter(m=>
+    String(m.equipamento_id)===String(eq.id) && !m.excluido && Number(m.hodometro)>0 && m.data &&
+    m.inconsistencia!=='pendente' && m.inconsistencia!=='rejeitado');
+  for(const janela of [30,90]){
+    const corte = hoje.getTime() - janela*86400000;
+    const w = movs.map(m=>({iso:String(m.data).slice(0,10), t:new Date(String(m.data).slice(0,10)+'T12:00:00').getTime(), h:Number(m.hodometro)}))
+      .filter(x=>!isNaN(x.t) && x.t>=corte && x.t<=hoje.getTime()+86400000)
+      .sort((a,b)=>a.t-b.t || a.h-b.h);
+    if(w.length<2) continue;
+    const dias = (w[w.length-1].t - w[0].t)/86400000;
+    const rodado = w[w.length-1].h - w[0].h;
+    if(dias<2 || rodado<=0) continue;
+    return { media:rodado/dias, dias:Math.round(dias), registros:w.length, janela, rodado, de:w[0].iso, ate:w[w.length-1].iso };
+  }
+  return null;
+}
+
+// Projeção: data = hoje + saldo / média diária. Também considera o calendário (intervalo em meses).
+function _pcmProjetar(s, eq, media, hoje){
+  hoje = hoje || new Date();
+  const ehKm = String(eq?.tipo_medida||'horas').toLowerCase()==='km';
+  const saldo = ehKm ? s.saldoKm : s.saldoH;
+  const cands = [];
+  if(saldo!==null && saldo!==undefined){
+    if(saldo<=0) cands.push({dias:0, base:'uso'});
+    else if(media && media.media>0) cands.push({dias:Math.ceil(saldo/media.media), base:'uso'});
+  }
+  if(s.saldoDias!==null && s.saldoDias!==undefined) cands.push({dias:Math.max(0,s.saldoDias), base:'calendário'});
+  if(!cands.length) return null;
+  const c = cands.sort((a,b)=>a.dias-b.dias)[0];
+  return { dias:c.dias, data:_pcmIso(new Date(hoje.getTime()+c.dias*86400000)), base:c.base };
+}
+
+function _pcmAnalisar(hoje){
+  hoje = hoje || new Date();
+  const eqs = (_eqsDaEmpresa()||[]).filter(e=>!e.excluido && e.status!=='inativo');
+  const rows = []; let semPlano = 0;
+  eqs.forEach(eq=>{
+    const planos = (db.planos_manutencao||[]).filter(p=>String(p.equipamento_id)===String(eq.id) && p.ativo!==false && !p.excluido);
+    if(!planos.length){ semPlano++; return; }
+    const ehKm = String(eq.tipo_medida||'horas').toLowerCase()==='km';
+    const leitura = Number(ehKm ? eq.parametros?.km : eq.parametros?.horas) || 0;
+    const media = _pcmMediaDiaria(eq, hoje);
+    const itens = planos.map(p=>{
+      const s = calcPlanoStatus(p, eq);
+      return { p, s, proj:_pcmProjetar(s, eq, media, hoje) };
+    }).sort((a,b)=>_pcmOrd(a.s.nivel)-_pcmOrd(b.s.nivel) || b.s.pctReal-a.s.pctReal);
+    const pior = itens[0];
+    const osAbertas = (db.ordens_servico||[]).filter(o=>String(o.equipamento_id)===String(eq.id) && !_isOSExcluida(o)
+      && o.tipo==='Preventiva' && ['aberta','em_andamento','oficina_externa'].includes(o.status));
+    const suspeitas = [];
+    itens.forEach(({p})=>{
+      if(p.intervalo_km>0 && (p.ultimo_km||0) > (eq.parametros?.km||0)) suspeitas.push(`"${p.descricao||p.codigo}": última execução (${fmt(p.ultimo_km)} km) maior que a leitura atual (${fmt(eq.parametros?.km||0)} km)`);
+      if(p.intervalo_horas>0 && (p.ultimo_horas||0) > (eq.parametros?.horas||0)) suspeitas.push(`"${p.descricao||p.codigo}": última execução (${fmt(p.ultimo_horas)} h) maior que a leitura atual (${fmt(eq.parametros?.horas||0)} h)`);
+    });
+    const pend = (db.movimentos_combustivel||[]).filter(m=>String(m.equipamento_id)===String(eq.id) && !m.excluido && m.inconsistencia==='pendente').length;
+    if(pend>0) suspeitas.push(`${pend} abastecimento(s) pendente(s) de conferência (podem ter km/horímetro errado)`);
+    rows.push({ eq, ehKm, un:ehKm?'km':'h', leitura, media, itens, pior, nivel:pior.s.nivel, osAbertas, suspeitas, ultAbast:_ultimoAbastecimento(eq.id) });
+  });
+  rows.sort((a,b)=>_pcmOrd(a.nivel)-_pcmOrd(b.nivel) || b.pior.s.pctReal-a.pior.s.pctReal);
+  const resumo = { total:rows.length, em_dia:0, atencao:0, vencendo:0, vencida:0, semPlano };
+  rows.forEach(r=>{ resumo[r.nivel]++; });
+  return { rows, resumo };
+}
+
+function _pcmSaldoTxt(s){
+  const partes = [];
+  if(s.saldoKm!==null) partes.push((s.saldoKm<0?'−':'')+fmt(Math.abs(Math.round(s.saldoKm)))+' km');
+  if(s.saldoH!==null) partes.push((s.saldoH<0?'−':'')+fmt(Math.abs(Math.round(s.saldoH*10)/10))+' h');
+  if(s.saldoDias!==null) partes.push((s.saldoDias<0?'−':'')+Math.abs(s.saldoDias)+' d');
+  return partes.join(' / ') || '—';
+}
+function _pcmPrevTxt(proj){
+  if(!proj) return '<span style="color:var(--text3)" title="Sem média de uso (abastecimentos insuficientes) e sem intervalo em meses">sem dados</span>';
+  if(proj.dias<=0) return '<b style="color:#b71c1c">já vencida</b>';
+  return `<b>${fmtDt(proj.data)}</b><small>em ${proj.dias} d (${proj.base})</small>`;
+}
+function _pcmIntervaloTxt(p){
+  const a = [];
+  if(+p.intervalo_km) a.push(fmt(+p.intervalo_km)+' km');
+  if(+p.intervalo_horas) a.push(fmt(+p.intervalo_horas)+' h');
+  if(+p.intervalo_meses) a.push((+p.intervalo_meses)+' m');
+  return a.join(' / ') || '—';
+}
+function _pcmUltimaTxt(p){
+  const a = [];
+  if(+p.ultimo_km) a.push(fmt(+p.ultimo_km)+' km');
+  if(+p.ultimo_horas) a.push(fmt(+p.ultimo_horas)+' h');
+  if(p.ultima_data) a.push(fmtDt(String(p.ultima_data).slice(0,10)));
+  return a.join(' · ') || '<span style="color:var(--text3)">não informada</span>';
+}
+function _pcmBadge(nivel){
+  const cls = {vencida:'pcm-b-venc', vencendo:'pcm-b-vcdo', atencao:'pcm-b-aten', em_dia:'pcm-b-ok'}[nivel] || 'pcm-b-ok';
+  return `<span class="pcm-b ${cls}">${_pcmRotulo(nivel)}</span>`;
+}
+
+function renderPainelPCM(){
+  const norm = v=>String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  const hoje = new Date();
+  const { rows, resumo } = _pcmAnalisar(hoje);
+  const filtro = window._pcmFiltro || 'todos';
+  const termo = norm(window._pcmBusca||'');
+  const vis = rows.filter(r=>(filtro==='todos' || r.nivel===filtro)
+    && (!termo || norm(`${r.eq.placa||''} ${r.eq.modelo||''} ${r.eq.prefixo||''}`).includes(termo)));
+
+  const card = (k, rot, val, cor, sub)=>`<div class="pcm-card ${filtro===k?'sel':''}" onclick="window._pcmFiltro='${k}';loadPage('painel_pcm')">
+      <label>${rot}</label><b style="color:${cor}">${val}</b><span>${sub}</span></div>`;
+
+  // ── Ações recomendadas ──
+  const precisaOS = rows.filter(r=>r.nivel!=='em_dia' && !r.osAbertas.length);
+  const parada7   = rows.filter(r=>r.pior.proj && r.pior.proj.dias>0 && r.pior.proj.dias<=7);
+  const comSusp   = rows.filter(r=>r.suspeitas.length);
+  const semMedia  = rows.filter(r=>!r.media);
+  const lista = arr=>arr.slice(0,12).map(r=>esc(r.eq.placa||r.eq.modelo||'')).join(', ') + (arr.length>12?` e mais ${arr.length-12}`:'');
+  const acoes = [];
+  if(precisaOS.length) acoes.push(`<li><b>Abrir OS preventiva</b> (${precisaOS.length} sem OS aberta): ${lista(precisaOS)}
+      ${nivel('operador')?`<button class="btn btn-sm btn-te" style="margin-left:8px" onclick="_pcmGerarOS()"><i class="fas fa-robot"></i> Gerar OS Preventivas</button>`:''}</li>`);
+  if(parada7.length) acoes.push(`<li><b>Programar parada</b> (vencem em até 7 dias): ${lista(parada7)}</li>`);
+  if(comSusp.length) acoes.push(`<li><b>Verificar leitura suspeita</b>: ${lista(comSusp)} — abra o equipamento para ver o motivo</li>`);
+  if(semMedia.length) acoes.push(`<li><b>Sem média de uso</b> (poucos abastecimentos com km/horímetro): ${lista(semMedia)} — a data prevista só usa o calendário</li>`);
+  if(!acoes.length) acoes.push('<li>Nenhuma ação pendente. ✅</li>');
+
+  const linhas = vis.map((r,i)=>{
+    const { eq, pior } = r;
+    const osTxt = r.osAbertas.length ? r.osAbertas.map(o=>'#'+esc(o.numero||'')).join(', ') : '<span style="color:var(--text3)">—</span>';
+    const mediaTxt = r.media ? `${fmt(Math.round(r.media.media*10)/10)} ${r.un}/dia<small>${r.media.registros} abast. · ${r.media.dias} d</small>` : '<span style="color:var(--text3)">sem dados</span>';
+    const detItens = r.itens.map(({p,s,proj})=>`<tr class="pcm-${s.nivel}">
+        <td>${esc(p.codigo||'')}</td><td><b>${esc(p.descricao||'—')}</b><small>${esc(p.compartimento||'')}</small></td>
+        <td>${_pcmIntervaloTxt(p)}</td><td>${_pcmUltimaTxt(p)}</td>
+        <td>${s.proxKm!==null?fmt(s.proxKm)+' km':''}${s.proxKm!==null&&s.proxH!==null?' / ':''}${s.proxH!==null?fmt(s.proxH)+' h':''}${s.proxData?(s.proxKm!==null||s.proxH!==null?' / ':'')+fmtDt(s.proxData):''}${s.proxKm===null&&s.proxH===null&&!s.proxData?'—':''}</td>
+        <td>${_pcmSaldoTxt(s)}</td><td>${s.pctReal}%</td><td>${_pcmPrevTxt(proj)}</td><td>${_pcmBadge(s.nivel)}</td></tr>`).join('');
+    const fonte = `Leitura atual: cadastro do equipamento (${fmt(r.leitura)} ${r.un})`
+      + (r.ultAbast ? ` · último abastecimento com ${fmt(r.ultAbast.hodometro)} em ${fmtDt(String(r.ultAbast.data||'').slice(0,10))}` : '')
+      + (r.media ? ` · média: ${r.media.registros} abastecimentos de ${fmtDt(r.media.de)} a ${fmtDt(r.media.ate)} (${fmt(r.media.rodado)} ${r.un} rodados)` : ' · média de uso indisponível')
+      + ' · última execução e intervalos: plano de manutenção.';
+    return `<tr class="pcm-row pcm-${r.nivel}" onclick="document.getElementById('pcmd${i}').classList.toggle('open')">
+        <td><b>${esc(eq.placa||'')}</b><small>${esc(eq.modelo||'')}</small></td>
+        <td>${fmt(r.leitura)} ${r.un}${r.suspeitas.length?' <span title="Leitura suspeita — veja os detalhes" style="color:#e65100">⚠</span>':''}</td>
+        <td>${mediaTxt}</td>
+        <td><b>${esc(pior.p.descricao||pior.p.codigo||'—')}</b><small>${r.itens.length} item(ns) no plano</small></td>
+        <td>${_pcmSaldoTxt(pior.s)}</td><td>${pior.s.pctReal}%</td><td>${_pcmPrevTxt(pior.proj)}</td>
+        <td>${_pcmBadge(r.nivel)}</td><td>${osTxt}</td></tr>
+      <tr id="pcmd${i}" class="pcm-det"><td colspan="9"><div class="pcm-detbox">
+        <table class="pcm-sub"><thead><tr><th>Cód.</th><th>Item</th><th>Intervalo</th><th>Última execução</th><th>Próxima</th><th>Saldo</th><th>%</th><th>Previsão</th><th>Status</th></tr></thead><tbody>${detItens}</tbody></table>
+        ${r.suspeitas.length?`<div class="pcm-susp"><b>⚠ Verificar:</b><ul>${r.suspeitas.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+        <div class="pcm-fonte">${fonte}</div></div></td></tr>`;
+  }).join('');
+
+  return `
+  <style>
+    .pcm-cards{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin-bottom:14px}
+    .pcm-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;cursor:pointer;box-shadow:var(--shadow-sm)}
+    .pcm-card.sel{outline:2px solid var(--primary)}
+    .pcm-card label{display:block;font-size:10px;text-transform:uppercase;font-weight:900;color:var(--text3);letter-spacing:.5px;cursor:pointer}
+    .pcm-card b{display:block;font-size:26px;margin-top:4px}.pcm-card span{font-size:11px;color:var(--text2)}
+    .pcm-bar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:14px}
+    .pcm-acoes{background:#fff;border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:14px;padding:12px 16px;margin-bottom:14px;font-size:13px}
+    .pcm-acoes h4{margin:0 0 6px;font-size:13px}.pcm-acoes ul{margin:0;padding-left:18px}.pcm-acoes li{margin:4px 0}
+    .pcm-wrap{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:auto;box-shadow:var(--shadow-sm)}
+    .pcm-t{width:100%;border-collapse:collapse;font-size:12px}
+    .pcm-t th,.pcm-sub th{background:#edf2f7;color:#34445a;text-align:left;padding:9px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+    .pcm-t td,.pcm-sub td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+    .pcm-t small,.pcm-sub small{display:block;color:var(--text3);font-size:10px;margin-top:2px}
+    .pcm-row{cursor:pointer}.pcm-row:hover{filter:brightness(.97)}
+    .pcm-vencida{background:#fff1f2}.pcm-vencendo{background:#fff7ed}.pcm-atencao{background:#fffbeb}
+    .pcm-det{display:none}.pcm-det.open{display:table-row}
+    .pcm-detbox{padding:6px 4px 12px}.pcm-sub{width:100%;border-collapse:collapse;font-size:11px;background:#fff}
+    .pcm-susp{margin-top:8px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:8px 12px;font-size:12px}.pcm-susp ul{margin:4px 0 0;padding-left:18px}
+    .pcm-fonte{margin-top:8px;font-size:11px;color:var(--text3)}
+    .pcm-b{display:inline-block;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.4px}
+    .pcm-b-venc{background:#b71c1c;color:#fff}.pcm-b-vcdo{background:#e65100;color:#fff}.pcm-b-aten{background:#fbc02d;color:#4a3b00}.pcm-b-ok{background:#2e7d32;color:#fff}
+    @media(max-width:900px){.pcm-cards{grid-template-columns:repeat(2,1fr)}}
+  </style>
+  <div class="pcm-cards">
+    ${card('todos','Equipamentos com plano',resumo.total,'var(--primary)',resumo.semPlano?`${resumo.semPlano} sem plano cadastrado`:'todos têm plano')}
+    ${card('em_dia','Em dia',resumo.em_dia,'#2e7d32','abaixo de '+PLANO_LIM_ATENCAO+'% do intervalo')}
+    ${card('atencao','Atenção',resumo.atencao,'#b58900',PLANO_LIM_ATENCAO+'% a '+(PLANO_LIM_VENCENDO-1)+'%')}
+    ${card('vencendo','Vencendo',resumo.vencendo,'#e65100',PLANO_LIM_VENCENDO+'% a 99%')}
+    ${card('vencida','Vencidos',resumo.vencida,'#b71c1c','100% ou mais')}
+  </div>
+  <div class="pcm-acoes"><h4><i class="fas fa-list-check"></i> Ações recomendadas</h4><ul>${acoes.join('')}</ul></div>
+  <div class="pcm-bar">
+    <div class="fg" style="margin:0"><label>Status</label><select class="fs" onchange="window._pcmFiltro=this.value;loadPage('painel_pcm')">
+      ${[['todos','Todos'],['vencida','Vencidos'],['vencendo','Vencendo'],['atencao','Atenção'],['em_dia','Em dia']].map(([v,t])=>`<option value="${v}" ${filtro===v?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="fg" style="margin:0"><label>Buscar placa / modelo</label><input class="fi" value="${esc(window._pcmBusca||'')}" placeholder="Digite e tecle Enter" onchange="window._pcmBusca=this.value;loadPage('painel_pcm')"></div>
+    <button class="btn btn-o" onclick="_pcmExportarCSV()"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+    <span style="font-size:11px;color:var(--text3)">Clique na linha para ver todos os itens, a origem de cada número e o que verificar.</span>
+  </div>
+  <div class="pcm-wrap"><table class="pcm-t"><thead><tr><th>Equipamento</th><th>Leitura atual</th><th>Uso médio</th><th>Item mais crítico</th><th>Saldo</th><th>% consumido</th><th>Previsão</th><th>Status</th><th>OS preventiva aberta</th></tr></thead>
+    <tbody>${linhas || '<tr><td colspan="9"><div class="empty"><i class="fas fa-gauge-high"></i><p>Nenhum equipamento neste filtro</p></div></td></tr>'}</tbody></table></div>`;
+}
+
+async function _pcmGerarOS(){
+  if(!await _confirmar('Gerar OS preventivas para todos os equipamentos com item em ATENÇÃO, VENCENDO ou VENCIDO que ainda não têm OS aberta? Isso grava no banco.','warning')) return;
+  gerarOSPreventivas();
+}
+
+function _pcmExportarCSV(){
+  const { rows } = _pcmAnalisar(new Date());
+  const cel = v=>'"'+String(v ?? '').replace(/"/g,'""')+'"';
+  const cab = ['Placa','Modelo','Medida','Leitura atual','Uso médio/dia','Código','Item','Intervalo','Última execução','Saldo','% consumido','Previsão','Dias até vencer','Status','OS preventiva aberta'];
+  const out = [cab.map(cel).join(';')];
+  rows.forEach(r=>r.itens.forEach(({p,s,proj})=>{
+    out.push([r.eq.placa, r.eq.modelo, r.un, r.leitura, r.media?Math.round(r.media.media*10)/10:'', p.codigo, p.descricao,
+      _pcmIntervaloTxt(p), _pcmUltimaTxt(p).replace(/<[^>]+>/g,''), _pcmSaldoTxt(s), s.pctReal, proj?fmtDt(proj.data):'', proj?proj.dias:'',
+      _pcmRotulo(s.nivel), r.osAbertas.map(o=>'#'+o.numero).join(', ')].map(cel).join(';'));
+  }));
+  const blob = new Blob(['﻿'+out.join('\r\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'painel_pcm_'+today()+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
 }
 
 
@@ -10073,7 +10354,7 @@ function renderPlanos(){
     <div class="pm-head"><h3><i class="fas ${tabs.find(t=>t[0]===tab)?.[2]||'fa-list'}"></i> ${tabs.find(t=>t[0]===tab)?.[1]||'Lubrificantes'}</h3><div class="row10"><button class="btn btn-sm btn-o" onclick="window._planoBusca='';loadPage('planos')"><i class="fas fa-eraser"></i> Limpar</button></div></div>
     <div class="pm-wrap">${corpo}</div>
   </div>
-  <div class="pm-help"><span>🔴 Vencido</span><span>🟡 Atenção ≥ 80%</span><span>🟢 OK</span><span>Separado estilo Sienge: Lubrificantes / Filtros / Operações</span></div>`;
+  <div class="pm-help"><span>🔴 Vencido</span><span>🟡 Atenção ≥ ${PLANO_LIM_ATENCAO}%</span><span>🟠 Vencendo ≥ ${PLANO_LIM_VENCENDO}%</span><span>🟢 OK</span><span>Separado estilo Sienge: Lubrificantes / Filtros / Operações</span></div>`;
 }
 function openModalPlano(idx=null){
   const p = idx!==null ? db.planos_manutencao[idx] : null;
@@ -10917,7 +11198,7 @@ function openModalUsuario(idx=null){
   const _MOD_GRUPOS = [
     { titulo: 'Dashboard', paginas: ['dashboard'] },
     { titulo: 'Equipamentos', paginas: ['equipamentos','modelos','modelos_pneus','mapa_chassi','disponibilidade','pneus','documentos'] },
-    { titulo: 'Manutenção / OS', paginas: ['os','manutencao','planos','homem_hora','relatorios_manutencao','relatorios_os','relatorios_remonta','dashboard_os'] },
+    { titulo: 'Manutenção / OS', paginas: ['os','manutencao','planos','painel_pcm','homem_hora','relatorios_manutencao','relatorios_os','relatorios_remonta','dashboard_os'] },
     { titulo: 'Combustível', paginas: ['combustivel','tanque','dashboard_combustivel','relatorios_combustivel'] },
     { titulo: 'Operações', paginas: ['operacoes','quadro_operacional','relatorios_operacoes','checklist_diario','chamados','ocorrencias','relatorios_ocorrencias'] },
     { titulo: 'Almoxarifado', paginas: ['almoxarifado','almox_movimentos','relatorios_almoxarifado'] },
@@ -33757,7 +34038,7 @@ function renderFormulario(){
     <!-- LEGENDA -->
     <div class="fm-legenda">
       <span class="fm-tag-v">● VENCIDO — execução imediata</span>
-      <span class="fm-tag-a">● ALERTA — ≥ 80% do intervalo</span>
+      <span class="fm-tag-a">● ALERTA — ≥ ${PLANO_LIM_ATENCAO}% do intervalo</span>
       ${fIncOK?`<span class="fm-tag-o">● EM DIA — para referência</span>`:''}
     </div>
 
@@ -33772,7 +34053,7 @@ function renderFormulario(){
     ${alertas.length>0?`
     <div class="fm-group fm-group-a">
       ${buildTable(alertas,'#e65100','#fff','#ffcc80','#fff3e0','#fffde7',
-        '⚡ ITENS EM ALERTA — ≥ 80% DO INTERVALO')}
+        '⚡ ITENS EM ALERTA — ≥ '+PLANO_LIM_ATENCAO+'% DO INTERVALO')}
     </div>`:''}
 
     <!-- TABELA OK (opcional) -->
