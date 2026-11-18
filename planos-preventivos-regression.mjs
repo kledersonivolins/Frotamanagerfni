@@ -99,7 +99,7 @@ assert.deepEqual(ord, [3, 7, 4, 6, 5, 1, 2]);
 
 // ═════════════ Tela (renderPlanos) ═════════════
 const codigoTela = ['esc', 'calcPlanoStatus', '_planoSemRegistro', 'planoClasse', 'planoSituacao', 'planosOrdenados',
-  'renderPlanos', 'setPlanoFiltro', 'togglePlanoSecao', 'togglePlanoDetalhe'].map(extrair).join('\n');
+  'renderPlanos', 'abrirFormulario', 'setPlanoFiltro', 'togglePlanoSecao', 'togglePlanoDetalhe'].map(extrair).join('\n');
 
 function montarTela(db, win = {}) {
   const chamadas = [];
@@ -107,7 +107,7 @@ function montarTela(db, win = {}) {
   const api = new Function(
     'db', 'window', 'document', 'fmt', 'fmtDt', 'money', 'nivel', '_eqsDaEmpresa', 'loadPage',
     'PLANO_LIM_ATENCAO', 'PLANO_LIM_VENCENDO',
-    `${codigoTela}; return { renderPlanos, setPlanoFiltro, togglePlanoSecao, togglePlanoDetalhe };`
+    `${codigoTela}; return { renderPlanos, abrirFormulario, setPlanoFiltro, togglePlanoSecao, togglePlanoDetalhe };`
   )(db, win, doc, fmt, (d) => d, (v) => 'R$ ' + v, () => true,
     () => db.equipamentos, (pg) => chamadas.push(pg), PLANO_LIM_ATENCAO, PLANO_LIM_VENCENDO);
   return { ...api, chamadas, doc, win };
@@ -194,5 +194,14 @@ t.togglePlanoDetalhe('11');
 assert.equal(t.doc._els['pm-det-11'].style.display, '');
 t.togglePlanoDetalhe('11');
 assert.equal(t.doc._els['pm-det-11'].style.display, 'none');
+
+// ── atalho para o Formulário Mecânico ──
+out = montarTela(dbBase(), { _filtPlanoEq: 1 }).renderPlanos();
+assert.ok(out.includes("abrirFormulario('1')"), 'faltou o botão Formulário na tela de Planos');
+t = montarTela(dbBase(), {});
+t.abrirFormulario('1');
+assert.equal(t.win._fmEq, 1);
+assert.deepEqual(t.chamadas, ['formulario']);
+assert.ok(extrair('renderPainelPCM').includes('abrirFormulario('), 'faltou o botão do formulário no Painel PCM');
 
 console.log('planos-preventivos OK');

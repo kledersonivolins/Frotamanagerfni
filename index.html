@@ -7104,6 +7104,7 @@ function renderPainelPCM(){
         <td>${pior.nivel==='sem_registro'?'sem registro':_pcmSaldoTxt(pior.s)}</td><td>${pior.nivel==='sem_registro'?'—':pior.s.pctReal+'%'}</td><td>${pior.nivel==='sem_registro'?'—':_pcmPrevTxt(pior.proj)}</td>
         <td>${_pcmBadge(r.nivel)}</td><td>${osTxt}</td></tr>
       <tr id="pcmd${i}" class="pcm-det"><td colspan="9"><div class="pcm-detbox">
+        <div style="margin-bottom:8px"><button class="btn btn-sm btn-i" onclick="event.stopPropagation();abrirFormulario('${esc(String(eq.id))}')"><i class="fas fa-print"></i> Imprimir formulário do mecânico</button></div>
         <table class="pcm-sub"><thead><tr><th>Cód.</th><th>Item</th><th>Intervalo</th><th>Última execução</th><th>Próxima</th><th>Saldo</th><th>%</th><th>Previsão</th><th>Status</th></tr></thead><tbody>${detItens}</tbody></table>
         ${r.suspeitas.length?`<div class="pcm-susp"><b>⚠ Verificar:</b><ul>${r.suspeitas.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
         <div class="pcm-fonte">${fonte}</div></div></td></tr>`;
@@ -10478,7 +10479,7 @@ function renderPlanos(){
     <div class="frow" style="align-items:end">
       <div class="fg"><label>Equipamento</label><select class="fs" onchange="window._filtPlanoEq=parseInt(this.value);loadPage('planos')">${optsEq}</select></div>
       <div class="fg"><label>Buscar item</label><input class="fi" placeholder="Código, filtro, óleo, compartimento..." value="${esc(window._planoBusca||'')}" oninput="window._planoBusca=this.value;loadPage('planos')"></div>
-      <div class="row10"><button class="btn btn-sm btn-o" onclick="window._planoBusca='';window._planoFiltroEstado='';loadPage('planos')"><i class="fas fa-eraser"></i> Limpar</button>${canEdit?`<button class="btn btn-p" onclick="openModalPlano()"><i class="fas fa-plus"></i> Inserir</button><button class="btn btn-s" onclick="openModalRegistrarPlano()"><i class="fas fa-check-double"></i> Registrar execução</button><button class="btn btn-g" onclick="openModalImportarFicha()"><i class="fas fa-file-import"></i> Importar ficha</button>`:''}</div>
+      <div class="row10"><button class="btn btn-sm btn-o" onclick="window._planoBusca='';window._planoFiltroEstado='';loadPage('planos')"><i class="fas fa-eraser"></i> Limpar</button>${eq?`<button class="btn btn-sm btn-i" title="Abrir o formulário de manutenção deste equipamento para imprimir" onclick="abrirFormulario('${esc(String(eq.id))}')"><i class="fas fa-print"></i> Formulário</button>`:''}${canEdit?`<button class="btn btn-p" onclick="openModalPlano()"><i class="fas fa-plus"></i> Inserir</button><button class="btn btn-s" onclick="openModalRegistrarPlano()"><i class="fas fa-check-double"></i> Registrar execução</button><button class="btn btn-g" onclick="openModalImportarFicha()"><i class="fas fa-file-import"></i> Importar ficha</button>`:''}</div>
     </div>
     ${eq?`<div style="margin-top:10px;background:var(--primary-light);padding:8px 14px;border-radius:10px;font-size:13px"><strong>KM Atual:</strong> ${fmt(eqKm)} &nbsp;|&nbsp; <strong>Horas:</strong> ${fmt(eqH)}</div>`:''}
     <div class="pm-resumo">${resumoBtn('vencido','vencidos','vencido')}${resumoBtn('vencendo','vencendo','vencendo')}${resumoBtn('atencao','atenção','atencao')}${resumoBtn('sem_registro','sem registro','sem_registro')}${resumoBtn('ok','em dia','ok')}</div>
@@ -10489,6 +10490,11 @@ function renderPlanos(){
 }
 
 // ── Planos Preventivos: interação da tela ──
+// Atalho: abre o Formulário Mecânico (impressão) já com o equipamento escolhido.
+function abrirFormulario(eqId){
+  window._fmEq = Number(eqId) || eqId;
+  loadPage('formulario');
+}
 function setPlanoFiltro(estado){
   window._planoFiltroEstado = (window._planoFiltroEstado===estado) ? '' : (estado||'');
   loadPage('planos');
