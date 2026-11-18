@@ -6759,6 +6759,64 @@ function calcPlanoStatus(p, eq){
   return { vencido, alerta, ok: !vencido && !alerta, pct, proxKm, proxH, pctKm, pctH };
 }
 
+// ── Planos Preventivos: classe, situação e ordenação (funções puras) ──
+// Classe do item: mesma regra que a tela sempre usou (filtro → filtros; óleo/lubrificante → lubrificantes; resto → operações).
+function planoClasse(p){
+  const n = (v)=>String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  const t = n(`${p?.codigo||''} ${p?.descricao||''} ${p?.compartimento||''} ${(p?.pecas||[]).map(x=>x.descricao).join(' ')}`);
+  if(t.includes('filtro') || t.includes('tecfil') || t.includes('filtr')) return 'filtros';
+  if(t.includes('oleo') || t.includes('lubr') || t.includes('motor') || t.includes('hidraul') || t.includes('transmiss') || t.includes('diferencial') || t.includes('cambio') || t.includes('direcao') || t.includes('engrax')) return 'lubrificantes';
+  return 'operacoes';
+}
+
+// Situação do item: estado (vencido/atencao/ok/sem_dados), texto "faltam X" / "vencido há X" e próxima execução.
+// KM/horas seguem calcPlanoStatus; itens só com meses usam ultima_data + meses (somente nesta tela).
+function planoSituacao(p, eq, hojeISO){
+  const sem = (texto)=>({ estado:'sem_dados', pct:0, texto, proxima:'—' });
+  const arred = (v)=>Math.round(v*10)/10;
+  const km = Number(eq?.parametros?.km)||0;
+  const h  = Number(eq?.parametros?.horas)||0;
+  const iKm = Number(p?.intervalo_km)||0;
+  const iH  = Number(p?.intervalo_horas)||0;
+  const iM  = parseInt(p?.intervalo_meses)||0;
+
+  if(iKm>0 || iH>0){
+    const base = calcPlanoStatus(p, eq);
+    const cands = [];
+    if(iKm>0){ const u = Number(p.ultimo_km)||0; cands.push({ un:'km', prox:u+iKm, rest:u+iKm-km, razao:(km-u)/iKm }); }
+    if(iH>0){  const u = Number(p.ultimo_horas)||0; cands.push({ un:'h',  prox:u+iH,  rest:u+iH-h,   razao:(h-u)/iH }); }
+    const w = cands.reduce((a,b)=>b.razao>a.razao?b:a);
+    const rest = arred(w.rest);
+    const texto = rest<0 ? `vencido há ${fmt(-rest)} ${w.un}` : rest===0 ? 'vence agora' : `faltam ${fmt(rest)} ${w.un}`;
+    return { estado: base.vencido?'vencido':base.alerta?'atencao':'ok', pct: base.pct, texto, proxima: `${fmt(w.prox)} ${w.un}` };
+  }
+
+  if(iM>0){
+    const ini = new Date(String(p?.ultima_data||'')+'T12:00:00');
+    if(!p?.ultima_data || isNaN(ini.getTime())) return sem('sem data base');
+    const prox = new Date(ini); prox.setMonth(prox.getMonth()+iM);
+    const hoje = new Date((hojeISO||new Date().toISOString().slice(0,10))+'T12:00:00');
+    const DIA = 86400000;
+    const dias  = Math.round((prox-hoje)/DIA);
+    const total = Math.max(1, Math.round((prox-ini)/DIA));
+    const pct = Math.max(0, Math.min(100, Math.round((total-dias)/total*100)));
+    const dd = (n)=>`${n} dia${n===1?'':'s'}`;
+    const texto = dias<0 ? `vencido há ${dd(-dias)}` : dias===0 ? 'vence hoje' : `faltam ${dd(dias)}`;
+    const p2 = (n)=>String(n).padStart(2,'0');
+    return { estado: dias<=0?'vencido':pct>=80?'atencao':'ok', pct, texto, proxima: `${p2(prox.getDate())}/${p2(prox.getMonth()+1)}/${prox.getFullYear()}` };
+  }
+
+  return sem('—');
+}
+
+// Ordena do mais urgente ao menos urgente (vencido, atenção, ok, sem dados); empate pelo maior % consumido.
+function planosOrdenados(lista, eq, hojeISO){
+  const rank = { vencido:0, atencao:1, ok:2, sem_dados:3 };
+  return (Array.isArray(lista)?lista:[])
+    .map(p=>({ p, s: planoSituacao(p, eq, hojeISO) }))
+    .sort((a,b)=> rank[a.s.estado]-rank[b.s.estado] || b.s.pct-a.s.pct);
+}
+
 // ═══════════════════════════════════════════════
 //  OS PREVENTIVA AUTOMÁTICA
 // ═══════════════════════════════════════════════
