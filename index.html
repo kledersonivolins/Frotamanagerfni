@@ -6735,7 +6735,16 @@ function switchTab(e, id){
 // Limites (% do intervalo consumido) — 4 níveis: EM DIA < 90 ≤ ATENÇÃO < 95 ≤ VENCENDO < 100 ≤ VENCIDA
 const PLANO_LIM_ATENCAO  = 90;
 const PLANO_LIM_VENCENDO = 95;
+// Quais medidores valem para o equipamento: 'km' → só km; 'horas' → só horas; sem tipo informado → os dois.
+// Evita que um km lixo no cadastro de uma máquina medida em horas (ou o contrário) gere vencimentos absurdos.
+function _eqMedidas(eq){
+  const t = String(eq?.tipo_medida||'').trim().toLowerCase();
+  if(t==='km') return { km:true, horas:false };
+  if(t==='horas' || t==='hora' || t==='h' || t==='horimetro' || t==='horímetro') return { km:false, horas:true };
+  return { km:true, horas:true };
+}
 function calcPlanoStatus(p, eq){
+  const med = _eqMedidas(eq);
   const kmAtual = eq?.parametros?.km || 0;
   const hAtual  = eq?.parametros?.horas || 0;
 
@@ -6745,7 +6754,7 @@ function calcPlanoStatus(p, eq){
   let realKm = 0, realH = 0, realM = 0;           // % real, sem arredondar nem limitar a 100
   let saldoKm = null, saldoH = null, saldoDias = null;
 
-  if(p.intervalo_km > 0){
+  if(med.km && p.intervalo_km > 0){
     const base = p.ultimo_km || 0;
     proxKm = base + p.intervalo_km;
     const delta = kmAtual - base;
@@ -6754,7 +6763,7 @@ function calcPlanoStatus(p, eq){
     saldoKm = proxKm - kmAtual;                    // saldo = intervalo - (leitura atual - última execução)
     if(kmAtual >= proxKm) vencidoKm = true;
   }
-  if(p.intervalo_horas > 0){
+  if(med.horas && p.intervalo_horas > 0){
     const base = p.ultimo_horas || 0;
     proxH = base + p.intervalo_horas;
     const delta = hAtual - base;
@@ -6804,10 +6813,16 @@ function planoClasse(p){
 // texto "faltam X" / "vencido há X" e próxima execução. Tudo vem de calcPlanoStatus (mesmos limites do Painel PCM).
 function planoSituacao(p, eq){
   const sem = (estado, texto)=>({ estado, pct:0, texto, proxima:'—' });
-  const iKm = Number(p?.intervalo_km)||0;
-  const iH  = Number(p?.intervalo_horas)||0;
+  const med = _eqMedidas(eq);
+  const iKmBruto = Number(p?.intervalo_km)||0, iHBruto = Number(p?.intervalo_horas)||0;
+  const iKm = med.km ? iKmBruto : 0;
+  const iH  = med.horas ? iHBruto : 0;
   const iM  = Number(p?.intervalo_meses)||0;
-  if(!(iKm>0) && !(iH>0) && !(iM>0)) return sem('sem_dados','—');
+  if(!(iKm>0) && !(iH>0) && !(iM>0)){
+    if(iKmBruto>0 && !med.km) return sem('sem_dados','intervalo em km, mas o equipamento é medido em horas');
+    if(iHBruto>0 && !med.horas) return sem('sem_dados','intervalo em horas, mas o equipamento é medido em km');
+    return sem('sem_dados','—');
+  }
 
   const s = calcPlanoStatus(p, eq);
   if(_planoSemRegistro(p, s)) return sem('sem_registro','sem registro de execução');
@@ -7006,8 +7021,11 @@ function _pcmAnalisar(hoje){
       && o.tipo==='Preventiva' && ['aberta','em_andamento','oficina_externa'].includes(o.status));
     const suspeitas = [];
     itens.forEach(({p})=>{
-      if(p.intervalo_km>0 && (p.ultimo_km||0) > (eq.parametros?.km||0)) suspeitas.push(`"${p.descricao||p.codigo}": última execução (${fmt(p.ultimo_km)} km) maior que a leitura atual (${fmt(eq.parametros?.km||0)} km)`);
-      if(p.intervalo_horas>0 && (p.ultimo_horas||0) > (eq.parametros?.horas||0)) suspeitas.push(`"${p.descricao||p.codigo}": última execução (${fmt(p.ultimo_horas)} h) maior que a leitura atual (${fmt(eq.parametros?.horas||0)} h)`);
+      const _med = _eqMedidas(eq);
+      if(p.intervalo_km>0 && !_med.km && !(p.intervalo_horas>0)) suspeitas.push(`"${p.descricao||p.codigo}": intervalo cadastrado em km, mas o equipamento é medido em horas — corrija o intervalo ou desative o item`);
+      if(p.intervalo_horas>0 && !_med.horas && !(p.intervalo_km>0)) suspeitas.push(`"${p.descricao||p.codigo}": intervalo cadastrado em horas, mas o equipamento é medido em km — corrija o intervalo ou desative o item`);
+      if(_med.km && p.intervalo_km>0 && (p.ultimo_km||0) > (eq.parametros?.km||0)) suspeitas.push(`"${p.descricao||p.codigo}": última execução (${fmt(p.ultimo_km)} km) maior que a leitura atual (${fmt(eq.parametros?.km||0)} km)`);
+      if(_med.horas && p.intervalo_horas>0 && (p.ultimo_horas||0) > (eq.parametros?.horas||0)) suspeitas.push(`"${p.descricao||p.codigo}": última execução (${fmt(p.ultimo_horas)} h) maior que a leitura atual (${fmt(eq.parametros?.horas||0)} h)`);
     });
     const pend = (db.movimentos_combustivel||[]).filter(m=>String(m.equipamento_id)===String(eq.id) && !m.excluido && m.inconsistencia==='pendente').length;
     if(pend>0) suspeitas.push(`${pend} abastecimento(s) pendente(s) de conferência (podem ter km/horímetro errado)`);
@@ -7104,6 +7122,7 @@ function renderPainelPCM(){
         <td>${pior.nivel==='sem_registro'?'sem registro':_pcmSaldoTxt(pior.s)}</td><td>${pior.nivel==='sem_registro'?'—':pior.s.pctReal+'%'}</td><td>${pior.nivel==='sem_registro'?'—':_pcmPrevTxt(pior.proj)}</td>
         <td>${_pcmBadge(r.nivel)}</td><td>${osTxt}</td></tr>
       <tr id="pcmd${i}" class="pcm-det"><td colspan="9"><div class="pcm-detbox">
+        <div style="margin-bottom:8px"><button class="btn btn-sm btn-i" onclick="event.stopPropagation();abrirFormulario('${esc(String(eq.id))}')"><i class="fas fa-print"></i> Imprimir formulário do mecânico</button></div>
         <table class="pcm-sub"><thead><tr><th>Cód.</th><th>Item</th><th>Intervalo</th><th>Última execução</th><th>Próxima</th><th>Saldo</th><th>%</th><th>Previsão</th><th>Status</th></tr></thead><tbody>${detItens}</tbody></table>
         ${r.suspeitas.length?`<div class="pcm-susp"><b>⚠ Verificar:</b><ul>${r.suspeitas.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
         <div class="pcm-fonte">${fonte}</div></div></td></tr>`;
@@ -10478,9 +10497,9 @@ function renderPlanos(){
     <div class="frow" style="align-items:end">
       <div class="fg"><label>Equipamento</label><select class="fs" onchange="window._filtPlanoEq=parseInt(this.value);loadPage('planos')">${optsEq}</select></div>
       <div class="fg"><label>Buscar item</label><input class="fi" placeholder="Código, filtro, óleo, compartimento..." value="${esc(window._planoBusca||'')}" oninput="window._planoBusca=this.value;loadPage('planos')"></div>
-      <div class="row10"><button class="btn btn-sm btn-o" onclick="window._planoBusca='';window._planoFiltroEstado='';loadPage('planos')"><i class="fas fa-eraser"></i> Limpar</button>${canEdit?`<button class="btn btn-p" onclick="openModalPlano()"><i class="fas fa-plus"></i> Inserir</button><button class="btn btn-s" onclick="openModalRegistrarPlano()"><i class="fas fa-check-double"></i> Registrar execução</button><button class="btn btn-g" onclick="openModalImportarFicha()"><i class="fas fa-file-import"></i> Importar ficha</button>`:''}</div>
+      <div class="row10"><button class="btn btn-sm btn-o" onclick="window._planoBusca='';window._planoFiltroEstado='';loadPage('planos')"><i class="fas fa-eraser"></i> Limpar</button>${eq?`<button class="btn btn-sm btn-i" title="Abrir o formulário de manutenção deste equipamento para imprimir" onclick="abrirFormulario('${esc(String(eq.id))}')"><i class="fas fa-print"></i> Formulário</button>`:''}${canEdit?`<button class="btn btn-p" onclick="openModalPlano()"><i class="fas fa-plus"></i> Inserir</button><button class="btn btn-s" onclick="openModalRegistrarPlano()"><i class="fas fa-check-double"></i> Registrar execução</button><button class="btn btn-g" onclick="openModalImportarFicha()"><i class="fas fa-file-import"></i> Importar ficha</button>`:''}</div>
     </div>
-    ${eq?`<div style="margin-top:10px;background:var(--primary-light);padding:8px 14px;border-radius:10px;font-size:13px"><strong>KM Atual:</strong> ${fmt(eqKm)} &nbsp;|&nbsp; <strong>Horas:</strong> ${fmt(eqH)}</div>`:''}
+    ${eq?`<div style="margin-top:10px;background:var(--primary-light);padding:8px 14px;border-radius:10px;font-size:13px">${[_eqMedidas(eq).km?`<strong>KM Atual:</strong> ${fmt(eqKm)}`:'', _eqMedidas(eq).horas?`<strong>Horas:</strong> ${fmt(eqH)}`:''].filter(Boolean).join(' &nbsp;|&nbsp; ')}</div>`:''}
     <div class="pm-resumo">${resumoBtn('vencido','vencidos','vencido')}${resumoBtn('vencendo','vencendo','vencendo')}${resumoBtn('atencao','atenção','atencao')}${resumoBtn('sem_registro','sem registro','sem_registro')}${resumoBtn('ok','em dia','ok')}</div>
   </div>
   ${corpoPrincipal}
@@ -10489,6 +10508,11 @@ function renderPlanos(){
 }
 
 // ── Planos Preventivos: interação da tela ──
+// Atalho: abre o Formulário Mecânico (impressão) já com o equipamento escolhido.
+function abrirFormulario(eqId){
+  window._fmEq = Number(eqId) || eqId;
+  loadPage('formulario');
+}
 function setPlanoFiltro(estado){
   window._planoFiltroEstado = (window._planoFiltroEstado===estado) ? '' : (estado||'');
   loadPage('planos');
@@ -10878,6 +10902,26 @@ function _fichaAcharEquip(ficha, eqs){
   return (eqs||[]).find(e=>[e.placa, e.placa_anterior].some(p=>p && chaves.includes(_fichaPlacaChave(p)))) || null;
 }
 
+// Palavras que identificam o compartimento/item (sem termos genéricos), para achar itens antigos duplicados
+function _fichaTokens(txt){
+  const STOP = new Set(['OLEO','OLEOS','FILTRO','FILTROS','SISTEMA','LUBRIFICANTE','LUBRIFICANTES','TROCA','LIMPAR','ELEMENTO','DE','DO','DA','DOS','DAS','COM','PARA']);
+  return _fichaNormDesc(txt).split(' ').filter(t=>t.length>=3 && !STOP.has(t) && !/^\d+$/.test(t));
+}
+// Item antigo do plano que ficou fora da ficha: diz por que provavelmente é duplicado/errado (ou '' se não há motivo)
+function _fichaMotivoForaFicha(p, eq, ficha){
+  const med = _eqMedidas(eq);
+  if(!med.km && +p.intervalo_km>0 && !(+p.intervalo_horas>0)) return 'intervalo em km, mas o equipamento é medido em horas';
+  if(!med.horas && +p.intervalo_horas>0 && !(+p.intervalo_km>0)) return 'intervalo em horas, mas o equipamento é medido em km';
+  const meus = _fichaTokens(`${p.descricao||''} ${p.compartimento||''}`);
+  const casa = (a,b)=> a===b || (Math.min(a.length,b.length)>=3 && (a.startsWith(b) || b.startsWith(a)));
+  for(const it of (ficha?.itens||[])){
+    const deles = _fichaTokens(`${it.descricao||''} ${it.compartimento||''}`);
+    const comum = meus.find(a=>deles.some(b=>casa(a,b)));
+    if(comum) return `mesmo compartimento de "${it.descricao}" na ficha`;
+  }
+  return '';
+}
+
 // O que a importação vai fazer — sem gravar nada (usado na prévia e na confirmação)
 function _fichaPlanejar(ficha, eq, planos, opts){
   opts = opts || {};
@@ -10904,7 +10948,14 @@ function _fichaPlanejar(ficha, eq, planos, opts){
     (Object.keys(mudancas).length ? atualizar : iguais).push({ plano:ex, item:it, mudancas, notas });
   });
   const fora = doEq.filter(p=>!usados.has(p.id) && p.ativo!==false);
+  const foraMotivo = {};
+  fora.forEach(p=>{ const m=_fichaMotivoForaFicha(p, eq, ficha); if(m) foraMotivo[p.id]=m; });
+  // quais itens de fora serão desativados: lista explícita (prévia) ou todos (compatibilidade)
+  const desativarIds = opts.desativarIds ? new Set([...opts.desativarIds].map(String))
+    : (opts.desativarFora ? new Set(fora.map(p=>String(p.id))) : new Set());
   const cadastro = {}, avisos = [];
+  // máquina medida em horas com km no cadastro (lixo de importação/abastecimento): zera o km
+  if(String(eq?.tipo_medida||'').toLowerCase()==='horas' && Number(eq?.parametros?.km)>0) cadastro.km = 0;
   if(ficha.leitura>0){
     if(ficha.leitura>atual) cadastro[ehKm?'km':'horas']=ficha.leitura;
     else if(ficha.leitura<atual) avisos.push(`Leitura da ficha (${ficha.leitura}) é menor que a do cadastro (${atual}) — mantida a do cadastro.`);
@@ -10913,14 +10964,14 @@ function _fichaPlanejar(ficha, eq, planos, opts){
   if(!eq?.ano_fabricacao && ficha.anoFab) cadastro.ano_fabricacao=ficha.anoFab;
   if(!eq?.ano_modelo && ficha.anoMod) cadastro.ano_modelo=ficha.anoMod;
   const leituraRef = Math.max(atual, ficha.leitura||0);
-  return { ehKm, cInt, cUlt, atual, leituraRef, novos, atualizar, iguais, fora, cadastro, avisos, desativarFora: !!opts.desativarFora };
+  return { ehKm, cInt, cUlt, atual, leituraRef, novos, atualizar, iguais, fora, foraMotivo, desativarIds, cadastro, avisos, desativarFora: desativarIds.size>0 };
 }
 
 let _fichaDados = null;   // resultado de _fichaAnalisarAbas
 let _fichaSelIdx = 0;
 
 function openModalImportarFicha(){
-  _fichaDados = null; _fichaSelIdx = 0;
+  _fichaDados = null; _fichaSelIdx = 0; window._fichaForaSel = {};
   openModal('<i class="fas fa-file-import" style="color:#2e7d32"></i> Importar Ficha de Manutenção',`
   <div class="al-i alert" style="margin-bottom:14px">
     <i class="fas fa-info-circle"></i>
@@ -10964,17 +11015,18 @@ function _fichaRenderPreview(){
   const eqs = _eqsDaEmpresa();
   const eq = eqs.find(e=>String(e.id)===String(window._fichaEqSel||''));
   const achado = _fichaAcharEquip(f, eqs);
-  const desatChk = document.getElementById('ficha_desativar')?.checked || false;
+  window._fichaForaSel = window._fichaForaSel || {};
   const optsAba = _fichaDados.fichas.map((x,i)=>`<option value="${i}" ${i===_fichaSelIdx?'selected':''}>${esc(x.nome)} — leitura ${fmt(x.leitura)}${i===0?' (mais recente)':''}</option>`).join('');
   const optsEq = eqs.map(e=>`<option value="${e.id}" ${eq&&String(eq.id)===String(e.id)?'selected':''}>${esc(e.placa||'')} — ${esc(e.modelo||'')}</option>`).join('');
   let corpo = '';
   if(!eq){
     corpo = `<div class="al-w alert"><i class="fas fa-exclamation-triangle"></i> ${f.placa?`Placa <b>${esc(f.placa)}</b> não encontrada no cadastro.`:'Placa não detectada na ficha.'} Selecione o equipamento acima para ver a prévia.</div>`;
   } else {
-    const pl = _fichaPlanejar(f, eq, db.planos_manutencao, { desativarFora: desatChk });
+    const pl = _fichaPlanejar(f, eq, db.planos_manutencao, {});
     const un = pl.ehKm ? 'km' : 'h';
+    const foraMarcado = p=> (String(p.id) in window._fichaForaSel) ? window._fichaForaSel[String(p.id)] : !!pl.foraMotivo[p.id];
     const cadTxt = Object.entries(pl.cadastro).map(([k,v])=>{
-      const rot={km:'KM atual',horas:'Horímetro atual',chassi:'Chassi',ano_fabricacao:'Ano fabricação',ano_modelo:'Ano modelo'}[k]||k;
+      const rot={km:(k==='km'&&v===0?'KM atual (equipamento medido em horas)':'KM atual'),horas:'Horímetro atual',chassi:'Chassi',ano_fabricacao:'Ano fabricação',ano_modelo:'Ano modelo'}[k]||k;
       const antes = k==='km'?fmt(eq.parametros?.km||0):k==='horas'?fmt(eq.parametros?.horas||0):(eq[k]||'vazio');
       return `<li>${rot}: ${esc(String(antes))} → <b>${esc(k==='km'||k==='horas'?fmt(v):String(v))}</b></li>`;
     }).join('');
@@ -11006,8 +11058,9 @@ function _fichaRenderPreview(){
         <thead><tr style="background:#f0f4ff;text-align:left"><th style="padding:5px 6px"></th><th style="padding:5px 6px">Compartimento</th><th style="padding:5px 6px">Item</th><th style="padding:5px 6px;text-align:right">Intervalo</th><th style="padding:5px 6px;text-align:right">Última troca</th><th style="padding:5px 6px;text-align:right">Próxima</th><th style="padding:5px 6px;text-align:right">Saldo</th><th style="padding:5px 6px">O que muda</th></tr></thead>
         <tbody>${linhas}</tbody></table></div>
       ${f.ignorados.length?`<div style="font-size:11px;color:#666;margin-bottom:8px">Ignorados (sem intervalo de troca): ${f.ignorados.map(x=>esc(x.descricao+(x.compartimento?' / '+x.compartimento:''))).join(', ')}</div>`:''}
-      ${pl.fora.length?`<div class="al-w alert" style="margin-bottom:8px;display:block"><b>${pl.fora.length} item(ns) do plano atual não estão nesta ficha:</b> ${pl.fora.map(p=>esc(p.descricao||p.codigo||'')).join(', ')}
-        <label style="display:flex;gap:6px;align-items:center;margin-top:6px;font-weight:700"><input type="checkbox" id="ficha_desativar" ${desatChk?'checked':''}> Desativar esses itens (não apaga — fica no histórico)</label></div>`:''}
+      ${pl.fora.length?`<div class="al-w alert" style="margin-bottom:8px;display:block"><b>${pl.fora.length} item(ns) do plano atual não estão nesta ficha.</b> Marque os que devem ser <b>desativados</b> (não apaga — fica no histórico).${Object.keys(pl.foraMotivo).length?` Os marcados em laranja parecem duplicados ou errados e já vêm selecionados.`:''}
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">${pl.fora.map(p=>`<label style="display:flex;gap:6px;align-items:flex-start;font-size:12px"><input type="checkbox" class="ficha-fora" value="${esc(String(p.id))}" ${foraMarcado(p)?'checked':''} onchange="window._fichaForaSel[this.value]=this.checked">
+          <span><b>${esc(p.codigo||'')}</b> ${esc(p.descricao||'')}${p.compartimento?` <span style="color:#666">(${esc(p.compartimento)})</span>`:''}${pl.foraMotivo[p.id]?` — <span style="color:#e65100;font-weight:700">${esc(pl.foraMotivo[p.id])}</span>`:''}</span></label>`).join('')}</div></div>`:''}
       ${serv&&serv.servicos.length?`<div class="sec-title"><i class="fas fa-wrench"></i> Serviços na aba ${esc(serv.nome.trim())} (só consulta, não importa)</div>
         <div style="font-size:11px;margin-bottom:8px">${serv.servicos.map(s=>`${s.data?fmtDt(s.data):'—'} · ${esc(s.descricao)}${s.valor?' · '+money(s.valor):''}`).join('<br>')}</div>`:''}`;
   }
@@ -11025,8 +11078,6 @@ function _fichaRenderPreview(){
   box.style.display='block';
   const btn=document.getElementById('btn_confirmar_ficha');
   if(btn) btn.style.display = eq ? 'flex' : 'none';
-  const chk=document.getElementById('ficha_desativar');
-  if(chk) chk.onchange=()=>_fichaRenderPreview();
 }
 
 function _fichaImportar(){
@@ -11034,7 +11085,8 @@ function _fichaImportar(){
   const f = _fichaDados.fichas[_fichaSelIdx];
   const eq = (db.equipamentos||[]).find(e=>String(e.id)===String(document.getElementById('ficha_eq_id')?.value||''));
   if(!eq){ showToast('Selecione o equipamento para vincular','warning'); return; }
-  const pl = _fichaPlanejar(f, eq, db.planos_manutencao, { desativarFora: !!document.getElementById('ficha_desativar')?.checked });
+  const marcados = [...document.querySelectorAll('.ficha-fora:checked')].map(x=>x.value);
+  const pl = _fichaPlanejar(f, eq, db.planos_manutencao, { desativarIds: marcados });
   const nota = `Ficha "${f.nome.trim()}" importada em ${today()}`;
   let seq = (db.planos_manutencao||[]).filter(p=>String(p.equipamento_id)===String(eq.id)).length;
   pl.novos.forEach(({item})=>{
@@ -11052,11 +11104,11 @@ function _fichaImportar(){
     Object.assign(plano, mudancas, { obs_importacao: nota });
     sbSalvar('planos_manutencao', plano);
   });
-  if(pl.desativarFora) pl.fora.forEach(p=>{ p.ativo=false; p.obs_importacao=nota+' — desativado (fora da ficha)'; sbSalvar('planos_manutencao', p); });
+  pl.fora.filter(p=>pl.desativarIds.has(String(p.id))).forEach(p=>{ p.ativo=false; p.obs_importacao=nota+' — desativado (fora da ficha)'; sbSalvar('planos_manutencao', p); });
   if(Object.keys(pl.cadastro).length){
     if(!eq.parametros) eq.parametros={};
     const { km, horas, ...resto } = pl.cadastro;
-    if(km) eq.parametros.km = km;
+    if(km!==undefined) eq.parametros.km = km;
     if(horas) eq.parametros.horas = horas;
     Object.assign(eq, resto);
     sbSalvar('equipamentos', eq);
@@ -11065,7 +11117,7 @@ function _fichaImportar(){
   closeModal();
   window._pcmBusca=''; window._pcmFiltro='todos'; window._pcmOrdem='proximos';
   loadPage('painel_pcm');
-  showToast(`Ficha vinculada a ${eq.placa||eq.modelo}: ${pl.novos.length} item(ns) novo(s), ${pl.atualizar.length} atualizado(s)${pl.desativarFora&&pl.fora.length?`, ${pl.fora.length} desativado(s)`:''}${Object.keys(pl.cadastro).length?', cadastro atualizado':''}.`,'success');
+  showToast(`Ficha vinculada a ${eq.placa||eq.modelo}: ${pl.novos.length} item(ns) novo(s), ${pl.atualizar.length} atualizado(s)${pl.desativarIds.size?`, ${pl.desativarIds.size} desativado(s)`:''}${Object.keys(pl.cadastro).length?', cadastro atualizado':''}.`,'success');
 }
 
 async function delPlano(i){
