@@ -26,7 +26,7 @@ const PLANO_LIM_ATENCAO = constante('PLANO_LIM_ATENCAO');
 const PLANO_LIM_VENCENDO = constante('PLANO_LIM_VENCENDO');
 const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-const codigoBase = ['esc', '_eqMedidas', 'calcPlanoStatus', '_planoSemRegistro', 'planoClasse', 'planoSituacao', 'planosOrdenados'].map(extrair).join('\n');
+const codigoBase = ['esc', '_eqTipoMedida', '_eqMedidas', '_ehFiltroTexto', 'calcPlanoStatus', '_planoSemRegistro', 'planoClasse', 'planoSituacao', 'planosOrdenados'].map(extrair).join('\n');
 const { planoClasse, planoSituacao, planosOrdenados } = new Function(
   'fmt', 'PLANO_LIM_ATENCAO', 'PLANO_LIM_VENCENDO',
   `${codigoBase}; return { planoClasse, planoSituacao, planosOrdenados };`
@@ -98,7 +98,7 @@ const ord = planosOrdenados(lista, eq).map((x) => x.p.id);
 assert.deepEqual(ord, [3, 7, 4, 6, 5, 1, 2]);
 
 // ═════════════ Tela (renderPlanos) ═════════════
-const codigoTela = ['esc', '_eqMedidas', 'calcPlanoStatus', '_planoSemRegistro', 'planoClasse', 'planoSituacao', 'planosOrdenados',
+const codigoTela = ['esc', '_eqTipoMedida', '_eqMedidas', '_ehFiltroTexto', 'calcPlanoStatus', '_planoSemRegistro', 'planoClasse', 'planoSituacao', 'planosOrdenados',
   'renderPlanos', 'abrirFormulario', 'setPlanoFiltro', 'togglePlanoSecao', 'togglePlanoDetalhe'].map(extrair).join('\n');
 
 function montarTela(db, win = {}) {
@@ -113,7 +113,7 @@ function montarTela(db, win = {}) {
   return { ...api, chamadas, doc, win };
 }
 
-const EQ1 = { id: 1, placa: 'S3', modelo: 'Escavadeira', parametros: { km: 12340, horas: 1205 } };
+const EQ1 = { id: 1, placa: '', modelo: 'Escavadeira', parametros: { km: 12340, horas: 1205 } };
 const dbBase = () => ({
   equipamentos: [EQ1, { id: 2, placa: 'ABC1234', modelo: 'Caminhão' }],
   planos_manutencao: [
@@ -225,5 +225,19 @@ assert.equal(planoSituacao({ intervalo_km: 1000, ultimo_km: 100 }, { parametros:
 const dbS3 = dbBase(); dbS3.equipamentos[0] = { ...EQ1, tipo_medida: 'horas', parametros: { km: 19809000, horas: 3116 } };
 out = montarTela(dbS3, { _filtPlanoEq: 1 }).renderPlanos();
 assert.ok(!out.includes('19.809.000') && out.includes('<strong>Horas:</strong> 3.116'));
+
+// ── classe: filtro por marca mesmo com compartimento "MOTOR" (print da S3) ──
+for (const d of ['WEGA FCD2041', 'WEGA FCD2045B', 'FLEET LF3345', 'UNIFILTER UA13302P', 'DONALD P551329', 'FILTRO TELA', 'TECFIL PSL55']) {
+  assert.equal(planoClasse({ descricao: d, compartimento: 'MOTOR CUMMINS 4B3.9 (2302171)' }), 'filtros', `${d} devia ser filtro`);
+}
+for (const d of ['15W40 CK-4', 'HYDRA HV 68', 'ATF TDX DERON III', 'OLEO CUBO']) {
+  assert.equal(planoClasse({ descricao: d, compartimento: 'MOTOR CUMMINS 4B3.9 (2302171)' }), 'lubrificantes', `${d} devia ser óleo`);
+}
+// ── S3 sem tipo de medida no cadastro: deduz horas pelo código da máquina ──
+const S3semTipo = { placa: 'S3', parametros: { km: 19809000, horas: 3116 } };
+assert.equal(planoSituacao({ intervalo_km: 1000, ultimo_horas: 2418, ultima_data: '2026-04-29' }, S3semTipo).texto, 'intervalo em km, mas o equipamento é medido em horas');
+// caminhão sem tipo com as duas leituras: placa de veículo → km
+assert.equal(planoSituacao({ intervalo_horas: 250, ultimo_horas: 0 }, { placa: 'PIZ9160', parametros: { km: 50000, horas: 900 } }).estado, 'sem_dados');
+assert.equal(planoSituacao({ intervalo_km: 10000, ultimo_km: 45000 }, { placa: 'OVW-3E65', parametros: { km: 50000, horas: 900 } }).estado, 'ok');
 
 console.log('planos-preventivos OK');

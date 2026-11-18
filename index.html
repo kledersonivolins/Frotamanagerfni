@@ -6737,11 +6737,30 @@ const PLANO_LIM_ATENCAO  = 90;
 const PLANO_LIM_VENCENDO = 95;
 // Quais medidores valem para o equipamento: 'km' → só km; 'horas' → só horas; sem tipo informado → os dois.
 // Evita que um km lixo no cadastro de uma máquina medida em horas (ou o contrário) gere vencimentos absurdos.
-function _eqMedidas(eq){
+// Tipo de medida do equipamento: o do cadastro; se vazio, deduz pelas leituras e pela placa
+// (placa de veículo AAA9999/Mercosul → km; código de máquina como "S3" → horas). '' = não dá para saber.
+function _eqTipoMedida(eq){
   const t = String(eq?.tipo_medida||'').trim().toLowerCase();
+  if(t==='km') return 'km';
+  if(t==='horas' || t==='hora' || t==='h' || t==='horimetro' || t==='horímetro') return 'horas';
+  const km = Number(eq?.parametros?.km)||0, h = Number(eq?.parametros?.horas)||0;
+  if(km>0 && !(h>0)) return 'km';
+  if(h>0 && !(km>0)) return 'horas';
+  const placa = String(eq?.placa||'').toUpperCase().replace(/[\s-]/g,'');
+  if(!placa) return '';
+  return /^[A-Z]{3}\d[A-Z0-9]\d{2}$/.test(placa) ? 'km' : 'horas';
+}
+// Quais medidores valem para o equipamento (sem tipo e sem como deduzir → os dois).
+function _eqMedidas(eq){
+  const t = _eqTipoMedida(eq);
   if(t==='km') return { km:true, horas:false };
-  if(t==='horas' || t==='hora' || t==='h' || t==='horimetro' || t==='horímetro') return { km:false, horas:true };
+  if(t==='horas') return { km:false, horas:true };
   return { km:true, horas:true };
+}
+// Texto de item/peça é de filtro? (palavra "filtro" ou marca/fabricante de filtro)
+function _ehFiltroTexto(txt){
+  const t = String(txt ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  return /FILTR|ELEMENTO FILTRANTE|\b(WEGA|TECFIL|MANN|DONALD\w*|FRAM|FLEETGUARD|FLEET|BOSCH|BALDWIN|MAHLE|UNIFILTER|PARKER|RACOR|HENGST|PUROLATOR|WIX|MICRONAIR)\b/.test(t);
 }
 function calcPlanoStatus(p, eq){
   const med = _eqMedidas(eq);
@@ -6804,7 +6823,7 @@ function calcPlanoStatus(p, eq){
 function planoClasse(p){
   const n = (v)=>String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
   const t = n(`${p?.codigo||''} ${p?.descricao||''} ${p?.compartimento||''} ${(p?.pecas||[]).map(x=>x.descricao).join(' ')}`);
-  if(t.includes('filtro') || t.includes('tecfil') || t.includes('filtr')) return 'filtros';
+  if(_ehFiltroTexto(`${p?.codigo||''} ${p?.descricao||''} ${(p?.pecas||[]).map(x=>x.descricao).join(' ')}`)) return 'filtros';
   if(t.includes('oleo') || t.includes('lubr') || t.includes('motor') || t.includes('hidraul') || t.includes('transmiss') || t.includes('diferencial') || t.includes('cambio') || t.includes('direcao') || t.includes('engrax')) return 'lubrificantes';
   return 'operacoes';
 }
@@ -10779,7 +10798,7 @@ function _fichaPlacaChave(p){
   return s;
 }
 function _fichaNormDesc(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim(); }
-function _fichaEhFiltro(desc){ return /\b(WEGA|TECFIL|MANN|DONALD\w*|FRAM|FLEETGUARD|BOSCH|BALDWIN|MAHLE|FILTRO)\b/i.test(desc); }
+function _fichaEhFiltro(desc){ return _ehFiltroTexto(desc); }
 function _fichaData(v){
   if(v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
   if(typeof v==='number' && v>20000 && v<80000){ const d=new Date(Math.round((v-25569)*86400000)); return d.toISOString().slice(0,10); }
@@ -10925,7 +10944,8 @@ function _fichaMotivoForaFicha(p, eq, ficha){
 // O que a importação vai fazer — sem gravar nada (usado na prévia e na confirmação)
 function _fichaPlanejar(ficha, eq, planos, opts){
   opts = opts || {};
-  const ehKm = String(eq?.tipo_medida||'horas').toLowerCase()==='km';
+  const tipoEq = _eqTipoMedida(eq);
+  const ehKm = tipoEq ? tipoEq==='km' : String(eq?.tipo_medida||'horas').toLowerCase()==='km';
   const cInt = ehKm ? 'intervalo_km' : 'intervalo_horas';
   const cUlt = ehKm ? 'ultimo_km' : 'ultimo_horas';
   const atual = Number(ehKm ? eq?.parametros?.km : eq?.parametros?.horas) || 0;
@@ -10955,7 +10975,8 @@ function _fichaPlanejar(ficha, eq, planos, opts){
     : (opts.desativarFora ? new Set(fora.map(p=>String(p.id))) : new Set());
   const cadastro = {}, avisos = [];
   // máquina medida em horas com km no cadastro (lixo de importação/abastecimento): zera o km
-  if(String(eq?.tipo_medida||'').toLowerCase()==='horas' && Number(eq?.parametros?.km)>0) cadastro.km = 0;
+  if(!String(eq?.tipo_medida||'').trim() && tipoEq) cadastro.tipo_medida = tipoEq;
+  if(tipoEq==='horas' && Number(eq?.parametros?.km)>0) cadastro.km = 0;
   if(ficha.leitura>0){
     if(ficha.leitura>atual) cadastro[ehKm?'km':'horas']=ficha.leitura;
     else if(ficha.leitura<atual) avisos.push(`Leitura da ficha (${ficha.leitura}) é menor que a do cadastro (${atual}) — mantida a do cadastro.`);
@@ -11026,7 +11047,7 @@ function _fichaRenderPreview(){
     const un = pl.ehKm ? 'km' : 'h';
     const foraMarcado = p=> (String(p.id) in window._fichaForaSel) ? window._fichaForaSel[String(p.id)] : !!pl.foraMotivo[p.id];
     const cadTxt = Object.entries(pl.cadastro).map(([k,v])=>{
-      const rot={km:(k==='km'&&v===0?'KM atual (equipamento medido em horas)':'KM atual'),horas:'Horímetro atual',chassi:'Chassi',ano_fabricacao:'Ano fabricação',ano_modelo:'Ano modelo'}[k]||k;
+      const rot={km:(k==='km'&&v===0?'KM atual (equipamento medido em horas)':'KM atual'),horas:'Horímetro atual',tipo_medida:'Tipo de medida',chassi:'Chassi',ano_fabricacao:'Ano fabricação',ano_modelo:'Ano modelo'}[k]||k;
       const antes = k==='km'?fmt(eq.parametros?.km||0):k==='horas'?fmt(eq.parametros?.horas||0):(eq[k]||'vazio');
       return `<li>${rot}: ${esc(String(antes))} → <b>${esc(k==='km'||k==='horas'?fmt(v):String(v))}</b></li>`;
     }).join('');

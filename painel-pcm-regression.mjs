@@ -34,7 +34,7 @@ const ctx=vm.createContext({ Math,Number,String,Date,Array,Set,isNaN,Object,
   fmt:n=>String(n), fmtDt:d=>d, esc:v=>String(v??''),
   _isOSExcluida:o=>!!o?.excluido, _ultimoAbastecimento:()=>null,
   db:{}, _eqsDaEmpresa:()=>ctx.db.equipamentos });
-for(const f of ['_eqMedidas','calcPlanoStatus','_planoSemRegistro','_pcmOrd','_pcmRotulo','_pcmIso','_pcmMediaDiaria','_pcmProjetar','_pcmAnalisar','_proximoNumeroOS','_osEqEhKm','_osMedidorEquip','_centroCustoPadraoPreventiva'])
+for(const f of ['_eqTipoMedida','_eqMedidas','_ehFiltroTexto','calcPlanoStatus','_planoSemRegistro','_pcmOrd','_pcmRotulo','_pcmIso','_pcmMediaDiaria','_pcmProjetar','_pcmAnalisar','_proximoNumeroOS','_osEqEhKm','_osMedidorEquip','_centroCustoPadraoPreventiva'])
   vm.runInContext(functionSource(f),ctx);
 assert.equal(ctx.PLANO_LIM_ATENCAO,90); assert.equal(ctx.PLANO_LIM_VENCENDO,95);
 
