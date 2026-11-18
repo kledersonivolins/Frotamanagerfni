@@ -6960,6 +6960,8 @@ function _pcmAnalisar(hoje){
     });
     const pend = (db.movimentos_combustivel||[]).filter(m=>String(m.equipamento_id)===String(eq.id) && !m.excluido && m.inconsistencia==='pendente').length;
     if(pend>0) suspeitas.push(`${pend} abastecimento(s) pendente(s) de conferência (podem ter km/horímetro errado)`);
+    if(typeof _combAnomaliasConsumo==='function') _combAnomaliasConsumo(eq, hoje, 30).slice(-3).forEach(t=>suspeitas.push(
+      `Consumo fora do padrão em ${fmtDt(String(t.m.data||'').slice(0,10))} (leitura ${fmt(t.m.hodometro)}): ${(Math.round(t.consumo*100)/100).toLocaleString('pt-BR')} ${t.un} vs ${(Math.round(t.padrao*100)/100).toLocaleString('pt-BR')} (${t.fonte}), ${t.desvio>0?'+':''}${t.desvio}% — possível erro de km ou anomalia`));
     rows.push({ eq, ehKm, un:ehKm?'km':'h', leitura, media, itens, pior, proximo, nivel:pior.nivel, osAbertas, suspeitas, ultAbast:_ultimoAbastecimento(eq.id) });
   });
   rows.sort((a,b)=>_pcmOrd(a.nivel)-_pcmOrd(b.nivel) || b.pior.s.pctReal-a.pior.s.pctReal);
@@ -11876,6 +11878,49 @@ function renderCombustivel(){
   </table></div></div>`;
 }
 
+// ── Consumo por trecho entre abastecimentos (km/L para km, L/h para horas) ──
+// Usa só lançamentos válidos (não excluídos, não pendentes/rejeitados), ordenados pelo hodômetro.
+function _combConsumoTrechos(eqId, ehKm){
+  const movs = (db.movimentos_combustivel||[]).filter(m=>String(m.equipamento_id)===String(eqId) && !m.excluido
+    && Number(m.hodometro)>0 && Number(m.litros)>0 && m.inconsistencia!=='pendente' && m.inconsistencia!=='rejeitado')
+    .sort((a,b)=>Number(a.hodometro)-Number(b.hodometro));
+  const out=[];
+  for(let i=1;i<movs.length;i++){
+    const delta = Number(movs[i].hodometro)-Number(movs[i-1].hodometro);
+    if(!(delta>0)) continue;
+    const l = Number(movs[i].litros);
+    out.push({ m:movs[i], delta, consumo: ehKm ? delta/l : l/delta });
+  }
+  return out;
+}
+function _combMediana(arr){
+  const a=(arr||[]).filter(x=>isFinite(x)).slice().sort((x,y)=>x-y);
+  if(!a.length) return null;
+  const k=Math.floor(a.length/2);
+  return a.length%2 ? a[k] : (a[k-1]+a[k])/2;
+}
+// Padrão de consumo do equipamento: o cadastrado (media_padrao) ou a mediana histórica (≥ 4 trechos)
+function _combPadraoConsumo(eq, ehKm){
+  const cad = parseFloat(eq?.media_padrao)||0;
+  if(cad>0) return { valor:cad, fonte:'cadastro', limite:25 };
+  const tr = _combConsumoTrechos(eq?.id, ehKm);
+  if(tr.length<4) return null;
+  return { valor:_combMediana(tr.map(t=>t.consumo)), fonte:'mediana histórica', limite:35 };
+}
+// Trechos com consumo fora do padrão nos últimos `dias` (para o Painel PCM — só leitura)
+function _combAnomaliasConsumo(eq, hoje, dias){
+  hoje = hoje || new Date(); dias = dias || 30;
+  const ehKm = String(eq?.tipo_medida||'horas').toLowerCase()==='km';
+  const pad = _combPadraoConsumo(eq, ehKm);
+  if(!pad || !(pad.valor>0)) return [];
+  const corte = hoje.getTime() - dias*86400000;
+  return _combConsumoTrechos(eq.id, ehKm).filter(t=>{
+    const d = new Date(String(t.m.data||'').slice(0,10)+'T12:00:00').getTime();
+    return !isNaN(d) && d>=corte;
+  }).map(t=>({ ...t, padrao:pad.valor, fonte:pad.fonte, desvio:Math.round((t.consumo-pad.valor)/pad.valor*100), un: ehKm?'km/L':'L/h' }))
+    .filter(t=>Math.abs(t.desvio)>pad.limite);
+}
+
 // ── Verificação automática de inconsistência no lançamento ──
 function _combVerificarInconsistencia(){
   const eqId = document.getElementById('c_eq')?.value;
@@ -11899,12 +11944,14 @@ function _combVerificarInconsistencia(){
       const delta = hod - movAnterior.hodometro;
       const isTipoKm = (document.getElementById('c_med')?.value||'KM').toUpperCase()==='KM';
       const consumo  = isTipoKm ? delta/lit : lit/delta;
-      const padrao   = parseFloat(eq.media_padrao)||0;
+      // padrão cadastrado no veículo; sem ele, mediana histórica dos trechos (tolerância maior)
+      const _pad     = _combPadraoConsumo(eq, isTipoKm);
+      const padrao   = _pad ? _pad.valor : 0;
 
       if(padrao>0){
         const desvio = Math.abs((consumo-padrao)/padrao*100);
-        if(desvio>25){
-          alertas.push(`Consumo calculado: <strong>${consumo.toFixed(2)} ${isTipoKm?'km/L':'L/h'}</strong> — Padrão do veículo: <strong>${padrao.toFixed(2)}</strong> — Desvio: <strong style="color:#c62828">${desvio.toFixed(0)}%</strong>`);
+        if(desvio>_pad.limite){
+          alertas.push(`Consumo calculado: <strong>${consumo.toFixed(2)} ${isTipoKm?'km/L':'L/h'}</strong> — ${_pad.fonte==='cadastro'?'Padrão do veículo':'Média histórica do veículo'}: <strong>${padrao.toFixed(2)}</strong> — Desvio: <strong style="color:#c62828">${desvio.toFixed(0)}%</strong> (possível erro de digitação do km/horímetro)`);
         }
       }
     }
@@ -15028,6 +15075,112 @@ function _verificarMudancaData(dataAnterior){
   bloco.style.display = (dataAnterior && novaData !== dataAnterior) ? 'block' : 'none';
 }
 
+// ═══════════════════════════════════════════════
+//  OS CONCLUÍDA → registrar execução no plano preventivo (zera o contador dos itens marcados)
+//  Preventiva: itens da OS que fazem parte do plano já vêm marcados. Corretiva: pergunta.
+//  Nada é gravado sem confirmação ("Pular" não altera o plano).
+// ═══════════════════════════════════════════════
+function _osJsonArr(v){
+  if(Array.isArray(v)) return v;
+  if(typeof v==='string' && v.trim()){ try{ const a=JSON.parse(v); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  return [];
+}
+function _osPlanosRelacionados(os, planos){
+  const norm = s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+  const itens = _osJsonArr(os?.itens).filter(it=>it && it.status_exec!=='nao_executado');
+  const textos = itens.flatMap(it=>[it.descricao, it.referencia]).map(norm).filter(t=>t.length>=4);
+  const descOS = norm(os?.descricao);
+  const bate = (c,t)=> c===t || (c.length>=6 && t.includes(c)) || (t.length>=6 && c.includes(t));
+  return (planos||[]).filter(p=>String(p.equipamento_id)===String(os?.equipamento_id) && p.ativo!==false && !p.excluido).map(p=>{
+    if(os?.plano_id && String(os.plano_id)===String(p.id)) return { p, match:true, motivo:'plano da OS' };
+    const cands = [p.descricao, ..._osJsonArr(p.pecas).flatMap(x=>[x?.descricao, x?.referencia])].map(norm).filter(c=>c.length>=4);
+    if(cands.some(c=>textos.some(t=>bate(c,t)))) return { p, match:true, motivo:'item da OS' };
+    if(cands.some(c=>c.length>=6 && descOS.includes(c))) return { p, match:true, motivo:'descrição da OS' };
+    return { p, match:false, motivo:'' };
+  }).sort((a,b)=>(b.match?1:0)-(a.match?1:0));
+}
+function _osLeituraExec(os, eq){
+  const ehKm = String(eq?.tipo_medida||'horas').toLowerCase()==='km';
+  const v = ehKm ? (os.km_fechamento||os.km_abertura||os.hodometro||eq?.parametros?.km)
+                 : (os.horimetro_fechamento||os.horimetro_abertura||os.hodometro||eq?.parametros?.horas);
+  return Number(v)||0;
+}
+// Calcula o que muda (sem gravar). leitura = km ou horas, conforme o tipo do equipamento.
+function _osAplicarExecPlano(os, eq, planos, ids, leitura, data){
+  const ehKm = String(eq?.tipo_medida||'horas').toLowerCase()==='km';
+  const sel = new Set((ids||[]).map(String));
+  const atualizados=[], registros=[], ignorados=[];
+  (planos||[]).filter(p=>sel.has(String(p.id))).forEach(p=>{
+    const ult = Number(ehKm ? p.ultimo_km : p.ultimo_horas)||0;
+    if(!(leitura>0)){ ignorados.push({p, motivo:'sem leitura de '+(ehKm?'km':'horímetro')}); return; }
+    if(leitura < ult){ ignorados.push({p, motivo:`leitura (${leitura}) menor que a última execução (${ult})`}); return; }
+    const iKm = Number(p.intervalo_km)||0, iH = Number(p.intervalo_horas)||0;
+    const mud = { ultima_data:data };
+    if(ehKm){ mud.ultimo_km=leitura; mud.proximo_km = iKm>0 ? leitura+iKm : 0; }
+    else    { mud.ultimo_horas=leitura; mud.proxima_hora = iH>0 ? leitura+iH : 0; }
+    atualizados.push({ p, mudancas:mud });
+    registros.push({ equipamento_id:p.equipamento_id, data, data_conclusao:data, tipo:'Preventiva', servico:p.descricao, status:'concluida',
+      hodometro:leitura, tipo_medida: ehKm?'KM':'h', ultimo_km: ehKm?leitura:(Number(p.ultimo_km)||0), ultimo_horas: ehKm?(Number(p.ultimo_horas)||0):leitura,
+      proximo_km: ehKm?mud.proximo_km:(Number(p.proximo_km)||0), proxima_hora: ehKm?(Number(p.proxima_hora)||0):mud.proxima_hora,
+      custo:0, responsavel: os.responsavel||os.mecanico_os||'', obs:`Executado via OS #${os.numero} (${os.tipo||'OS'})`,
+      plano_id:p.id, origem: String(os.tipo||'').toLowerCase()==='preventiva' ? 'os_preventiva' : 'os_corretiva' });
+  });
+  return { ehKm, atualizados, registros, ignorados };
+}
+
+function _osSugerirExecucaoPlano(osId){
+  const os = (db.ordens_servico||[]).find(o=>String(o.id)===String(osId));
+  if(!os || os.status!=='concluida') return;
+  const eq = (db.equipamentos||[]).find(e=>String(e.id)===String(os.equipamento_id));
+  if(!eq) return;
+  const rel = _osPlanosRelacionados(os, db.planos_manutencao);
+  if(!rel.length) return;
+  const ehPrev = String(os.tipo||'').toLowerCase()==='preventiva';
+  const algum = rel.some(r=>r.match);
+  if(!ehPrev && !algum) return;            // corretiva que não mexeu em item do plano: não pergunta
+  const ehKm = String(eq.tipo_medida||'horas').toLowerCase()==='km';
+  const un = ehKm?'km':'h';
+  const leitura = _osLeituraExec(os, eq);
+  const visiveis = ehPrev ? rel : rel.filter(r=>r.match);
+  const linhas = visiveis.map(({p,match,motivo})=>{
+    const ult = Number(ehKm?p.ultimo_km:p.ultimo_horas)||0;
+    return `<label class="list-row" style="gap:10px;align-items:center;cursor:pointer;${match?'background:#f1f8e9':''}">
+      <input type="checkbox" class="osplan_chk" value="${p.id}" ${ehPrev&&match?'checked':''}>
+      <span style="flex:1"><b>${esc(p.descricao||p.codigo||'')}</b><small style="display:block;color:var(--text3)">${esc(p.compartimento||'')} · última: ${ult>0?fmt(ult)+' '+un:'sem registro'} · intervalo ${_resumoIntervaloPlano(p)}</small></span>
+      ${match?`<span class="badge bs" style="font-size:10px">${esc(motivo)}</span>`:''}</label>`;
+  }).join('');
+  openModal(`<i class="fas fa-calendar-check" style="color:var(--success)"></i> Registrar no plano preventivo — OS #${esc(os.numero||'')}`,`
+    <div class="al-i alert" style="margin-bottom:12px"><i class="fas fa-info-circle"></i><div>
+      ${ehPrev ? 'OS <b>preventiva</b> concluída. Marque os itens do plano que foram executados: o contador deles é zerado com a leitura abaixo e a execução fica no histórico apontando para esta OS.'
+               : 'Esta OS <b>corretiva</b> trocou itens que também fazem parte do plano preventivo. Quer zerar o contador desses itens?'}
+      <br><span style="font-size:11px;color:#555">Itens em verde foram encontrados na OS. Se não quiser alterar o plano, clique em <b>Pular</b>.</span></div></div>
+    <div class="frow">
+      <div class="fg"><label>Leitura na execução (${un})</label><input class="fi" type="number" id="osplan_leitura" value="${leitura||''}"></div>
+      <div class="fg"><label>Data da execução</label><input class="fi" type="date" id="osplan_data" value="${String(os.data_conclusao||today()).slice(0,10)}"></div>
+    </div>
+    <div style="max-height:320px;overflow:auto;margin:8px 0">${linhas}</div>
+    <div class="mf">
+      <button class="btn btn-o" onclick="closeModal()">Pular</button>
+      <button class="btn btn-g" onclick="_osConfirmarExecPlano('${String(os.id).replace(/'/g,'')}')"><i class="fas fa-check"></i> Registrar no plano</button>
+    </div>`,'sm');
+}
+
+function _osConfirmarExecPlano(osId){
+  const os = (db.ordens_servico||[]).find(o=>String(o.id)===String(osId));
+  const eq = os && (db.equipamentos||[]).find(e=>String(e.id)===String(os.equipamento_id));
+  if(!os || !eq){ closeModal(); return; }
+  const ids = [...document.querySelectorAll('.osplan_chk:checked')].map(c=>c.value);
+  if(!ids.length){ showToast('Nenhum item marcado — plano não alterado.','info'); closeModal(); return; }
+  const leitura = parseFloat(document.getElementById('osplan_leitura')?.value)||0;
+  const data = document.getElementById('osplan_data')?.value || today();
+  const r = _osAplicarExecPlano(os, eq, db.planos_manutencao, ids, leitura, data);
+  r.atualizados.forEach(({p,mudancas})=>{ Object.assign(p, mudancas); sbSalvar('planos_manutencao', p); });
+  r.registros.forEach(reg=>{ const m={ id:uid(), tenant:_sbTenant, ...reg }; db.manutencoes.push(m); sbSalvar('manutencoes', m); });
+  closeModal(); loadPage(window._currentPage||'os');
+  if(r.ignorados.length) showToast(`${r.atualizados.length} item(ns) registrado(s). Não alterados: ${r.ignorados.map(x=>(x.p.descricao||'')+' — '+x.motivo).join('; ')}`,'warning');
+  else showToast(`${r.atualizados.length} item(ns) do plano zerado(s) com ${fmt(leitura)} ${r.ehKm?'km':'h'} (OS #${os.numero}).`,'success');
+}
+
 async function confirmarBaixaOS(i, dataAnterior=''){
   try {
     const st = document.getElementById('eos_st')?.value;
@@ -15170,28 +15323,15 @@ async function confirmarBaixaOS(i, dataAnterior=''){
         sbSalvar('equipamentos', eq);
       }
 
-      // ✅ DESATIVADO: Não reiniciar ciclo automaticamente ao fechar OS
-      // Os filtros foram removidos da tela de fechamento para não atrapalhar
-      let ciclosReiniciados=0;
-      // Código comentado — planos não são mais reiniciados automaticamente
-      /*
-      db.planos_manutencao.filter(p=>p.equipamento_id===db.ordens_servico[i].equipamento_id).forEach(p=>{
-        const gi=db.planos_manutencao.findIndex(x=>x.id===p.id);
-        const cb=document.getElementById('eospl_'+gi);
-        if(cb && cb.checked){
-          db.planos_manutencao[gi].ultimo_km = km;
-          db.planos_manutencao[gi].ultimo_horas = h;
-          db.planos_manutencao[gi].ultima_data = dt;
-          db.manutencoes.push({ id:uid(), equipamento_id:p.equipamento_id, data:dt, tipo:'Preventiva', servico:p.descricao, status:'concluida', hodometro:km, tipo_medida:p.intervalo_km>0?'KM':'h', custo:0, responsavel:db.ordens_servico[i].responsavel, obs:`Executado via OS #${db.ordens_servico[i].numero}`, plano_id:p.id, os_id:db.ordens_servico[i].id });
-          sbSalvar('planos_manutencao', db.planos_manutencao[gi]);
-          ciclosReiniciados++;
-        }
-      });
-      */
-
+      // Reinício do ciclo do plano: não é automático. Depois de salvar, abre a confirmação
+      // "Registrar no plano preventivo" (preventiva: itens da OS pré-marcados; corretiva: pergunta).
       sbSalvar('ordens_servico', db.ordens_servico[i]);
       closeModal(); loadPage('os');
-      showToast(`OS #${db.ordens_servico[i].numero} concluída! ${ciclosReiniciados} ciclo(s) reiniciado(s).`,'success');
+      const _kmCad = eq ? Number(eq.parametros?.km||0) : 0, _hCad = eq ? Number(eq.parametros?.horas||0) : 0;
+      if((km>0 && km<_kmCad) || (h>0 && h<_hCad))
+        showToast(`OS #${db.ordens_servico[i].numero} concluída. Atenção: a leitura informada é menor que a do cadastro (${fmt(km>0?_kmCad:_hCad)}) — cadastro mantido; confira a leitura.`,'warning');
+      else showToast(`OS #${db.ordens_servico[i].numero} concluída!`,'success');
+      try{ _osSugerirExecucaoPlano(db.ordens_servico[i].id); }catch(e){ console.warn('sugestão de plano:', e); }
     } else {
       sbSalvar('ordens_servico', db.ordens_servico[i]);
       closeModal(); loadPage('os');
