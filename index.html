@@ -1908,6 +1908,192 @@ tbody tr:hover{background:#f0f7ff!important}
 }
 /* ═════════════════════════════════════════════════════════ */
 </style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&display=swap">
+<style id="theme-obra-3d">
+/* ═════════════════════════════════════════════════
+   OBRA 3D — grafite + amarelo de obra + concreto
+   Camada visual carregada por último: só aparência, nenhum comportamento.
+══════════════════════════════════════════════════ */
+:root{
+  --primary:#2b3136!important;
+  --primary-dark:#1b1f22!important;
+  --primary-light:#f4efe2!important;
+  --accent:#f0a500!important;
+  --warning:#d98c00!important;
+  --success:#2f9e5b!important;
+  --danger:#c8382c!important;
+  --bg:#e9e6df!important;
+  --card:#fbfaf7!important;
+  --card2:#f4f1ea!important;
+  --text:#1b1f22!important;
+  --text2:#4f585f!important;
+  --text3:#8a9298!important;
+  --border:#ddd8cd!important;
+  --hover:#f1eee7!important;
+  --obra-ambar:#f0a500;
+  --obra-ambar-escuro:#b97c00;
+  --obra-grafite:#23282c;
+  --obra-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --shadow-sm:0 1px 0 #fff inset,0 2px 6px -2px rgba(27,31,34,.18)!important;
+  --shadow:0 1px 0 #fff inset,0 10px 22px -10px rgba(27,31,34,.32)!important;
+  --shadow-lg:0 1px 0 #fff inset,0 18px 36px -14px rgba(27,31,34,.4),0 34px 50px -34px rgba(27,31,34,.45)!important;
+  --shadow-card:0 1px 0 #fff inset,0 10px 22px -10px rgba(27,31,34,.3)!important;
+}
+html,body,.layout,.content,.main{background:#e9e6df!important;color:#1b1f22!important}
+.main{background:linear-gradient(180deg,#efece6 0,#e9e6df 260px)!important}
+
+/* Menu lateral grafite com item ativo em amarelo */
+.sidebar-premium,.sidebar,.side-menu{
+  background:linear-gradient(180deg,#2b3136 0%,#1a1e21 100%)!important;
+  border-right:1px solid rgba(0,0,0,.25)!important;
+  box-shadow:8px 0 26px rgba(0,0,0,.22)!important;
+}
+.nav-link{transition:background .15s,transform .15s!important}
+.nav-link:hover{background:rgba(255,255,255,.05)!important;transform:translateX(3px)}
+.nav-link.active{
+  background:linear-gradient(90deg,rgba(240,165,0,.2),rgba(240,165,0,.04))!important;
+  border:1px solid rgba(240,165,0,.22)!important;
+  color:#fff!important;
+  box-shadow:inset 3px 0 0 #f0a500!important;
+}
+.nav-link .fas{color:#7d868c!important}
+.nav-link.active .fas{color:#f0a500!important}
+.nav-link:hover .fas{color:#c8cdd1!important}
+.user-avatar{color:#f0a500!important}
+.brand-mark,.pm-module-icon{
+  background:linear-gradient(180deg,#ffbe2e,#f0a500)!important;color:#1b1f22!important;
+  box-shadow:0 4px 0 #b97c00,0 8px 18px rgba(240,165,0,.28)!important;
+}
+
+/* Barra do topo em vidro sobre o concreto */
+.topbar{
+  background:rgba(239,236,230,.86)!important;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid #ddd8cd!important;
+  box-shadow:0 6px 18px -12px rgba(27,31,34,.35)!important;
+}
+.topbar h1,.app-title,.page-title{
+  font-family:var(--obra-display)!important;font-weight:800!important;
+  text-transform:uppercase;letter-spacing:.4px!important;color:#1b1f22!important;
+}
+
+/* Cartões com sombra em camadas (profundidade) */
+.card,.modal-content,.panel,.box,.dash-card{
+  background:#fbfaf7!important;border-color:#e2ddd2!important;border-radius:14px!important;
+  box-shadow:0 1px 0 #fff inset,0 2px 0 rgba(0,0,0,.03),0 12px 24px -12px rgba(27,31,34,.32)!important;
+}
+.card-title{
+  font-family:var(--obra-display)!important;font-weight:700!important;font-size:17px!important;
+  text-transform:uppercase;letter-spacing:.4px;color:#1b1f22!important;border-bottom-color:#ebe7de!important;
+}
+.stat,.kpi,.metric-card{
+  background:#fbfaf7!important;border-radius:14px!important;border-top-color:#f0a500;
+  box-shadow:0 1px 0 #fff inset,0 2px 0 rgba(0,0,0,.03),0 12px 24px -10px rgba(27,31,34,.34),0 30px 40px -30px rgba(27,31,34,.4)!important;
+  transform-style:preserve-3d;transition:transform .2s ease-out,box-shadow .2s!important;
+}
+.stat:hover,.kpi:hover,.metric-card:hover{
+  box-shadow:0 1px 0 #fff inset,0 22px 38px -14px rgba(27,31,34,.45),0 40px 50px -30px rgba(27,31,34,.5)!important;
+}
+.stat .val,.kpi .val{font-family:var(--obra-display)!important;font-weight:800!important;letter-spacing:.2px!important;color:#2b3136}
+.stat label{letter-spacing:1px!important}
+
+/* Botão principal amarelo de obra, que afunda ao clicar */
+.btn-p,.btn-primary,.btn-main{
+  background:linear-gradient(180deg,#ffbe2e,#f0a500)!important;color:#1b1f22!important;border:none!important;
+  box-shadow:0 3px 0 #b97c00,0 8px 16px -6px rgba(240,165,0,.45)!important;font-weight:700!important;
+  transition:transform .1s,box-shadow .1s!important;
+}
+.btn-p:hover,.btn-primary:hover,.btn-main:hover{
+  background:linear-gradient(180deg,#ffc94d,#f5ad0d)!important;transform:translateY(-1px)!important;
+  box-shadow:0 4px 0 #b97c00,0 12px 22px -6px rgba(240,165,0,.5)!important;
+}
+.btn-p:active,.btn-primary:active,.btn-main:active{transform:translateY(2px)!important;box-shadow:0 1px 0 #b97c00,0 4px 10px -4px rgba(240,165,0,.4)!important}
+.btn-o,.btn-outline{background:#fbfaf7!important;color:#2b3136!important;border:1.5px solid #d9d3c7!important}
+.btn-o:hover,.btn-outline:hover{background:#fff!important;border-color:#c7c0b2!important}
+
+input:focus,select:focus,textarea:focus,.fi:focus,.fs:focus,.fta:focus{
+  border-color:#f0a500!important;box-shadow:0 0 0 3px rgba(240,165,0,.18)!important;background:#fff!important;
+}
+thead{background:linear-gradient(180deg,#f4f1ea,#ebe7de)!important}
+tbody tr:hover{background:#f6f1e4!important}
+.ic-btn{background:#f1eee7!important;border-color:#e2ddd2!important;color:#4f585f!important}
+.ic-btn:hover{background:#2b3136!important;color:#f0a500!important;border-color:#2b3136!important}
+.tabs{background:#f4f1ea!important;border-bottom-color:#e2ddd2!important}
+.tab.active,.tabs .active{background:#fff7e3!important;color:#1b1f22!important;border-bottom-color:#f0a500!important}
+.tab:hover{color:#b97c00!important}
+
+/* ═══ LOGIN 3D ═══ */
+.login-screen{background:radial-gradient(120% 90% at 20% 0%,#2a3035 0%,#14171a 58%)!important}
+.login-screen::before,.login-screen::after,.login-orb{display:none!important}
+#loginCena{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
+.login-hero{z-index:2;align-items:flex-end!important;pointer-events:none}
+.login-hero-content{max-width:470px!important}
+.lh-brand{color:#f3f1ec!important;font-family:var(--obra-display);font-size:18px!important;letter-spacing:1px!important;margin-bottom:18px!important}
+.lh-brand-icon{width:34px!important;height:34px!important;border-radius:9px!important;background:#f0a500!important;color:#1b1f22!important;font-size:15px!important;box-shadow:0 5px 0 #b97c00,0 10px 22px rgba(240,165,0,.25)}
+.login-hero h2{font-family:var(--obra-display)!important;font-weight:800!important;text-transform:uppercase;letter-spacing:.2px!important;font-size:clamp(36px,4.4vw,60px)!important;line-height:.95!important;text-shadow:0 4px 30px rgba(0,0,0,.6)}
+.login-hero h2 em{color:#f0a500!important}
+.login-hero>div>p{color:#a9b0b6!important;margin-bottom:22px!important}
+.lh-features{border-top-color:rgba(255,255,255,.1)!important;padding-top:18px!important;gap:10px!important}
+.lh-features li{color:#c8cdd1!important}
+.lh-feat-icon{background:rgba(240,165,0,.16)!important;color:#f0a500!important}
+.login-panel{z-index:3;perspective:1100px}
+.login-card{
+  background:linear-gradient(160deg,rgba(58,66,72,.74),rgba(25,29,32,.9))!important;
+  border:1px solid rgba(255,255,255,.09);color:#f3f1ec;
+  box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 40px 60px -20px rgba(0,0,0,.75)!important;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  transform-style:preserve-3d;transition:transform .25s ease-out;will-change:transform;
+}
+.login-logo .logo-icon{background:linear-gradient(180deg,#ffbe2e,#f0a500)!important;box-shadow:0 5px 0 #b97c00,0 10px 22px rgba(240,165,0,.25)!important}
+.login-logo .logo-icon i{color:#1b1f22!important}
+.login-logo h1{color:#f3f1ec!important;font-family:var(--obra-display)!important;text-transform:uppercase;letter-spacing:.5px}
+.login-logo p{color:#a9b0b6!important}
+.login-logo h1 strong{color:#f0a500!important}
+.login-card label{color:#a9b0b6!important}
+.login-card .fi{background:rgba(10,12,14,.55)!important;border:1px solid #3a4248!important;color:#f3f1ec!important;box-shadow:inset 0 2px 6px rgba(0,0,0,.45)!important}
+.login-card .fi:focus{border-color:#f0a500!important;box-shadow:inset 0 2px 6px rgba(0,0,0,.45),0 0 0 3px rgba(240,165,0,.2)!important;background:rgba(10,12,14,.65)!important}
+#lgpd_box{background:rgba(10,12,14,.4)!important;border-color:#3a4248!important;color:#c8cdd1!important}
+#lgpd_check{accent-color:#f0a500!important}
+#loginSubmitBtn{font-family:var(--obra-display);font-size:18px!important;letter-spacing:1px;text-transform:uppercase;height:48px}
+.login-card .btn-p{background:linear-gradient(180deg,#ffbe2e,#f0a500)!important;color:#1b1f22!important;border-radius:11px!important;box-shadow:0 5px 0 #b97c00,0 12px 24px -8px rgba(240,165,0,.45)!important;transition:transform .1s,box-shadow .1s!important}
+.login-card .btn-p:hover{background:linear-gradient(180deg,#ffc94d,#f5ad0d)!important;transform:translateY(-1px)!important;box-shadow:0 6px 0 #b97c00,0 14px 26px -8px rgba(240,165,0,.5)!important}
+.login-card .btn-p:active{background:#f0a500!important;transform:translateY(4px)!important;box-shadow:0 1px 0 #b97c00!important}
+.login-card .btn-p i{color:#1b1f22!important}
+.login-hero h2{color:#f3f1ec!important}
+.sidebar-premium .brand-title{color:#f3f1ec!important;font-family:var(--obra-display);text-transform:uppercase;letter-spacing:.5px!important}
+.sidebar-premium .brand-subtitle{color:#a9b0b6!important}
+.sidebar-premium .premium-search input{background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.1)!important;color:#f3f1ec!important}
+.sidebar-premium .premium-footer{background:rgba(0,0,0,.22)!important;border-top:1px solid rgba(255,255,255,.06)!important}
+.sidebar-premium .premium-user,.sidebar-premium .premium-user strong{color:#f3f1ec!important}
+.sidebar-premium .premium-user span{color:#a9b0b6!important}
+.sidebar-premium .premium-password{background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.12)!important;color:#f0d79a!important}
+.sidebar-premium .premium-footer{background:#1a1e21!important}
+.sidebar-premium .premium-brand{border-bottom-color:rgba(255,255,255,.07)!important}
+.sidebar-premium .premium-search i,.sidebar-premium .premium-search input::placeholder{color:#7d868c!important}
+.sidebar-premium .pm-module{background:rgba(255,255,255,.035)!important;border-color:rgba(255,255,255,.07)!important;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 8px 18px -12px rgba(0,0,0,.6)}
+.sidebar-premium .pm-module-head{color:#e8e5de!important}
+.sidebar-premium .pm-module-head:hover{background:rgba(255,255,255,.05)!important}
+.sidebar-premium .pm-module-count{background:rgba(255,255,255,.08)!important;color:#c8cdd1!important}
+.sidebar-premium .pm-module-chevron{color:#7d868c!important}
+.sidebar-premium .pm-module.open .pm-module-chevron{color:#f0a500!important}
+.sidebar-premium .nav-link{color:#c8cdd1!important}
+.sidebar-premium .nav-link .fas{color:#7d868c!important}
+.sidebar-premium .nav-link:hover,.sidebar-premium .nav-link:not(.active):hover{background:rgba(255,255,255,.06)!important;color:#fff!important}
+.sidebar-premium .nav-link:hover .fas{color:#f0d79a!important}
+.sidebar-premium .nav-link.active{background:linear-gradient(90deg,rgba(240,165,0,.22),rgba(240,165,0,.05))!important;border-color:rgba(240,165,0,.25)!important;color:#fff!important;box-shadow:inset 3px 0 0 #f0a500!important}
+.sidebar-premium .nav-link.active .fas{color:#f0a500!important}
+.login-card form>div:last-child{border-top-color:rgba(255,255,255,.08)!important}
+.login-card form>div:last-child button{color:#f0a500!important}
+@media(max-width:860px){
+  .login-screen{background:radial-gradient(120% 90% at 20% 0%,#2a3035 0%,#14171a 58%)!important;justify-content:flex-start!important;padding:0!important}
+  .login-hero{display:flex!important;flex:none!important;width:100%;min-height:260px;padding:20px 20px 10px!important;align-items:flex-end!important}
+  .login-hero h2{font-size:34px!important}
+  .login-hero>div>p,.lh-features{display:none!important}
+  #loginCena{height:300px}
+  .login-panel{padding:0 16px 28px!important}
+}
+@media (prefers-reduced-motion: reduce){.login-card,.stat,.kpi,.nav-link{transition:none!important}}
+</style>
 </head>
 <body>
 
@@ -2171,6 +2357,7 @@ tbody tr:hover{background:#f0f7ff!important}
 
 <!-- LOGIN -->
 <div class="login-screen" id="loginScreen">
+  <canvas id="loginCena" aria-hidden="true"></canvas>
   <div class="login-orb login-orb-1" aria-hidden="true"></div>
   <div class="login-orb login-orb-2" aria-hidden="true"></div>
   <div class="login-orb login-orb-3" aria-hidden="true"></div>
@@ -2182,7 +2369,7 @@ tbody tr:hover{background:#f0f7ff!important}
         <span class="lh-brand-icon"><i class="fas fa-truck-moving"></i></span>
         FrotaManager Pro
       </div>
-      <h2>Gestão de frota<br><em>sem complicação.</em></h2>
+      <h2>Sua frota<br><em>em movimento.</em></h2>
       <p>A plataforma completa para controlar veículos, custos, manutenções e abastecimentos da sua empresa.</p>
       <ul class="lh-features">
         <li>
@@ -37915,6 +38102,138 @@ Datas estão no formato YYYY-MM-DD.`;
 })();
 </script>
 
+<script id="obra-3d-js">
+// ═══ OBRA 3D — cena do login (caminhão betoneira) e profundidade dos cartões ═══
+(function(){
+  var reduzir = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Cartões de indicadores: inclinação leve acompanhando o mouse
+  var atual = null;
+  document.addEventListener('mousemove', function(e){
+    if(reduzir) return;
+    var k = e.target && e.target.closest ? e.target.closest('.stat, .kpi, .metric-card') : null;
+    if(atual && atual !== k){ atual.style.transform = ''; atual = null; }
+    if(!k) return;
+    atual = k;
+    var r = k.getBoundingClientRect();
+    var x = (e.clientX - r.left)/r.width - .5, y = (e.clientY - r.top)/r.height - .5;
+    k.style.transform = 'perspective(800px) translateY(-3px) rotateY(' + (x*10).toFixed(1) + 'deg) rotateX(' + (-y*10).toFixed(1) + 'deg)';
+  }, { passive:true });
+
+  function loginVisivel(){
+    var ls = document.getElementById('loginScreen');
+    return !!(ls && ls.style.display !== 'none' && ls.offsetParent !== null);
+  }
+
+  // Cartão de login: inclina em perspectiva
+  function ligarCartao(){
+    var ls = document.getElementById('loginScreen');
+    var cartao = ls && ls.querySelector('.login-card');
+    if(!ls || !cartao || cartao._obra) return;
+    cartao._obra = true;
+    var repouso = 'rotateY(-6deg) rotateX(3deg)';
+    cartao.style.transform = reduzir ? '' : repouso;
+    ls.addEventListener('mousemove', function(e){
+      if(reduzir) return;
+      var r = cartao.getBoundingClientRect();
+      var x = (e.clientX - (r.left + r.width/2)) / r.width, y = (e.clientY - (r.top + r.height/2)) / r.height;
+      x = Math.max(-1, Math.min(1, x)); y = Math.max(-1, Math.min(1, y));
+      cartao.style.transform = 'rotateY(' + (x*10).toFixed(2) + 'deg) rotateX(' + (-y*8).toFixed(2) + 'deg)';
+    });
+    ls.addEventListener('mouseleave', function(){ if(!reduzir) cartao.style.transform = repouso; });
+  }
+
+  // Cena 3D com three.js (carregado só quando o login aparece)
+  var cenaIniciada = false;
+  function carregarThree(pronto){
+    if(window.THREE) return pronto();
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+    s.onload = pronto; s.onerror = function(){ /* sem 3D: fica o fundo escuro */ };
+    document.head.appendChild(s);
+  }
+  function montarCena(){
+    var canvas = document.getElementById('loginCena');
+    if(!canvas || !window.THREE) return;
+    var T = window.THREE, renderer;
+    try { renderer = new T.WebGLRenderer({ canvas:canvas, antialias:true, alpha:true }); } catch(e){ return; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+    renderer.shadowMap.enabled = true;
+    var scene = new T.Scene();
+    scene.fog = new T.Fog(0x14171a, 14, 32);
+    var camera = new T.PerspectiveCamera(34, 1, .1, 100);
+    scene.add(new T.HemisphereLight(0xcfd8de, 0x1a1d20, .55));
+    var sol = new T.DirectionalLight(0xffffff, 1.05);
+    sol.position.set(6, 10, 6); sol.castShadow = true; sol.shadow.mapSize.set(1024, 1024);
+    sol.shadow.camera.left = -8; sol.shadow.camera.right = 8; sol.shadow.camera.top = 8; sol.shadow.camera.bottom = -8;
+    scene.add(sol);
+    var contra = new T.PointLight(0xf0a500, .9, 20); contra.position.set(-5, 3, -4); scene.add(contra);
+    function mat(c, o){ var p = { color:c, roughness:.55, metalness:.25 }; for(var k in (o||{})) p[k] = o[k]; return new T.MeshStandardMaterial(p); }
+    var vidroM = mat(0x18303f, { metalness:.9, roughness:.1 });
+    var caminhao = new T.Group();
+    function caixa(w,h,d,m,x,y,z){ var b = new T.Mesh(new T.BoxGeometry(w,h,d), m); b.position.set(x,y,z); caminhao.add(b); return b; }
+    caixa(6.2,.35,1.9, mat(0x23282c), 0,.95,0);
+    caixa(1.6,1.6,2.0, mat(0xf0a500,{metalness:.35,roughness:.35}), 2.35,1.95,0);
+    caixa(1.2,.25,1.9, mat(0xd18f00), 2.15,2.85,0);
+    caixa(.05,.75,1.7, vidroM, 3.16,2.2,0);
+    caixa(.9,.6,.04, vidroM, 2.45,2.25,1.01); caixa(.9,.6,.04, vidroM, 2.45,2.25,-1.01);
+    caixa(.06,.5,1.5, mat(0x3a4248), 3.17,1.45,0);
+    var farol = mat(0xfff3c4,{ emissive:0xffd36b, emissiveIntensity:.9 });
+    caixa(.06,.18,.3, farol, 3.18,1.25,.7); caixa(.06,.18,.3, farol, 3.18,1.25,-.7);
+    caixa(.25,1.2,1.2, mat(0x3a4248), 1.05,1.6,0);
+    var tambor = new T.Group(), conc = mat(0xe9e6df,{ roughness:.4 });
+    function cil(rt,rb,h,x){ var c = new T.Mesh(new T.CylinderGeometry(rt,rb,h,32), conc); c.rotation.z = Math.PI/2; c.position.x = x; tambor.add(c); }
+    cil(1.05,1.15,2.2,0); cil(.45,1.05,1.3,-1.75); cil(1.15,.7,.7,1.45);
+    for(var i=0;i<4;i++){ var a = new T.Mesh(new T.TorusGeometry(1.12,.06,8,40), mat(0xf0a500)); a.rotation.y = Math.PI/2; a.rotation.x = .35; a.position.x = -.8 + i*.55; tambor.add(a); }
+    tambor.position.set(-.55, 2.35, 0); tambor.rotation.z = -.22; caminhao.add(tambor);
+    var rodas = [];
+    [2.3,-.9,-2.2].forEach(function(x){ [-1,1].forEach(function(s){
+      var r = new T.Group();
+      var pneu = new T.Mesh(new T.CylinderGeometry(.55,.55,.45,28), mat(0x111315,{ roughness:.9, metalness:0 })); pneu.rotation.x = Math.PI/2; r.add(pneu);
+      var aro = new T.Mesh(new T.CylinderGeometry(.28,.28,.47,16), mat(0xbfc5c9,{ metalness:.8, roughness:.3 })); aro.rotation.x = Math.PI/2; r.add(aro);
+      r.position.set(x,.55,s*.95); caminhao.add(r); rodas.push(r);
+    }); });
+    caminhao.traverse(function(o){ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+    scene.add(caminhao);
+    var piso = new T.Mesh(new T.CylinderGeometry(6.5,6.8,.3,64), mat(0x2a2f33,{ roughness:.95, metalness:0 }));
+    piso.position.y = -.15; piso.receiveShadow = true; scene.add(piso);
+    var grid = new T.GridHelper(13, 26, 0x4a5359, 0x30363b); grid.position.y = .01; scene.add(grid);
+    var borda = new T.Mesh(new T.TorusGeometry(6.55,.04,6,96), mat(0xf0a500,{ emissive:0xf0a500, emissiveIntensity:.6 }));
+    borda.rotation.x = Math.PI/2; borda.position.y = .02; scene.add(borda);
+
+    var ls = document.getElementById('loginScreen'), alvoX = 0, alvoY = 0;
+    ls.addEventListener('mousemove', function(e){ var r = ls.getBoundingClientRect(); alvoX = (e.clientX-r.left)/r.width - .5; alvoY = (e.clientY-r.top)/r.height - .5; });
+    function tamanho(){ var w = canvas.clientWidth, h = canvas.clientHeight; if(!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+    window.addEventListener('resize', tamanho);
+    var t = 0, ultimo = performance.now(), larguraAntes = 0;
+    function quadro(agora){
+      if(!loginVisivel()){ setTimeout(function(){ ultimo = performance.now(); requestAnimationFrame(quadro); }, 600); return; }
+      if(canvas.clientWidth !== larguraAntes){ larguraAntes = canvas.clientWidth; tamanho(); }
+      var dt = Math.min(.05, (agora-ultimo)/1000); ultimo = agora;
+      if(!reduzir){ t += dt; tambor.rotation.x += dt*1.6; rodas.forEach(function(r){ r.rotation.z -= dt*.9; }); }
+      caminhao.rotation.y = -0.6 + t*.25;
+      var estreito = canvas.clientWidth < 860;
+      var base = estreito ? { x:0, y:5.5, z:15 } : { x:-2, y:8.5, z:20 };
+      camera.position.x += ((base.x + alvoX*2.5) - camera.position.x)*.05;
+      camera.position.y += ((base.y - alvoY*1.5) - camera.position.y)*.05;
+      camera.position.z = base.z;
+      camera.lookAt(estreito ? 0 : 3.4, estreito ? .4 : -2.4, 0);
+      renderer.render(scene, camera);
+      requestAnimationFrame(quadro);
+    }
+    requestAnimationFrame(quadro);
+  }
+  function iniciar(){
+    ligarCartao();
+    if(cenaIniciada || !loginVisivel()) return;
+    cenaIniciada = true;
+    carregarThree(montarCena);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+  // o login pode aparecer depois (sessão expirada / sair)
+  setInterval(function(){ if(!cenaIniciada && loginVisivel()) iniciar(); }, 1500);
+})();
+</script>
 </body>
 </html>
 
