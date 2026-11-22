@@ -6552,7 +6552,9 @@ function loadPage(pg){
           console.error('loadPage async error ['+pg+']:', e);
         });
       } else {
-        body.innerHTML = result||'';
+        // telas antigas (Apontamento, Custo por Placa) escrevem direto no #pageBody e não devolvem nada:
+        // só substitui quando a tela devolveu HTML, senão apagava o que ela acabou de desenhar
+        if(result !== undefined) body.innerHTML = result||'';
         if(window._prevLoadPage !== pg){
           body.classList.remove('page-enter');
           void body.offsetWidth;
@@ -16811,7 +16813,7 @@ function _salvarCompartimento(){
   const nome = document.getElementById('novo_comp_nome')?.value?.trim();
   if(!nome){ showToast('Nome obrigatório','warning'); return; }
   if(!db.compartimentos) db.compartimentos = [];
-  if(db.compartimentos.find(c=>c.nome.toLowerCase()===nome.toLowerCase())){
+  if((db.compartimentos||[]).find(c=>String(c.nome||'').toLowerCase()===nome.toLowerCase())){
     showToast('Compartimento já existe','warning'); return;
   }
   const comp = { id:uid(), tenant:_sbTenant, nome, descricao:document.getElementById('novo_comp_desc')?.value?.trim()||'' };
@@ -16839,7 +16841,7 @@ function abrirCadCategoria(){
 function _salvarCategoria(){
   const nome = document.getElementById('nova_cat_nome')?.value?.trim();
   if(!nome){ showToast('Nome obrigatório','warning'); return; }
-  if(db.categorias_media.find(cat=>cat.nome.toLowerCase()===nome.toLowerCase())){
+  if((db.categorias_media||[]).find(cat=>String(cat.nome||'').toLowerCase()===nome.toLowerCase())){
     showToast('Categoria já existe','warning'); return;
   }
   const cat = { id: uid(), tenant: _sbTenant, nome, descricao: document.getElementById('nova_cat_desc')?.value?.trim()||'' };
@@ -19901,7 +19903,7 @@ function renderMecanicos(){
       ${db.mecanicos.length===0?`<tr><td colspan="6"><div class="empty"><i class="fas fa-hard-hat"></i><p>Nenhum mecânico cadastrado</p></div></td></tr>`:
       db.mecanicos.map((m,i)=>{
         const link = baseUrl+'?chamado='+m.token+'&tenant='+_sbTenant;
-        const whatsUrl = 'https://wa.me/55'+m.telefone.replace(/\D/g,'')+'?text='+encodeURIComponent('Olá '+m.nome+'! Aqui está seu link para abertura de chamados: '+link);
+        const whatsUrl = 'https://wa.me/55'+String(m.telefone||'').replace(/\D/g,'')+'?text='+encodeURIComponent('Olá '+m.nome+'! Aqui está seu link para abertura de chamados: '+link);
         return `<tr>
           <td><strong>${esc(m.nome||"")}</strong></td>
           <td>${m.telefone||'—'}</td>
@@ -30403,7 +30405,7 @@ async function _despImpExecutar(){
   _despImpLinhas.filter(r=>r._status_imp==='novo'&&r.fornecedor).forEach(r=>{
     const nome = r.fornecedor.trim();
     const jaExisteForn = db.fornecedores.find(f=>(f.nome||'').trim().toLowerCase()===nome.toLowerCase());
-    if(!jaExisteForn && !_fornNovos.find(f=>f.nome.toLowerCase()===nome.toLowerCase())){
+    if(!jaExisteForn && !_fornNovos.find(f=>String(f.nome||'').toLowerCase()===nome.toLowerCase())){
       _fornNovos.push({ id:_uuid(), tenant:_sbTenant, nome, ativo:true, criado_em:new Date().toISOString() });
     }
   });
@@ -34107,7 +34109,7 @@ function renderMotoristas(){
   const fVinc = window._mFiltVinc||'';
 
   let lista = db.motoristas.filter(m=>{
-    if(fNome && !m.nome.toLowerCase().includes(fNome.toLowerCase()) && !m.cpf.includes(fNome) && !(m.cnh_numero||'').includes(fNome)) return false;
+    if(fNome && !String(m.nome||'').toLowerCase().includes(fNome.toLowerCase()) && !String(m.cpf||'').includes(fNome) && !String(m.cnh_numero||'').includes(fNome)) return false;
     if(fStatus && m.status !== fStatus) return false;
     if(fVinc && m.vinculo !== fVinc) return false;
     return true;
@@ -36920,7 +36922,7 @@ function renderRelatorioFrota(){
   </div>
   <div class="card"><div class="tbl-wrap"><table>
     <thead><tr><th>Equipamento</th><th>Status</th><th>Disp.</th><th>Litros</th><th>OS Abertas</th><th>Pré-OS</th><th>Dias Parado</th><th>Custo OS</th><th>Custo Comb.</th><th>Custo Manu.</th><th>Custo Total</th><th>KM</th><th>Pneus ⚠️</th></tr></thead>
-    <tbody>${rows.map(({eq,osAbertas,osPreOS,diasParado,custoOS,custoComb,custoManu,custoTotal,kmAtual,pneusAlerta})=>`<tr>
+    <tbody>${rows.map(({eq,osAbertas,osPreOS,diasParado,custoOS,custoComb,custoManu,custoTotal,kmAtual,pneusAlerta,litrosFrota,dispFrota})=>`<tr>
       <td><strong>${esc(eq.placa||"")}</strong><div style="font-size:11px;color:var(--text2)">${esc(eq.modelo||"")}</div></td>
       <td><span class="badge ${eq.status==='operando'?'bs':eq.status==='manutencao'?'bd':'bw'}">${eq.status||'—'}</span></td>
       <td><strong style="color:${dispFrota>=85?'var(--success)':dispFrota>=70?'var(--secondary)':'var(--danger)'}">${dispFrota}%</strong></td>
