@@ -2093,6 +2093,68 @@ tbody tr:hover{background:#f6f1e4!important}
   .login-panel{padding:0 16px 28px!important}
 }
 @media (prefers-reduced-motion: reduce){.login-card,.stat,.kpi,.nav-link{transition:none!important}}
+
+/* ═══ CELULAR COMO APLICATIVO (≤ 768px) ═══ */
+@media (max-width:768px){
+  :root{--mob-orange:#f0a500;--mob-orange-dark:#b97c00;--mob-orange-light:#fff4d6;--mob-bg:#e9e6df}
+  html,body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+  /* barra do topo de aplicativo */
+  .topbar{
+    background:linear-gradient(180deg,#2b3136,#23282c)!important;border-bottom:1px solid rgba(0,0,0,.3)!important;
+    box-shadow:0 4px 14px rgba(0,0,0,.25)!important;backdrop-filter:none;-webkit-backdrop-filter:none;
+    min-height:calc(56px + env(safe-area-inset-top,0px));height:auto!important;
+    padding:env(safe-area-inset-top,0px) max(12px,env(safe-area-inset-right,0px)) 0 max(14px,env(safe-area-inset-left,0px))!important;
+  }
+  .topbar img{display:none!important}
+  .topbar h1,#pageTitle{color:#f3f1ec!important;font-size:21px!important;letter-spacing:.3px!important;max-width:calc(100vw - 150px)!important;line-height:56px}
+  .topbar .row10 button,.topbar .row10 .btn,.topbar .user-pill{color:#f3f1ec!important;background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.12)!important;min-width:40px;min-height:40px;border-radius:12px!important}
+  .topbar .row10 i{color:#f3f1ec!important}
+  /* barra de baixo: grafite, ativo em amarelo, botão central elevado */
+  #mobileNavBar{background:rgba(27,31,34,.96)!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 -1px 0 rgba(255,255,255,.06),0 -10px 30px rgba(0,0,0,.3)!important}
+  .mob-nav-btn{color:#8a9298!important;min-height:44px}
+  .mob-nav-btn.active{color:#f0a500!important}
+  .mob-nav-btn.active::after{background:#f0a500!important;height:3px!important}
+  .mob-nav-btn span{font-family:var(--obra-display);font-size:11px!important;letter-spacing:.6px!important}
+  .mob-nav-btn.mob-center{background:linear-gradient(180deg,#ffbe2e,#f0a500)!important;color:#1b1f22!important;transform:translateY(-14px);
+    box-shadow:0 4px 0 #b97c00,0 10px 22px rgba(240,165,0,.45),0 0 0 5px rgba(27,31,34,.96)!important}
+  .mob-nav-btn.mob-center:active{transform:translateY(-10px)}
+  #mobileMenuDrawerPanel{background:#1f2427!important}
+  /* robô do chat menor, acima da barra */
+  #fbot-fab{width:44px!important;height:44px!important;right:max(12px,env(safe-area-inset-right,0px))!important;bottom:calc(var(--mob-bar-h) + env(safe-area-inset-bottom,0px) + 14px)!important;background:linear-gradient(135deg,#2b3136,#1b1f22)!important;box-shadow:0 6px 18px rgba(0,0,0,.35),0 0 0 1px rgba(240,165,0,.35)!important}
+  /* indicadores em carrossel compacto */
+  .grid-stats,.page-body div:has(> .stat + .stat){
+    display:flex!important;flex-wrap:nowrap!important;overflow-x:auto;gap:10px!important;
+    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+    margin-left:-12px!important;margin-right:-12px!important;padding:2px 12px 12px!important;
+  }
+  .grid-stats::-webkit-scrollbar,.page-body div:has(> .stat + .stat)::-webkit-scrollbar{display:none}
+  .grid-stats > .stat,.page-body div:has(> .stat + .stat) > .stat{flex:0 0 42%!important;min-width:140px;max-width:200px;scroll-snap-align:start;padding:12px!important;margin:0!important}
+  .stat .val{font-size:26px!important}
+  .stat:hover,.kpi:hover{transform:none!important}
+  /* faixas de botões de ação: rolam para o lado, texto inteiro */
+  .page-body .row10:has(> .btn ~ .btn ~ .btn),.flex-b .row10{
+    flex-wrap:nowrap!important;overflow-x:auto;justify-content:flex-start!important;scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;padding-bottom:4px;margin-right:-12px;padding-right:12px;
+  }
+  .page-body .row10:has(> .btn ~ .btn ~ .btn)::-webkit-scrollbar,.flex-b .row10::-webkit-scrollbar{display:none}
+  .page-body .row10:has(> .btn ~ .btn ~ .btn) > .btn,.flex-b .row10 > .btn{flex:0 0 auto!important;white-space:nowrap!important;overflow:visible!important;max-width:none!important}
+  /* toque */
+  .btn,.ic-btn,.nav-link,.mob-nav-btn,.pm-module-head{min-height:44px}
+  .ic-btn{min-width:40px;min-height:40px}
+  .btn:active,.ic-btn:active,.card:active{transform:scale(.97)!important;transition:transform .08s!important}
+  /* janelas como tela que sobe de baixo, com alça */
+  .modal{animation:obraSheetUp .28s cubic-bezier(.2,.8,.2,1);box-shadow:0 -10px 40px rgba(0,0,0,.35)!important;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .modal .mh{padding-top:22px!important;position:sticky}
+  .modal .mh::before{content:"";position:absolute;top:8px;left:50%;width:40px;height:5px;margin-left:-20px;border-radius:3px;background:#cfc9bd}
+  .modal-ov{background:rgba(15,17,19,.55)!important;backdrop-filter:blur(2px)}
+  .modal-ov{z-index:9700!important}
+  .grid-stats > .stat,.page-body div:has(> .stat + .stat) > .stat{min-height:0!important;height:auto!important}
+  .stat label{margin-bottom:4px!important}
+  .stat .val{margin-top:2px!important;line-height:1.05!important}
+  .page-body{padding:12px max(12px,env(safe-area-inset-left,0px)) 16px!important}
+}
+@keyframes obraSheetUp{from{transform:translateY(100%)}to{transform:none}}
+@media (max-width:768px) and (prefers-reduced-motion: reduce){.modal{animation:none}}
 </style>
 </head>
 <body>
@@ -38102,6 +38164,46 @@ Datas estão no formato YYYY-MM-DD.`;
 })();
 </script>
 
+<script id="obra-mobile-js">
+// Celular como aplicativo: título sem emoji e janela que fecha arrastando para baixo
+(function(){
+  var celular = function(){ return window.matchMedia('(max-width:768px)').matches; };
+  // títulos vêm com emoji ("🧽 Lavagem…"); no celular mostra só o texto
+  function limparTitulo(){
+    var h = document.getElementById('pageTitle'); if(!h || !celular()) return;
+    var t = h.textContent, limpo = t.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    if(limpo && limpo !== t) h.textContent = limpo;
+  }
+  function observar(){
+    var h = document.getElementById('pageTitle'); if(!h) return;
+    new MutationObserver(limparTitulo).observe(h, { childList:true, characterData:true, subtree:true });
+    limparTitulo();
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', observar); else observar();
+  // arrastar a alça/cabeçalho da janela para baixo fecha (como nos aplicativos)
+  var ini = null, modal = null;
+  document.addEventListener('touchstart', function(e){
+    if(!celular()) return;
+    var mh = e.target.closest && e.target.closest('.modal .mh'); if(!mh) return;
+    modal = mh.closest('.modal'); if(!modal || modal.scrollTop > 0) { modal = null; return; }
+    ini = e.touches[0].clientY; modal.style.transition = 'none';
+  }, { passive:true });
+  document.addEventListener('touchmove', function(e){
+    if(ini === null || !modal) return;
+    var dy = Math.max(0, e.touches[0].clientY - ini);
+    modal.style.transform = 'translateY(' + dy + 'px)';
+  }, { passive:true });
+  document.addEventListener('touchend', function(e){
+    if(ini === null || !modal) return;
+    var dy = Math.max(0, (e.changedTouches[0]||{}).clientY - ini);
+    modal.style.transition = 'transform .2s ease-out';
+    if(dy > 120 && typeof closeModal === 'function'){ modal.style.transform = 'translateY(100%)'; setTimeout(function(){ closeModal(); }, 180); }
+    else modal.style.transform = '';
+    var m = modal; setTimeout(function(){ if(m){ m.style.transition=''; m.style.transform=''; } }, 260);
+    ini = null; modal = null;
+  });
+})();
+</script>
 <script id="obra-3d-js">
 // ═══ OBRA 3D — cena do login (caminhão betoneira) e profundidade dos cartões ═══
 (function(){
