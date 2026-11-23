@@ -2497,7 +2497,7 @@ tbody tr:hover{background:#f6f1e4!important}
       </div>
       <div class="fg"><label style="color:#1a1a1a;font-weight:700;font-size:13px">Nome Completo *</label><input class="fi" id="sol_nome" placeholder="Ex: João da Silva"></div>
       <div class="fg"><label style="color:#1a1a1a;font-weight:700;font-size:13px">E-mail *</label><input class="fi" type="email" id="sol_email" placeholder="seu@email.com"></div>
-      <div class="fg"><label style="color:#1a1a1a;font-weight:700;font-size:13px">Nome de Usuário *</label><input class="fi" id="sol_username" placeholder="Ex: joao.silva" style="text-transform:lowercase" oninput="this.value=this.value.toLowerCase().replace(/\s/g,'')"></div>
+      <div class="fg"><label style="color:#1a1a1a;font-weight:700;font-size:13px">Nome de Usuário <span style="font-weight:400;color:#6b7280">(opcional — se vazio, usa o início do e-mail)</span></label><input class="fi" id="sol_username" placeholder="Ex: joao.silva" style="text-transform:lowercase" oninput="this.value=this.value.toLowerCase().replace(/\s/g,'')"></div>
       <div class="fg"><label style="color:#1a1a1a;font-weight:700;font-size:13px">Senha *</label><input class="fi" type="password" id="sol_senha" placeholder="Mínimo 6 caracteres"></div>
       <div class="fg"><label style="color:#1a1a1a;font-weight:700;font-size:13px">Confirmar Senha *</label><input class="fi" type="password" id="sol_senha2" placeholder="Repita a senha"></div>
       <div id="sol_erro" style="display:none;color:#c62828;font-size:12px;margin-top:8px;padding:8px;background:#fef2f2;border-radius:6px"></div>
@@ -3056,13 +3056,14 @@ async function fmLoginSupabase(login, senha){
     //    antes de recorrer à verificação por senha legada) ──
     //    Não busca a senha aqui — só campos não sensíveis, igual antes fazia com
     //    select('*'), mas sem trazer a coluna password pro navegador.
-    const {data,error}=await _sb.from('usuarios').select('id,email,pendente_aprovacao').eq('tenant',_sbTenant).or('username.eq.'+login+',email.eq.'+login).eq('ativo',true).limit(1);
+    const {data,error}=await _sb.from('usuarios').select('id,email,pendente_aprovacao,ativo,excluido').eq('tenant',_sbTenant).or('username.eq.'+login+',email.eq.'+login).limit(1);
     if(error) {
       console.error('Erro ao buscar usuário:', error);
       throw new Error('Erro ao buscar usuário: ' + error.message);
     }
-    if(!data||data.length===0) throw new Error('Usuário ou senha inválidos.');
-    if(data[0].pendente_aprovacao) throw new Error('Conta pendente de aprovação.');
+    if(!data||data.length===0||data[0].excluido===true) throw new Error('Usuário ou senha inválidos.');
+    if(data[0].pendente_aprovacao) throw new Error('Seu acesso ainda está aguardando a liberação de um administrador.');
+    if(data[0].ativo===false) throw new Error('Acesso desativado. Fale com o administrador.');
 
     let authOk=false;
     let u=null;
@@ -3105,50 +3106,55 @@ function fecharSolicitarAcesso(){
 }
 async function enviarSolicitacaoAcesso(){
   const nome = document.getElementById('sol_nome').value.trim();
-  const username = document.getElementById('sol_username').value.trim();
+  const email = (document.getElementById('sol_email')?.value||'').trim().toLowerCase();
+  let username = document.getElementById('sol_username').value.trim().toLowerCase();
   const senha = document.getElementById('sol_senha').value;
   const senha2 = document.getElementById('sol_senha2').value;
   const erro = document.getElementById('sol_erro');
   const mostrarErro = (msg) => { erro.textContent = '⚠️ ' + msg; erro.style.display='block'; };
   erro.style.display='none';
   if(!nome){ return mostrarErro('Informe o nome completo.'); }
-  if(!username || username.length < 3){ return mostrarErro('Nome de usuário deve ter ao menos 3 caracteres.'); }
+  if(!/^\S+@\S+\.\S+$/.test(email)){ return mostrarErro('Informe um e-mail válido.'); }
+  if(!username) username = email.split('@')[0];
+  if(username.length < 3){ return mostrarErro('Nome de usuário deve ter ao menos 3 caracteres.'); }
   if(!senha || senha.length < 6){ return mostrarErro('A senha deve ter ao menos 6 caracteres.'); }
   if(senha !== senha2){ return mostrarErro('As senhas não coincidem.'); }
-  // Verificar se username já existe
-  if(_sb && _sbMode === 'supabase'){
-    const { data: exist } = await _sb.from('usuarios').select('id').eq('tenant', _sbTenant).eq('username', username).limit(1);
-    if(exist && exist.length > 0){ return mostrarErro('Este nome de usuário já está em uso.'); }
-  }
-  // Gerar próximo ID baseado no maior existente
-  let proximoId = 1;
-  if(_sb && _sbMode === 'supabase'){
-    const { data: maxRow } = await _sb.from('usuarios').select('id').order('id', { ascending: false }).limit(1);
-    if(maxRow && maxRow.length > 0) proximoId = (maxRow[0].id || 0) + 1;
-  } else {
-    proximoId = Math.max(0, ...db.usuarios.map(u => u.id || 0)) + 1;
-  }
-  const novaSolicitacao = {
-    id: proximoId,
-    tenant: _sbTenant,
-    nome: nome,
-    username: username,
-    password: senha,
-    nivel: 'operador',
-    ativo: false,
-    pendente_aprovacao: true,
-    data_solicitacao: new Date().toISOString(),
-    modulos_liberados: [],
-    empresas: []
-  };
-  if(_sb && _sbMode === 'supabase'){
+  if(!(_sb && _sbMode === 'supabase')){ return mostrarErro('Sem conexão com o servidor. Tente novamente em instantes.'); }
+  const btn = document.querySelector('#ovSolicitarAcesso .btn-p'); if(btn) btn.disabled = true;
+  try{
+    // usuário ou e-mail já cadastrados neste ambiente
+    const { data: exist } = await _sb.from('usuarios').select('id,username,email').eq('tenant', _sbTenant).or('username.eq.'+username+',email.eq.'+email).limit(1);
+    if(exist && exist.length > 0){
+      return mostrarErro(String(exist[0].email||'').toLowerCase()===email ? 'Já existe um acesso com este e-mail.' : 'Este nome de usuário já está em uso.');
+    }
+    // conta de login no Supabase Auth: a senha fica protegida lá, nunca na tabela de usuários
+    const { data: cad, error: errCad } = await _sb.auth.signUp({ email, password: senha, options: { data: { nome, tenant: _sbTenant } } });
+    if(errCad){
+      const m = String(errCad.message||'');
+      return mostrarErro(/registered|exists/i.test(m) ? 'Este e-mail já tem conta. Use "Esqueci a senha" ou fale com o administrador.' : 'Erro ao criar a conta: ' + m);
+    }
+    const authId = cad?.user?.id || null;
+    // o perfil é gravado sem sessão (igual ao fluxo anterior), pendente de aprovação
+    try{ if(cad?.session) await _sb.auth.signOut(); }catch(e){}
+    const novaSolicitacao = {
+      id: Date.now(),
+      tenant: _sbTenant,
+      nome, username, email,
+      auth_user_id: authId,
+      nivel: 'operador',
+      ativo: false,
+      pendente_aprovacao: true,
+      data_solicitacao: new Date().toISOString(),
+      modulos_liberados: [],
+      empresas: []
+    };
     const { error } = await _sb.from('usuarios').insert([novaSolicitacao]);
     if(error){ return mostrarErro('Erro ao enviar solicitação: ' + error.message); }
-  } else {
-    db.usuarios.push({ ...novaSolicitacao, id: Date.now() });
+    fecharSolicitarAcesso();
+    showToastLogin('Pedido enviado! Você poderá entrar assim que um administrador liberar o acesso.', 'success');
+  } finally {
+    if(btn) btn.disabled = false;
   }
-  fecharSolicitarAcesso();
-  showToastLogin('Solicitação enviada! Aguarde a aprovação de um administrador.', 'success');
 }
 function showToastLogin(msg, tipo){
   const t = document.createElement('div');
@@ -3891,6 +3897,7 @@ async function sbCarregarTudo(){
 async function _sbCarregarTudoAgora(){
   // tabelas sem repetição (equipamentos estava 2x na lista) e todas em paralelo
   await Promise.all([...new Set(SB_TABLES)].map(tabela => _sbCarregarUmaTabela(tabela)));
+  setTimeout(()=>{ try{ _fmAvisarPedidosAcesso(); }catch(e){} }, 1500);
   try{ _baseNormalizarVinculos(); }catch(e){ console.warn('normalização de base:', e); }
   try{ _aplicarEscopoEmpresasNoDb(); }catch(e){ console.warn('isolamento por empresa:', e); }
 }
@@ -11611,18 +11618,18 @@ function empresaVerUsuarios(i){
 function renderUsuarios(){
   if(!nivel('super')){ return '<div class="al-d alert"><i class="fas fa-lock"></i> Acesso restrito ao Super Usuário.</div>'; }
   const nivelBadge = { super:'<span class="badge" style="background:#fbe9e7;color:#bf360c">Super</span>', admin:'<span class="badge bs">Admin</span>', operador:'<span class="badge bi">Operador</span>', visualizador:'<span class="badge bpu">Visualizador</span>', portaria:'<span class="badge" style="background:#e3f2fd;color:#3A3F42">Portaria</span>' };
-  const pendentes = db.usuarios.filter(u => u.pendente_aprovacao && !u.ativo);
+  const pendentes = db.usuarios.filter(u => u.pendente_aprovacao && !u.ativo && u.excluido!==true);
   const ativos = db.usuarios.filter(u => !u.pendente_aprovacao);
   const pendentesHtml = pendentes.length === 0 ? '' : `
   <div class="card" style="border:2px solid #f59e0b;background:#fffbeb">
     <div class="card-title" style="color:#92400e"><i class="fas fa-user-clock" style="color:#f59e0b"></i> Solicitações Pendentes de Aprovação <span class="badge" style="background:#f59e0b;color:#fff;margin-left:8px">${pendentes.length}</span></div>
     <table>
-      <thead><tr><th>Nome</th><th>Usuário</th><th>Solicitado em</th><th>Ações</th></tr></thead>
+      <thead><tr><th>Nome</th><th>Usuário / E-mail</th><th>Solicitado em</th><th>Ações</th></tr></thead>
       <tbody>
       ${pendentes.map((u,_i) => {
         const idx = db.usuarios.indexOf(u);
         const dt = u.data_solicitacao ? new Date(u.data_solicitacao).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-        return '<tr><td><strong>'+esc(u.nome||'')+'</strong></td><td>'+esc(u.username)+'</td><td style="font-size:12px;color:var(--text2)">'+dt+'</td><td><div class="row10"><button class="btn btn-p" style="padding:4px 12px;font-size:12px" onclick="aprovarUsuario('+idx+')"><i class="fas fa-check"></i> Aprovar</button><button class="btn rd" style="padding:4px 12px;font-size:12px" onclick="rejeitarUsuario('+idx+')"><i class="fas fa-times"></i> Rejeitar</button></div></td></tr>';
+        return '<tr><td><strong>'+esc(u.nome||'')+'</strong></td><td>'+esc(u.username)+(u.email?'<br><small style="color:var(--text2)">'+esc(u.email)+'</small>':'')+'</td><td style="font-size:12px;color:var(--text2)">'+dt+'</td><td><div class="row10"><button class="btn btn-p" style="padding:4px 12px;font-size:12px" onclick="aprovarUsuario('+idx+')"><i class="fas fa-check"></i> Aprovar</button><button class="btn rd" style="padding:4px 12px;font-size:12px" onclick="rejeitarUsuario('+idx+')"><i class="fas fa-times"></i> Rejeitar</button></div></td></tr>';
       }).join('')}
       </tbody>
     </table>
@@ -11782,6 +11789,7 @@ function _coletarPermissoesMobile(){
 }
 
 function openModalUsuario(idx=null){
+  window._fmAprovandoId = null;
   const u = idx!==null ? db.usuarios[idx] : null;
   const mobilePerms = _normalizarPermissoesMobile(u?.mobile_permissions);
   // Normalizar modulos_liberados: pode vir como string JSON do Supabase
@@ -12075,6 +12083,11 @@ async function salvarUsuario(idx){
     db.usuarios[idx].funcao_emprestimo=document.getElementById('u_funcao_emprestimo')?.value||null;
     db.usuarios[idx].setor_id=parseInt(document.getElementById('u_setor')?.value)||null;
     db.usuarios[idx].ativo=document.getElementById('u_ativo').value==='1';
+    if(window._fmAprovandoId!==undefined && window._fmAprovandoId!==null && String(window._fmAprovandoId)===String(db.usuarios[idx].id)){
+      db.usuarios[idx].ativo = true;
+      db.usuarios[idx].pendente_aprovacao = false;
+      window._fmAprovandoId = null;
+    }
     db.usuarios[idx].modulos_liberados = modulosLiberados;
     db.usuarios[idx].empresas = empresasVinc;
     db.usuarios[idx].equipamentos_vinculados = eqsVinc;
@@ -12203,35 +12216,44 @@ async function delUsuario(i){
   if(!await _confirmar(`Excluir usuário "${esc(db.usuarios[i].nome||"")}"?`,'danger')) return;
   const id = db.usuarios[i].id;
   db.usuarios.splice(i,1);
-  if(_sbMode==='supabase'&&_sb&&id) _sb.from('usuarios').delete().eq('id',id).then(r=>{ if(r.error) showToast('Erro ao excluir no banco: '+r.error.message,'danger'); });
+  if(_sbMode==='supabase'&&_sb&&id) _sb.from('usuarios').update({ excluido:true, ativo:false, excluido_em:new Date().toISOString() }).eq('id',id).eq('tenant',_sbTenant).then(r=>{ if(r.error) showToast('Erro ao excluir no banco: '+r.error.message,'danger'); });
   loadPage('usuarios'); showToast('Usuário excluído','info');
 }
 
-async function aprovarUsuario(i){
+// Aprovar = abrir o cadastro da pessoa para o administrador escolher nível, módulos e empresas.
+// Ao salvar, o acesso é liberado (ativo e fora da fila de pendentes).
+function aprovarUsuario(i){
   const u = db.usuarios[i];
   if(!u) return;
-  u.ativo = true;
-  u.pendente_aprovacao = false;
-  if(_sbMode==='supabase'&&_sb&&u.id){
-    const { error } = await _sb.from('usuarios').update({ ativo: true, pendente_aprovacao: false }).eq('id', u.id);
-    if(error){ showToast('Erro ao aprovar: '+error.message,'danger'); return; }
-  }
-  loadPage('usuarios');
-  showToast('Usuário "'+esc(u.nome||u.username)+'" aprovado com sucesso!','success');
+  if(!['admin','super'].includes(currentUser?.nivel)){ showToast('Só administradores podem liberar acessos.','warning'); return; }
+  openModalUsuario(i);
+  window._fmAprovandoId = u.id;
+  const at = document.getElementById('u_ativo'); if(at) at.value = '1';
+  showToast('Escolha o nível, os módulos e as empresas de '+esc(u.nome||u.username)+' e clique em Salvar para liberar o acesso.','info');
 }
 
+// Rejeitar: exclusão lógica (nunca apaga a linha); a conta não consegue entrar
 async function rejeitarUsuario(i){
   const u = db.usuarios[i];
   if(!u) return;
-  if(!await _confirmar('Rejeitar e excluir a solicitação de "'+esc(u.nome||u.username)+'"?','danger')) return;
-  const id = u.id;
-  db.usuarios.splice(i,1);
-  if(_sbMode==='supabase'&&_sb&&id){
-    const { error } = await _sb.from('usuarios').delete().eq('id', id);
+  if(!await _confirmar('Rejeitar o pedido de acesso de "'+esc(u.nome||u.username)+'"?','danger')) return;
+  u.excluido = true; u.ativo = false; u.pendente_aprovacao = false;
+  if(_sbMode==='supabase'&&_sb&&u.id){
+    const { error } = await _sb.from('usuarios').update({ excluido:true, ativo:false, pendente_aprovacao:false, excluido_em:new Date().toISOString() }).eq('id', u.id).eq('tenant', _sbTenant);
     if(error){ showToast('Erro ao rejeitar: '+error.message,'danger'); return; }
   }
+  db.usuarios = db.usuarios.filter(x=>x!==u);
   loadPage('usuarios');
-  showToast('Solicitação rejeitada e removida.','info');
+  showToast('Pedido rejeitado.','info');
+}
+
+// Aviso para administradores: pedidos de acesso aguardando (uma vez por sessão)
+function _fmAvisarPedidosAcesso(){
+  if(window._fmAvisoPedidosFeito || !['admin','super'].includes(currentUser?.nivel)) return;
+  const n = (db.usuarios||[]).filter(u => u.pendente_aprovacao && !u.ativo && u.excluido!==true).length;
+  if(!n) return;
+  window._fmAvisoPedidosFeito = true;
+  showToast(n===1 ? '1 pedido de acesso aguardando aprovação (Usuários).' : n+' pedidos de acesso aguardando aprovação (Usuários).','warning');
 }
 
 // ═══════════════════════════════════════════════
