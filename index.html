@@ -4165,7 +4165,39 @@ const _SB_TENANT = 'oficinafni'; // tenant padrão atual
 const _EMPRESTIMOS_TENANT = 'oficinafni';
 
 // ── INICIALIZAÇÃO AUTOMÁTICA ──
+// ── LINKS PÚBLICOS DESATIVADOS ──
+// Todos os acessos sem login (painéis TV, frentista, motorista, portaria, chamado,
+// agendamento externo, checklists, links de OS...) foram desligados por segurança:
+// o banco não libera mais dados para quem não está logado.
+const FM_LINKS_PUBLICOS = ['tvos','tv','motorista','frentista','painel_geral','rastreio','agendamento',
+  'ck','checklist_emp','painel','os_mecanico','portaria','os','chamado'];
+function _fmLinkPublicoSolicitado(search){
+  const p = new URLSearchParams(search || '');
+  return FM_LINKS_PUBLICOS.find(k => p.has(k) && p.get(k) !== '') || null;
+}
+function _fmMostrarLinkDesativado(){
+  // esconde a página (sem remover elementos, para os outros scripts não quebrarem) e mostra o aviso
+  const st = document.createElement('style');
+  st.textContent = 'body>*:not(#fmLinkDesativado){display:none!important}';
+  document.head.appendChild(st);
+  const box = document.createElement('div');
+  box.id = 'fmLinkDesativado';
+  box.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:Arial,sans-serif;background:#f4f6f8;color:#243447">'
+    + '<div style="max-width:420px;text-align:center;background:#fff;border-radius:14px;padding:32px 24px;box-shadow:0 4px 18px rgba(0,0,0,.08)">'
+    + '<div style="font-size:44px">🔒</div>'
+    + '<h2 style="margin:12px 0 8px">Link desativado</h2>'
+    + '<p style="color:#5b6b7b;line-height:1.5">Este acesso sem login foi desativado. Entre no sistema com seu usuário e senha.</p>'
+    + '<a href="' + location.pathname + '" style="display:inline-block;margin-top:14px;padding:11px 20px;background:#0f4c81;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">Ir para o login</a>'
+    + '</div></div>';
+  document.body.appendChild(box);
+}
+
 (function sbAutoInit(){
+  if(_fmLinkPublicoSolicitado(window.location.search)){
+    window._fmLinkBloqueado = true;
+    _fmMostrarLinkDesativado();
+    return;
+  }
   // ── MODO PAINEL TV DE OS (público, read-only) ──
   // Usa ?tvos=1 (o ?tv=1 já é o painel de combustível/tanque existente).
   try{
@@ -21349,6 +21381,7 @@ async function _oslEnviar(acao='chamado'){
 }
 
 async function chamadoInicializar(){
+  if(window._fmLinkBloqueado) return;
   const params = new URLSearchParams(window.location.search);
 
   // Painel TV de OS já é tratado no boot (sbAutoInit) — não interferir.
