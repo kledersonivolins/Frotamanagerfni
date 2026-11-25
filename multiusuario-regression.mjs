@@ -11,9 +11,18 @@ function extrair(nome) {
 }
 
 // Supabase simulado
-function fakeSb({ existentes = [], erroSignUp = null } = {}) {
-  const ev = { inserts: [], signUps: [], signOuts: 0, updates: [] };
+function fakeSb({ existentes = [], erroSignUp = null, semRpc = false } = {}) {
+  const ev = { inserts: [], signUps: [], signOuts: 0, updates: [], rpcs: [], selectsUsuarios: 0 };
   const sb = {
+    rpc: async (nome, args) => {
+      ev.rpcs.push([nome, args]);
+      if (semRpc) return { data: null, error: { code: 'PGRST202', message: 'Could not find the function' } };
+      if (nome === 'fm_cadastro_conflito') {
+        const e = existentes[0];
+        return { data: !e ? null : (String(e.email).toLowerCase() === args.p_email ? 'email' : 'username'), error: null };
+      }
+      return { data: null, error: null };
+    },
     auth: {
       signUp: async (a) => { ev.signUps.push(a); return erroSignUp ? { error: { message: erroSignUp } } : { data: { user: { id: 'uuid-novo' }, session: { x: 1 } }, error: null }; },
       signOut: async () => { ev.signOuts++; },
@@ -21,7 +30,7 @@ function fakeSb({ existentes = [], erroSignUp = null } = {}) {
     },
     from: (tab) => {
       const q = { _filtros: [],
-        select() { return q; }, eq() { return q; }, or() { return q; }, limit() { return Promise.resolve({ data: existentes, error: null }); },
+        select() { if (tab === 'usuarios') ev.selectsUsuarios++; return q; }, eq() { return q; }, or() { return q; }, limit() { return Promise.resolve({ data: existentes, error: null }); },
         insert(rows) { ev.inserts.push([tab, rows]); return Promise.resolve({ error: null }); },
         update(v) { ev.updates.push([tab, v]); return q; } };
       return q;
@@ -38,7 +47,7 @@ function montar(campos, opts) {
   const document = { getElementById: (id) => els[id] || null, querySelector: () => null };
   const toasts = [];
   const fn = new Function('_sb', '_sbMode', '_sbTenant', 'document', 'showToastLogin',
-    `${extrair('fecharSolicitarAcesso')}\n${extrair('enviarSolicitacaoAcesso')}\nreturn enviarSolicitacaoAcesso;`
+    `${extrair('_fmRpcAusente')}\n${extrair('fecharSolicitarAcesso')}\n${extrair('enviarSolicitacaoAcesso')}\nreturn enviarSolicitacaoAcesso;`
   )(sb, 'supabase', 'oficinafni', document, (m) => toasts.push(m));
   return { fn, ev, els, toasts };
 }
@@ -74,12 +83,29 @@ for (const [campos, msg] of [
 t = montar({ sol_nome: 'A', sol_email: 'ana@b.com', sol_username: '', sol_senha: '123456', sol_senha2: '123456' }, { existentes: [{ id: 9, username: 'outro', email: 'ana@b.com' }] });
 await t.fn();
 assert.match(t.els.sol_erro.textContent, /e-mail/); assert.equal(t.ev.signUps.length, 0);
+assert.equal(t.ev.rpcs[0][0], 'fm_cadastro_conflito', 'checagem de duplicidade usa a função segura');
+assert.equal(t.ev.selectsUsuarios, 0, 'cadastro não lê a tabela usuarios sem login');
+// banco ainda sem a função: cai na consulta antiga e continua funcionando
+t = montar({ sol_nome: 'A', sol_email: 'ana@b.com', sol_username: '', sol_senha: '123456', sol_senha2: '123456' }, { existentes: [{ id: 9, username: 'outro', email: 'ana@b.com' }], semRpc: true });
+await t.fn();
+assert.match(t.els.sol_erro.textContent, /e-mail/); assert.equal(t.ev.selectsUsuarios, 1);
 
 // login: pendente e desativado têm mensagem própria (antes caía em "usuário ou senha inválidos")
 const login = extrair('fmLoginSupabase');
 assert.ok(!/\.eq\('ativo',true\)\.limit\(1\)/.test(login), 'login não pode filtrar só ativos antes de checar pendente');
 assert.match(login, /aguardando a libera[cç][aã]o de um administrador/);
 assert.match(login, /Acesso desativado/);
+assert.match(login, /_sb\.rpc\('fm_login_info'/, 'login procura o usuário pela função segura');
+const rpcAusente = new Function(extrair('_fmRpcAusente') + ';return _fmRpcAusente;')();
+assert.equal(rpcAusente({ code: 'PGRST202' }), true);
+assert.equal(rpcAusente({ code: '42501', message: 'permission denied' }), false);
+// SQL que fecha a tabela usuarios
+const sqlFecha = fs.readFileSync(new URL('./supabase/migrations/20261125120000_usuarios_fechar_acesso_publico.sql', import.meta.url), 'utf8');
+for (const pol of ['login_direto', 'usr_select_pub', 'fm_usuarios_app_update']) assert.match(sqlFecha, new RegExp(`drop policy if exists ${pol} on public\\.usuarios`));
+assert.match(sqlFecha, /function public\.fm_login_info/);
+assert.match(sqlFecha, /function public\.fm_cadastro_conflito/);
+assert.match(sqlFecha, /new\.nivel\s+:= old\.nivel/);
+assert.ok(!/password/.test(sqlFecha.split('create or replace function public.fm_login_info')[1].split('$$;')[0]), 'fm_login_info não devolve senha');
 
 // aprovação por qualquer administrador, abrindo o cadastro; rejeitar/excluir são lógicos
 const aprovar = extrair('aprovarUsuario');
