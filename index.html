@@ -3048,6 +3048,12 @@ function _renderEmpresaBadge(){
   if(sync) sync.parentNode.insertBefore(btn, sync);
 }
 
+// função RPC ainda não criada no banco (SQL não rodado)
+function _fmRpcAusente(err){
+  const c = String(err?.code||''), m = String(err?.message||'');
+  return c === 'PGRST202' || c === '42883' || /could not find the function|does not exist/i.test(m);
+}
+
 async function fmLoginSupabase(login, senha){
   try {
     if(!_sb||_sbMode!=='supabase') throw new Error('Supabase não conectado.');
@@ -3056,7 +3062,11 @@ async function fmLoginSupabase(login, senha){
     //    antes de recorrer à verificação por senha legada) ──
     //    Não busca a senha aqui — só campos não sensíveis, igual antes fazia com
     //    select('*'), mas sem trazer a coluna password pro navegador.
-    const {data,error}=await _sb.from('usuarios').select('id,email,pendente_aprovacao,ativo,excluido').eq('tenant',_sbTenant).or('username.eq.'+login+',email.eq.'+login).limit(1);
+    let {data,error}=await _sb.rpc('fm_login_info',{p_tenant:_sbTenant,p_login:login});
+    if(error && _fmRpcAusente(error)){
+      // banco ainda sem a função segura: consulta antiga
+      ({data,error}=await _sb.from('usuarios').select('id,email,pendente_aprovacao,ativo,excluido').eq('tenant',_sbTenant).or('username.eq.'+login+',email.eq.'+login).limit(1));
+    }
     if(error) {
       console.error('Erro ao buscar usuário:', error);
       throw new Error('Erro ao buscar usuário: ' + error.message);
@@ -3123,9 +3133,16 @@ async function enviarSolicitacaoAcesso(){
   const btn = document.querySelector('#ovSolicitarAcesso .btn-p'); if(btn) btn.disabled = true;
   try{
     // usuário ou e-mail já cadastrados neste ambiente
-    const { data: exist } = await _sb.from('usuarios').select('id,username,email').eq('tenant', _sbTenant).or('username.eq.'+username+',email.eq.'+email).limit(1);
-    if(exist && exist.length > 0){
-      return mostrarErro(String(exist[0].email||'').toLowerCase()===email ? 'Já existe um acesso com este e-mail.' : 'Este nome de usuário já está em uso.');
+    let conflito = null;
+    const rc = await _sb.rpc('fm_cadastro_conflito', { p_tenant: _sbTenant, p_username: username, p_email: email });
+    if(!rc.error) conflito = rc.data || null;
+    else if(_fmRpcAusente(rc.error)){
+      // banco ainda sem a função segura: consulta antiga
+      const { data: exist } = await _sb.from('usuarios').select('id,username,email').eq('tenant', _sbTenant).or('username.eq.'+username+',email.eq.'+email).limit(1);
+      if(exist && exist.length > 0) conflito = String(exist[0].email||'').toLowerCase()===email ? 'email' : 'username';
+    }
+    if(conflito){
+      return mostrarErro(conflito === 'email' ? 'Já existe um acesso com este e-mail.' : 'Este nome de usuário já está em uso.');
     }
     // conta de login no Supabase Auth: a senha fica protegida lá, nunca na tabela de usuários
     const { data: cad, error: errCad } = await _sb.auth.signUp({ email, password: senha, options: { data: { nome, tenant: _sbTenant } } });
