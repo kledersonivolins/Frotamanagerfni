@@ -3820,6 +3820,10 @@ async function _sbBuscarPaginado(tabela, montar){
   return { data:todas, error:null };
 }
 
+const _SB_MANTER_EXCLUIDOS = ['equipamentos','usuarios','empresas','mecanicos','motoristas','fornecedores',
+  'centros_custo','obras','setores','modelos_pneus','pneus','compartimentos','categorias_media','licencas',
+  'access_tokens','logs_auditoria'];
+
 async function _sbCarregarUmaTabela(tabela){
   const _TABELAS_SEM_TENANT = ['fornecedores'];
   try {
@@ -3872,7 +3876,9 @@ async function _sbCarregarUmaTabela(tabela){
     if(tabela === 'usuarios'){
       db[tabela] = (db[tabela] || []).map(fmNormalizarUsuario);
     }
-    if(tabela === 'ordens_servico' || tabela === 'modelos_equipamentos'){
+    // Exclusão é lógica (excluido=true): registros excluídos não entram em telas nem em relatórios.
+    // Cadastros-base ficam carregados para que OS/lançamentos antigos ainda mostrem placa, nome etc.
+    if(!_SB_MANTER_EXCLUIDOS.includes(tabela)){
       db[tabela] = (db[tabela] || []).filter(o=>!(o.excluido===true || o.excluido==='true' || o.excluido===1 || o.excluido==='1'));
     }
     const _sortKey = {
@@ -4303,15 +4309,15 @@ const MENU = [
   // ]},
 
   // ── OPERACIONAL ──
-  // ── PORTARIA ──
-  { section:'Portaria', items:[
+  // ── PORTARIA ── (MÓDULO OCULTADO A PEDIDO — ver FM_PORTARIA_OCULTA)
+  /* { section:'Portaria', items:[
     { page:'portaria_op', icon:'fa-qrcode', label:'Operação da Portaria', min:'portaria' },
     { page:'portaria_pessoas', icon:'fa-users', label:'Pessoas', min:'portaria' },
     { page:'portaria_qrcodes', icon:'fa-id-badge', label:'QR Codes', min:'portaria' },
     { page:'portaria_veiculos', icon:'fa-truck', label:'Veículos da Portaria', min:'portaria' },
     { page:'portaria_historico', icon:'fa-history', label:'Histórico de Movimentações', min:'portaria' },
     { page:'portaria_relatorios', icon:'fa-chart-bar', label:'Relatórios da Portaria', min:'portaria' }
-  ]},
+  ]}, */
 
   /* MÓDULO OCULTADO A PEDIDO — ver escopo_melhorias_sistema.md item 1
   { section:'Rastreio', items:[
@@ -4461,8 +4467,15 @@ function _getModulosLiberados(){
   return null;
 }
 
+// Módulo Portaria ocultado a pedido: some do menu, das permissões e não abre nem por URL/atalho.
+const FM_PORTARIA_OCULTA = true;
+function _fmPaginaOculta(page){
+  return FM_PORTARIA_OCULTA && /^portaria_/.test(String(page||''));
+}
+
 function _moduloLiberado(page){
   if(!currentUser) return false;
+  if(typeof _fmPaginaOculta === 'function' && _fmPaginaOculta(page)) return false;
   if(!_empPaginaPermitida(page)) return false;
   const nv = currentUser.nivel || 'visualizador';
 
@@ -4494,6 +4507,7 @@ function _moduloLiberado(page){
 // Retorna 'editar', 'visualizar' ou null (sem acesso / sem restrição)
 function _moduloPermissao(page){
   if(!currentUser) return null;
+  if(typeof _fmPaginaOculta === 'function' && _fmPaginaOculta(page)) return null;
   if(!_empPaginaPermitida(page)) return null;
   if(currentUser.nivel === 'super') return 'editar';
   if(currentUser.nivel === 'portaria'){
@@ -5584,13 +5598,7 @@ var _TODOS_MODULOS = [
   ["despesas_importar",       "Despesas — Importar MyFrota"],
   ["despesas_dashboard",      "Despesas — Dashboard"],
   ["relatorios_despesas",     "Relatórios de Despesas"],
-  // ── PORTARIA ──
-  ["portaria_op",             "Portaria — Operação"],
-  ["portaria_pessoas",        "Portaria — Pessoas"],
-  ["portaria_qrcodes",        "Portaria — QR Codes"],
-  ["portaria_veiculos",       "Portaria — Veículos"],
-  ["portaria_historico",      "Portaria — Histórico"],
-  ["portaria_relatorios",     "Portaria — Relatórios"],
+  // ── PORTARIA ── (ocultado — FM_PORTARIA_OCULTA)
   // ── RASTREIO ──
   ["rastreio_painel",         "Rastreio — Painel Geral"],
   ["rastreio_cadastro",       "Rastreio — Acompanhamento"],
@@ -6626,7 +6634,7 @@ function loadPage(pg){
     if(!_moduloLiberado(pg)){
       showToast('Sem permissão para acessar este módulo','danger');
       // Se for portaria redirecionar para operação
-      if(currentUser?.nivel === 'portaria'){
+      if(currentUser?.nivel === 'portaria' && pg !== 'portaria_op' && !_fmPaginaOculta('portaria_op')){
         loadPage('portaria_op'); return;
       }
       return;
@@ -6775,7 +6783,14 @@ document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
 // Fechamento só ocorre pelo X, por "Cancelar" ou ao salvar.
 
 function fmt(n){ return Number(n||0).toLocaleString('pt-BR'); }
-function fmtDt(d){ if(!d) return '-'; return new Date(d+'T12:00:00').toLocaleDateString('pt-BR'); }
+function fmtDt(d){
+  if(!d) return '-';
+  // aceita "2026-11-30" e também data com hora ("2026-11-30T15:20:00"), que antes virava "Invalid Date"
+  const iso = String(d).slice(0,10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso.split('-').reverse().join('/');
+  const dt = new Date(d);
+  return isNaN(dt) ? String(d) : dt.toLocaleDateString('pt-BR');
+}
 function money(v){ return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
 // Parser numérico robusto: aceita number, "1.234,56", "1,234.56", "R$ 1.234,56", "1234,5", "1234.5".
@@ -11920,7 +11935,7 @@ function openModalUsuario(idx=null){
     { titulo: 'Operações', paginas: ['operacoes','quadro_operacional','relatorios_operacoes','checklist_diario','chamados','ocorrencias','relatorios_ocorrencias'] },
     { titulo: 'Almoxarifado', paginas: ['almoxarifado','almox_movimentos','relatorios_almoxarifado'] },
     { titulo: 'Financeiro / Despesas', paginas: ['solicitacoes_pagamento','relatorios_financeiro','despesas_lista','despesas_novo','despesas_importar','despesas_dashboard','relatorios_despesas'] },
-    { titulo: 'Portaria', paginas: ['portaria_op','portaria_pessoas','portaria_qrcodes','portaria_veiculos','portaria_historico','portaria_relatorios'] },
+    // { titulo: 'Portaria', ... } — módulo ocultado (FM_PORTARIA_OCULTA)
     { titulo: 'Rastreio', paginas: ['rastreio_painel','rastreio_dashboard','rastreio_disponibilidade_relatorio','rastreio_cadastro','rastreio_relatorio'] },
     { titulo: 'Empréstimos', paginas: ['emprestimos_lista','emprestimos_novo','emprestimos_agenda','emprestimos_checklist'] },
     { titulo: 'Cadastros', paginas: ['mecanicos','motoristas','fornecedores','centros_custo_cad','obras_cad','custos_equipe','fichas_diarias','centro_custo'] },
@@ -11995,7 +12010,7 @@ function openModalUsuario(idx=null){
           <option value="super" ${u?.nivel==='super'?'selected':''}>Super Usuário</option>
           <option value="admin" ${u?.nivel==='admin'?'selected':''}>Administrador</option>
           <option value="operador" ${u?.nivel==='operador'?'selected':''}>Operador</option>
-          <option value="portaria" ${u?.nivel==='portaria'?'selected':''}>Portaria (acesso restrito à portaria)</option>
+          ${(!FM_PORTARIA_OCULTA || u?.nivel==='portaria') ? `<option value="portaria" ${u?.nivel==='portaria'?'selected':''}>Portaria (acesso restrito à portaria)</option>` : ''}
           <option value="visualizador" ${u?.nivel==='visualizador'?'selected':''}>Visualizador (somente leitura)</option>
         </select>
       </div>
@@ -31249,7 +31264,37 @@ function _rpLimparFiltros(){
   showToast('Filtros limpos','info');
 }
 
+// Base dos relatórios = a mesma das telas: só a empresa ativa (e os veículos do usuário),
+// sem registros excluídos. Sem isso, alguns relatórios somavam todas as empresas.
+function _relDbEscopado(){
+  const base = db;
+  const out = Object.assign({}, base);
+  const excl = o => !!(o && (o.excluido===true || o.excluido==='true' || o.excluido===1 || o.excluido==='1'));
+  const eqs = _eqsDaEmpresa();
+  const idsEq = new Set(eqs.map(e=>String(e.id)));
+  const empId = _empresaAtiva ? String(_empresaAtiva.id) : null;
+  const doEscopo = r => {
+    if(!r || excl(r)) return false;
+    if(!empId) return true;
+    if(r.empresa_id) return String(r.empresa_id) === empId;
+    if(r.equipamento_id) return idsEq.has(String(r.equipamento_id));
+    return true; // sem vínculo de empresa/veículo (ex.: entrada de tanque)
+  };
+  out.equipamentos = eqs.filter(e=>!excl(e));
+  out.ordens_servico = _osDaEmpresa();
+  out.movimentos_combustivel = _combDaEmpresa().filter(m=>!excl(m));
+  out.despesas = _despesasDaEmpresa().filter(d=>!excl(d));
+  ['manutencoes','tanque_movimentos','operacoes','almoxarifado_movimentos','planos_manutencao','despesas_itens',
+   'custos_extras','fichas_diarias','chamados','ocorrencias','custos_equipe','pneus_movimentos'].forEach(t=>{
+    if(Array.isArray(base[t])) out[t] = base[t].filter(doEscopo);
+  });
+  return out;
+}
+// "2026-11-30T10:00" e "2026-11-30" são o mesmo dia no filtro de período
+function _relDia(v){ return String(v==null?'':v).slice(0,10); }
+
 function gerarRelatorio(saida){
+  const db = _relDbEscopado();
   const tipo = document.getElementById('rp_tipo').value;
   if(!tipo){ showToast('Selecione o tipo de relatório','warning'); return; }
   const eqFilt = document.getElementById('rp_eq').value;
@@ -31265,10 +31310,10 @@ function gerarRelatorio(saida){
   // Salvar filtros ao gerar
   _rpSalvarFiltros();
 
-  const filt = (arr, dataCampo='data') => arr.filter(r => {
+  const filt = (arr, dataCampo='data') => (arr||[]).filter(r => {
     if(eqFilt && r.equipamento_id != eqFilt) return false;
-    if(di && r[dataCampo] < di) return false;
-    if(df && r[dataCampo] > df) return false;
+    if(di && _relDia(r[dataCampo]) < di) return false;
+    if(df && _relDia(r[dataCampo]) > df) return false;
     return true;
   });
 
@@ -31291,7 +31336,7 @@ function gerarRelatorio(saida){
     const tL = dados.reduce((s,m)=>s+_numBR(m.litros),0);
     const tV = dados.reduce((s,m)=>s+_numBR(m.valor),0);
     headers = ['Data','Hora','Equipamento','Combustível','Litros','Valor Total (R$)','R$/Litro','Hodômetro','Tipo Medida','Posto','Operador','NF'];
-    excelRows = dados.map(m=>{ const pUnit=(m.litros>0&&m.valor>0)?(m.valor/m.litros).toFixed(3):''; return [fmtDt(m.data),m.hora||'',eqDesc(m.equipamento_id),m.combustivel,m.litros,Number(m.valor||0).toFixed(2),pUnit,m.hodometro,m.tipo_medida,m.posto||'',m.operador||'',m.nf||'']; });
+    excelRows = dados.map(m=>{ const pUnit=(m.litros>0&&m.valor>0)?(m.valor/m.litros).toFixed(3):''; return [fmtDt(m.data),m.hora||'',eqDesc(m.equipamento_id),m.combustivel,m.litros,Number(m.valor||0).toFixed(2),pUnit,m.hodometro,m.tipo_medida||'',m.posto||'',m.operador||'',m.nf||'']; });
     htmlTabela = `
       <div style="display:flex;gap:20px;margin-bottom:14px">
         <div class="stat or" style="flex:1"><label>Total Litros</label><div class="val">${fmt(tL.toFixed(0))} L</div></div>
@@ -31299,14 +31344,14 @@ function gerarRelatorio(saida){
         <div class="stat gr" style="flex:1"><label>Registros</label><div class="val">${dados.length}</div></div>
       </div>
       <table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>
-      ${dados.map(m=>{ const pUnit=(parseFloat(m.litros)>0&&parseFloat(m.valor)>0)?(m.valor/m.litros).toFixed(3):'—'; return `<tr><td>${fmtDt(m.data)}</td><td>${m.hora||'—'}</td><td>${eqDesc(m.equipamento_id)}</td><td>${m.combustivel}</td><td>${m.litros}L</td><td>R$ ${Number(m.valor||0).toFixed(2)}</td><td style='color:var(--text2)'>${pUnit!=='—'?'R$ '+pUnit:'—'}</td><td>${fmt(m.hodometro)}</td><td>${m.tipo_medida}</td><td>${m.posto||'-'}</td><td>${m.operador||'-'}</td><td>${m.nf||'-'}</td></tr>`; }).join('')}
+      ${dados.map(m=>{ const pUnit=(parseFloat(m.litros)>0&&parseFloat(m.valor)>0)?(m.valor/m.litros).toFixed(3):'—'; return `<tr><td>${fmtDt(m.data)}</td><td>${m.hora||'—'}</td><td>${eqDesc(m.equipamento_id)}</td><td>${m.combustivel}</td><td>${m.litros}L</td><td>R$ ${Number(m.valor||0).toFixed(2)}</td><td style='color:var(--text2)'>${pUnit!=='—'?'R$ '+pUnit:'—'}</td><td>${fmt(m.hodometro)}</td><td>${m.tipo_medida||'-'}</td><td>${m.posto||'-'}</td><td>${m.operador||'-'}</td><td>${m.nf||'-'}</td></tr>`; }).join('')}
       </tbody></table>`;
   }
   else if(tipo === 'manutencao'){
     const dados = filt(db.manutencoes);
     const tC = dados.reduce((s,m)=>s+_numBR(m.custo),0);
     headers = ['Data','Equipamento','Tipo','Serviço','KM/Horas','Tipo Medida','Custo (R$)','Responsável','Status'];
-    excelRows = dados.map(m=>[fmtDt(m.data),eqDesc(m.equipamento_id),m.tipo,m.servico,m.hodometro,m.tipo_medida,Number(m.custo||0).toFixed(2),m.responsavel||'',m.status]);
+    excelRows = dados.map(m=>[fmtDt(m.data),eqDesc(m.equipamento_id),m.tipo,m.servico,m.hodometro,m.tipo_medida||'',Number(m.custo||0).toFixed(2),m.responsavel||'',m.status]);
     htmlTabela = `
       <div style="display:flex;gap:20px;margin-bottom:14px">
         <div class="stat" style="flex:1"><label>Total</label><div class="val">${dados.length}</div></div>
@@ -31315,7 +31360,7 @@ function gerarRelatorio(saida){
         <div class="stat or" style="flex:1"><label>Custo Total</label><div class="val">R$ ${fmt(tC.toFixed(0))}</div></div>
       </div>
       <table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>
-      ${dados.map(m=>`<tr><td>${fmtDt(m.data)}</td><td>${eqDesc(m.equipamento_id)}</td><td>${m.tipo}</td><td>${m.servico}</td><td>${fmt(m.hodometro)}</td><td>${m.tipo_medida}</td><td>R$ ${Number(m.custo||0).toFixed(2)}</td><td>${m.responsavel||'-'}</td><td>${m.status}</td></tr>`).join('')}
+      ${dados.map(m=>`<tr><td>${fmtDt(m.data)}</td><td>${eqDesc(m.equipamento_id)}</td><td>${esc(m.tipo||'-')}</td><td>${esc(m.servico||'-')}</td><td>${fmt(m.hodometro)}</td><td>${m.tipo_medida||'-'}</td><td>R$ ${Number(m.custo||0).toFixed(2)}</td><td>${m.responsavel||'-'}</td><td>${m.status}</td></tr>`).join('')}
       </tbody></table>`;
   }
   else if(tipo === 'oleo_filtro'){
