@@ -10311,6 +10311,7 @@ function openModalEq(idx=null){
       <div class="fg"><label>Município/UF Licenciamento</label><input class="fi" id="eq_municipio_uf" value="${eq?.municipio_uf||''}" placeholder="Ex: Teresina/PI"></div>
       <div class="fg"><label>Proprietário (CRLV)</label><input class="fi" id="eq_proprietario" value="${eq?.proprietario||''}"></div>
     </div>
+    ${_eqHtmlConsultaDoc(eq)}
     <div class="sec-title"><i class="fas fa-calendar-check"></i> Vencimentos</div>
     <div class="frow">
       <div class="fg"><label>Licenciamento (vencimento)</label><input class="fi" type="date" id="eq_venc_licenciamento" value="${eq?.venc_licenciamento||''}"></div>
@@ -10445,6 +10446,56 @@ function addCombTipo(){
   consEl.value='';
 }
 
+// ── Dados da consulta do documento (DETRAN/placa) ──
+// campos: [coluna, rótulo, tipo]  tipo: t=texto, d=data, n=número, b=Sim/Não
+const EQ_CAMPOS_DOC = [
+  ['marca_modelo_doc','Marca/Modelo (documento)','t'], ['tipo_doc','Tipo','t'], ['especie','Espécie','t'],
+  ['categoria_doc','Categoria','t'], ['numero_motor','Nº do motor','t'], ['carroceria','Carroceria','t'],
+  ['proprietario_cnpj','CNPJ do proprietário','t'], ['situacao_doc','Situação','t'], ['restricoes','Restrições','t'],
+  ['roubo_furto','Roubo/furto','b'], ['renajud','Renajud','b'], ['leilao','Leilão','b'], ['multa_renainf','Multa Renainf','b'],
+  ['data_crv','Emissão do CRV','d'], ['data_crlv','Emissão do CRLV','d'], ['licenciamento_pago','Licenciamento pago (ano)','n'],
+  ['pbt_t','PBT (t)','n'], ['cmt_t','CMT (t)','n'], ['lotacao','Lotação','t'],
+  ['faturamento_doc','Faturamento (CNPJ)','t'], ['doc_consultado_em','Consultado em','d'],
+];
+// o banco só tem essas colunas depois do SQL; antes disso o cadastro não envia esses campos
+function _eqTemColunasDoc(){
+  return (db.equipamentos||[]).some(e => e && Object.prototype.hasOwnProperty.call(e, 'situacao_doc'));
+}
+function _eqHtmlConsultaDoc(eq){
+  if(!_eqTemColunasDoc()) return '';
+  const campo = ([col, rot, tp]) => {
+    const v = eq?.[col];
+    let inp;
+    if(tp === 'b'){
+      const sel = (x) => (v === x ? 'selected' : '');
+      inp = `<select class="fs" id="eqd_${col}"><option value="" ${v==null?'selected':''}>—</option><option value="1" ${sel(true)}>Sim</option><option value="0" ${sel(false)}>Não</option></select>`;
+    } else {
+      const tipo = tp === 'd' ? 'date' : (tp === 'n' ? 'number' : 'text');
+      inp = `<input class="fi" type="${tipo}" ${tp==='n'?'step="any"':''} id="eqd_${col}" value="${esc(v==null?'':String(v))}">`;
+    }
+    return `<div class="fg"><label>${rot}</label>${inp}</div>`;
+  };
+  const linhas = [];
+  for(let i = 0; i < EQ_CAMPOS_DOC.length; i += 3) linhas.push(`<div class="frow">${EQ_CAMPOS_DOC.slice(i, i+3).map(campo).join('')}</div>`);
+  const extras = Object.entries(eq?.dados_documento || {}).filter(([k]) => !['categoria','lotacao','carroceria','pbt','cmt','eixos','capacidade_carga','cilindradas'].includes(k));
+  const alerta = eq && (eq.roubo_furto || eq.renajud || eq.leilao || (eq.restricoes && !/^sem restri/i.test(eq.restricoes)))
+    ? `<div style="background:#fff4e5;border:1px solid #f0b35a;border-radius:8px;padding:8px 10px;margin:4px 0 8px;font-size:12px;color:#8a5300"><i class="fas fa-triangle-exclamation"></i> ${esc(eq.restricoes||'Há restrição no documento')}</div>` : '';
+  return `<div class="sec-title"><i class="fas fa-id-card"></i> Consulta do documento</div>${alerta}${linhas.join('')}`
+    + (extras.length ? `<details style="margin:4px 0 8px;font-size:12px"><summary style="cursor:pointer">Outros dados da consulta (${extras.length})</summary><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 12px;margin-top:6px">${extras.map(([k,v])=>`<div><b>${esc(k.replace(/_/g,' '))}:</b> ${esc(String(v))}</div>`).join('')}</div></details>` : '');
+}
+function _eqLerConsultaDoc(){
+  const out = {};
+  for(const [col, , tp] of EQ_CAMPOS_DOC){
+    const el = document.getElementById('eqd_' + col);
+    if(!el) continue;
+    const v = (el.value || '').trim();
+    if(tp === 'b') out[col] = v === '' ? null : v === '1';
+    else if(tp === 'n') out[col] = v === '' ? null : Number(v);
+    else out[col] = v || null;
+  }
+  return out;
+}
+
 function salvarEq(idx){
   const placa=document.getElementById('eq_placa').value.trim();
   const modelo=document.getElementById('eq_modelo').value.trim();
@@ -10500,6 +10551,10 @@ function salvarEq(idx){
     combustiveis:{tanques,lista},
     parametros:{ km:parseFloat(document.getElementById('eq_km').value)||0, horas:parseFloat(document.getElementById('eq_h').value)||0, proxima_km:parseFloat(document.getElementById('eq_prkm').value)||0, prazo_meses:parseInt(document.getElementById('eq_prm').value)||0, ano_fab:parseInt(document.getElementById('eq_afab').value)||2020, duracao:parseInt(document.getElementById('eq_dur').value)||10, conversao:parseFloat(document.getElementById('eq_conv').value)||0, valor_lavagem:parseFloat(document.getElementById('eq_vlav')?.value)||0 }
   };
+  if(_eqTemColunasDoc()){
+    Object.assign(eq, _eqLerConsultaDoc());
+    if(idx!==null && db.equipamentos[idx]?.dados_documento) eq.dados_documento = db.equipamentos[idx].dados_documento;
+  }
   if(idx!==null) db.equipamentos[idx]=eq; else db.equipamentos.push(eq);
   sbSalvar('equipamentos', eq);
   // Se novo equipamento e modelo selecionado, importar plano
