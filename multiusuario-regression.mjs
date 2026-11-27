@@ -116,3 +116,20 @@ assert.ok(!/from\('usuarios'\)\.delete\(\)/.test(extrair('rejeitarUsuario') + ex
 // SQL de proteção do cadastro público existe
 assert.ok(fs.readFileSync(new URL('./supabase/migrations/20261123150000_usuarios_cadastro_publico.sql', import.meta.url), 'utf8').includes("new.nivel := 'operador'"));
 console.log('multiusuario OK');
+
+// "Esqueci a senha" não lê a tabela usuarios sem login (ela é fechada): usa a função segura
+assert.match(extrair('enviarLinkSenha'), /_sb\.rpc\('fm_login_info',\{p_tenant:_sbTenant,p_login:email\}\)/);
+// login pelo modo antigo sem sessão segura não entra num sistema vazio: orienta a redefinir a senha
+const loginTxt = extrair('fmLoginSupabase');
+assert.match(loginTxt, /const \{data:sess\}=await _sb\.auth\.getSession\(\);\s*if\(!sess\?\.session\)\{/);
+assert.match(loginTxt, /Esqueci a senha/);
+// sem 404 no console: manifest existe e não registra sw.js inexistente
+assert.ok(fs.existsSync(new URL('./manifest.webmanifest', import.meta.url)), 'manifest.webmanifest');
+const man = JSON.parse(fs.readFileSync(new URL('./manifest.webmanifest', import.meta.url), 'utf8'));
+for (const ic of man.icons) assert.ok(fs.existsSync(new URL('.' + ic.src, import.meta.url)), ic.src);
+assert.ok(!/serviceWorker\.register\('\/sw\.js'\)/.test(html), 'não registra sw.js que não existe');
+assert.ok(!/frame-ancestors/.test(html), 'frame-ancestors vai no cabeçalho (_headers), não no <meta>');
+assert.match(fs.readFileSync(new URL('./_headers', import.meta.url), 'utf8'), /Content-Security-Policy: frame-ancestors 'self'/);
+// logs de auditoria ordenados por coluna existente
+assert.match(extrair('_sbBuscarPaginado'), /order\('data_hora'/);
+console.log('multiusuario (senha/login legado/manifest) OK');
