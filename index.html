@@ -59,7 +59,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.cloudinary.com https://api.deepseek.com; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; worker-src 'self'; manifest-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.cloudinary.com https://api.deepseek.com; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; worker-src 'self'; manifest-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 
 
 <!-- PWA -->
@@ -74,15 +74,12 @@
 <!-- Ícones PWA (Apple) -->
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
-<!-- Manifest + Service Worker (offline real) -->
+<!-- Manifest do app (instalar na tela inicial). Sem service worker: o envio offline usa a fila local do próprio app. -->
 <link rel="manifest" href="/manifest.webmanifest">
 <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(err => {
-      console.warn('[SW] Falha ao registrar:', err);
-    });
-  });
+// remove service worker antigo que possa ter ficado registrado no aparelho
+if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations) {
+  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(()=>{});
 }
 </script>
 <title>FrotaManager Pro</title>
@@ -3092,6 +3089,13 @@ async function fmLoginSupabase(login, senha){
       const {data:verif,error:ve}=await _sb.rpc('fm_verificar_login',{p_tenant:_sbTenant,p_login:login,p_senha:senha});
       if(ve||!verif||verif.length===0) throw new Error('Usuário ou senha inválidos.');
       u=verif[0];
+      // Sem sessão do Supabase Auth o banco não libera nenhum dado (as tabelas exigem login seguro).
+      const {data:sess}=await _sb.auth.getSession();
+      if(!sess?.session){
+        throw new Error(data[0].email
+          ? 'Sua senha confere com o cadastro antigo, mas não com o acesso seguro. Clique em "Esqueci a senha" e crie uma nova senha pelo link enviado ao seu e-mail.'
+          : 'Sua conta ainda não tem e-mail para o acesso seguro. Peça ao administrador para cadastrar seu e-mail em Usuários.');
+      }
     }
 
     await fmAplicarUsuarioLogado(fmNormalizarUsuario(u),false);
@@ -3800,7 +3804,8 @@ function _fetchComTempoLimite(url, opts){
 }
 async function _sbBuscarPaginado(tabela, montar){
   if(tabela === 'logs_auditoria'){
-    const r = await montar().order('timestamp', { ascending:false }).limit(_SB_PAGINA);
+    let r = await montar().order('data_hora', { ascending:false }).limit(_SB_PAGINA);
+    if(r.error) r = await montar().limit(_SB_PAGINA);
     if(r.error) return r;
     return { data:(r.data||[]).slice().reverse(), error:null };
   }
@@ -5931,7 +5936,7 @@ function _aptSalvar(){
 // ---- ESQUECI SENHA
 function abrirEsqueciSenha(){var ov=document.getElementById('ovEsqueciSenha');if(!ov)return;document.getElementById('esq_email').value='';document.getElementById('esq_erro').style.display='none';document.getElementById('esq_ok').style.display='none';var ft=document.getElementById('esqueciSenhaFooter');if(ft)ft.style.display='flex';ov.style.display='flex';}
 function fecharEsqueciSenha(){var ov=document.getElementById('ovEsqueciSenha');if(ov)ov.style.display='none';}
-async function enviarLinkSenha(){var email=(document.getElementById('esq_email').value||'').trim().toLowerCase();var erroEl=document.getElementById('esq_erro'),okEl=document.getElementById('esq_ok');erroEl.style.display='none';okEl.style.display='none';if(!email||!email.includes('@')){erroEl.textContent='\u26a0\ufe0f E-mail inv\u00e1lido.';erroEl.style.display='block';return;}if(!_sb||_sbMode!=='supabase'){erroEl.textContent='\u26a0\ufe0f Sem conex\u00e3o.';erroEl.style.display='block';return;}var uR=await _sb.from('usuarios').select('id,ativo').eq('tenant',_sbTenant).eq('email',email).limit(1);if(!uR.data||uR.data.length===0){okEl.textContent='\u2705 Se o e-mail estiver cadastrado, voc\u00ea receber\u00e1 o link.';okEl.style.display='block';var ft=document.getElementById('esqueciSenhaFooter');if(ft)ft.style.display='none';return;}if(!uR.data[0].ativo){erroEl.textContent='\u26a0\ufe0f Conta n\u00e3o aprovada.';erroEl.style.display='block';return;}var rR=await _sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname+'?reset=1'});if(rR.error&&!rR.error.message.includes('not found')){erroEl.textContent='\u26a0\ufe0f '+rR.error.message;erroEl.style.display='block';return;}okEl.textContent='\u2705 Link enviado!';okEl.style.display='block';var ft=document.getElementById('esqueciSenhaFooter');if(ft)ft.style.display='none';}
+async function enviarLinkSenha(){var email=(document.getElementById('esq_email').value||'').trim().toLowerCase();var erroEl=document.getElementById('esq_erro'),okEl=document.getElementById('esq_ok');erroEl.style.display='none';okEl.style.display='none';if(!email||!email.includes('@')){erroEl.textContent='\u26a0\ufe0f E-mail inv\u00e1lido.';erroEl.style.display='block';return;}if(!_sb||_sbMode!=='supabase'){erroEl.textContent='\u26a0\ufe0f Sem conex\u00e3o.';erroEl.style.display='block';return;}var uR=await _sb.rpc('fm_login_info',{p_tenant:_sbTenant,p_login:email});if(uR.error&&_fmRpcAusente(uR.error)){uR=await _sb.from('usuarios').select('id,ativo').eq('tenant',_sbTenant).eq('email',email).limit(1);}if(uR.data&&uR.data.length&&(uR.data[0].excluido||uR.data[0].pendente_aprovacao)){uR.data[0].ativo=false;}if(!uR.data||uR.data.length===0){okEl.textContent='\u2705 Se o e-mail estiver cadastrado, voc\u00ea receber\u00e1 o link.';okEl.style.display='block';var ft=document.getElementById('esqueciSenhaFooter');if(ft)ft.style.display='none';return;}if(!uR.data[0].ativo){erroEl.textContent='\u26a0\ufe0f Conta n\u00e3o aprovada.';erroEl.style.display='block';return;}var rR=await _sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname+'?reset=1'});if(rR.error&&!rR.error.message.includes('not found')){erroEl.textContent='\u26a0\ufe0f '+rR.error.message;erroEl.style.display='block';return;}okEl.textContent='\u2705 Link enviado!';okEl.style.display='block';var ft=document.getElementById('esqueciSenhaFooter');if(ft)ft.style.display='none';}
 (function(){if(new URLSearchParams(window.location.search).get('reset')==='1'){window.addEventListener('load',function(){setTimeout(function(){if(_sb)_sb.auth.onAuthStateChange(function(ev){if(ev==='PASSWORD_RECOVERY')_abrirModalNovaSenha();});},800);});}})();
 function _abrirModalNovaSenha(){var ex=document.getElementById('ovNovaSenha');if(ex)ex.remove();var div=document.createElement('div');div.id='ovNovaSenha';div.style.cssText='display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center';div.innerHTML='<div class="modal-box" style="max-width:380px"><div class="modal-header"><span><i class="fas fa-key"></i> Nova Senha</span></div><div class="modal-body"><div class="fg"><label style="font-weight:700;font-size:13px">Nova Senha *</label><input class="fi" type="password" id="nova_senha1"></div><div class="fg"><label style="font-weight:700;font-size:13px">Confirmar *</label><input class="fi" type="password" id="nova_senha2"></div><div id="nova_senha_erro" style="display:none;color:#c62828;font-size:12px;margin-top:8px;padding:8px;background:#fef2f2;border-radius:6px"></div></div><div class="modal-footer"><button class="btn btn-p" onclick="_salvarNovaSenha()" style="width:100%;justify-content:center">Salvar</button></div></div>';document.body.appendChild(div);}
 async function _salvarNovaSenha(){var s1=document.getElementById('nova_senha1').value;var s2=document.getElementById('nova_senha2').value;var er=document.getElementById('nova_senha_erro');er.style.display='none';if(!s1||s1.length<6){er.textContent='\u26a0\ufe0f M\u00ednimo 6.';er.style.display='block';return;}if(s1!==s2){er.textContent='\u26a0\ufe0f Senhas n\u00e3o coincidem.';er.style.display='block';return;}var r=await _sb.auth.updateUser({password:s1});if(r.error){er.textContent='\u26a0\ufe0f '+r.error.message;er.style.display='block';return;}var ad=await _sb.auth.getUser();if(ad.data&&ad.data.user&&ad.data.user.email)await _sb.from('usuarios').update({password:s1}).eq('email',ad.data.user.email).eq('tenant',_sbTenant);document.getElementById('ovNovaSenha').remove();showToastLogin('\u2705 Senha atualizada!','success');window.history.replaceState({},'',window.location.pathname);}
